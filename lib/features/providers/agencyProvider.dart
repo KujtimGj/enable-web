@@ -1,0 +1,303 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:enable_web/features/controllers/agencyController.dart';
+import 'package:enable_web/features/entities/productModel.dart';
+import 'package:enable_web/core/failure.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+
+import '../entities/agency.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/foundation.dart';
+
+
+class AgencyProvider extends ChangeNotifier {
+
+  void _safeNotify() {
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    // Only notify immediately when the framework is idle
+    if (phase == SchedulerPhase.idle) {
+      notifyListeners();
+    } else {
+      // Defer to after the current frame to avoid "during build"
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        // Double-check we're not in the middle of another build
+        if (!hasListeners) return; // optional safeguard
+        notifyListeners();
+      });
+    }
+  }
+  final AgencyController _agencyController = AgencyController();
+  List<ProductModel> _products = [];
+  AgencyModel? _agency;
+  AgencyModel? _createdAgency;
+  bool _isLoading = false;
+  bool _isInitialized = false;
+  bool _isAuthenticated = false;
+  String? _errorMessage;
+  String? _token;
+  
+  // Document count state
+  Map<String, int> _documentCounts = {
+    'dmcCount': 0,
+    'productCount': 0,
+    'experienceCount': 0,
+    'externalProductCount': 0,
+    'serviceProviderCount': 0,
+  };
+  bool _isLoadingCounts = false;
+
+  // Data state
+  List<Map<String, dynamic>> _dmcs = [];
+  List<Map<String, dynamic>> _externalProducts = [];
+  List<Map<String, dynamic>> _serviceProviders = [];
+  List<Map<String, dynamic>> _experiences = [];
+  bool _isLoadingData = false;
+
+  AgencyModel? get agency => _agency;
+  List<ProductModel> get products => _products;
+  bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
+  bool get isAuthenticated => _isAuthenticated;
+  AgencyModel? get createdAgency => _createdAgency;
+  String? get errorMessage => _errorMessage;
+  String? get token => _token;
+  
+  // Document count getters
+  Map<String, int> get documentCounts => _documentCounts;
+  bool get isLoadingCounts => _isLoadingCounts;
+  
+  // Data getters
+  List<Map<String, dynamic>> get dmcs => _dmcs;
+  List<Map<String, dynamic>> get externalProducts => _externalProducts;
+  List<Map<String, dynamic>> get serviceProviders => _serviceProviders;
+  List<Map<String, dynamic>> get experiences => _experiences;
+  bool get isLoadingData => _isLoadingData;
+
+  AgencyProvider() {
+    _initializeAuth();
+  }
+
+  Future<void> _initializeAuth() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final agencyJson = prefs.getString('agency');
+      
+      if (token != null && agencyJson != null) {
+        _token = token;
+        _agency = AgencyModel.fromJson(jsonDecode(agencyJson));
+        _isAuthenticated = true;
+      } else {
+        _isAuthenticated = false;
+      }
+    } catch (e) {
+      print('Error initializing agency auth: $e');
+      _isAuthenticated = false;
+    } finally {
+      _isInitialized = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchAgencyProducts(String agencyId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _agencyController.getAgencyProducts(agencyId);
+    result.fold(
+      (failure) {
+        _errorMessage = (failure as ServerFailure).message;
+      },
+      (products) {
+        _products = products; // Update to handle a list of products
+      },
+    );
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> createAgency(AgencyModel agencyModel) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _agencyController.createAgency(agencyModel);
+    result.fold(
+          (failure) {
+        _errorMessage = (failure as ServerFailure).message;
+        _createdAgency = null;
+      },
+          (agency) {
+        _createdAgency = agency;
+      },
+    );
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<AgencyModel?> loginAgency(String email, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _agencyController.loginAgency(email, password);
+    return await result.fold(
+      (failure) async {
+        _errorMessage = failure.toString();
+        _agency = null;
+        _isAuthenticated = false;
+        _isLoading = false;
+        notifyListeners();
+        return null;
+      },
+      (loggedAgency) async {
+        _agency = loggedAgency;
+        _isAuthenticated = true;
+        
+        // Store agency data in SharedPreferences
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('agency', jsonEncode(loggedAgency.toJson()));
+        // Token is already stored by the controller
+        _token = prefs.getString('token');
+        
+        _isLoading = false;
+        _errorMessage = null;
+        notifyListeners();
+        return _agency;
+      },
+    );
+  }
+
+  Future<void> logoutAgency() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('agency');
+    
+    _agency = null;
+    _token = null;
+    _isAuthenticated = false;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<void> fetchDocumentCounts(String agencyId) async {
+    try {
+      final result = await _agencyController.getDocumentCount(agencyId);
+      result.fold(
+            (failure) {
+           print(failure);
+        },
+            (counts) { counts;},
+      );
+    } catch (e) {
+      print(e.toString());
+    }
+    // Either rely on fetchAllData's final notify, or:
+    // _safeNotify();
+  }
+
+
+  Future<void> fetchDMCs(String agencyId) async {
+    _isLoadingData = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _agencyController.getDMCsByAgencyId(agencyId);
+    result.fold(
+      (failure) {
+        _errorMessage = (failure as ServerFailure).message;
+      },
+      (dmcs) {
+        _dmcs = dmcs.map((dmc) => dmc.toJson()).toList();
+      },
+    );
+
+    _isLoadingData = false;
+    notifyListeners();
+  }
+
+  Future<void> fetchExternalProducts(String agencyId) async {
+    _isLoadingData = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _agencyController.getExternalProductsByAgencyId(agencyId);
+    result.fold(
+      (failure) {
+        _errorMessage = (failure as ServerFailure).message;
+      },
+      (externalProducts) {
+        _externalProducts = externalProducts;
+      },
+    );
+
+    _isLoadingData = false;
+    notifyListeners();
+  }
+
+  Future<void> fetchServiceProviders(String agencyId) async {
+    _isLoadingData = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _agencyController.getServiceProvidersByAgencyId(agencyId);
+    result.fold(
+      (failure) {
+        _errorMessage = (failure as ServerFailure).message;
+      },
+      (serviceProviders) {
+        _serviceProviders = serviceProviders;
+      },
+    );
+
+    _isLoadingData = false;
+    notifyListeners();
+  }
+
+  Future<void> fetchExperiences(String agencyId) async {
+    _isLoadingData = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _agencyController.getExperiencesByAgencyId(agencyId);
+    result.fold(
+      (failure) {
+        _errorMessage = (failure as ServerFailure).message;
+      },
+      (experiences) {
+        _experiences = experiences;
+      },
+    );
+
+    _isLoadingData = false;
+    notifyListeners();
+  }
+
+  Future<void> fetchAllData(String agencyId) async {
+    // if you're tracking a loading flag, set it here without notifying yet
+    // isLoadingCounts = true;  // optional, but don't notify here
+
+    try {
+      await Future.wait([
+        fetchDocumentCounts(agencyId),   // these should NOT notify early
+        fetchAgencyProducts(agencyId),
+        fetchDMCs(agencyId),
+        fetchExternalProducts(agencyId),
+        fetchServiceProviders(agencyId),
+        fetchExperiences(agencyId),
+      ]);
+    } catch (e, st) {
+      print(e.toString());
+      if (kDebugMode) print('[AgencyProvider] fetchAllData error: $e\n$st');
+    } finally {
+      _safeNotify(); // <-- single, safe notification after all updates
+    }
+  }
+
+
+}
