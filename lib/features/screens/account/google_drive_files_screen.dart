@@ -6,9 +6,73 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:enable_web/features/providers/google_drive_provider.dart';
 import 'package:enable_web/features/components/responsive_scaffold.dart';
+import 'package:enable_web/features/entities/google_drive.dart';
+import 'package:enable_web/features/controllers/google_drive_controller.dart';
+import 'package:enable_web/core/failure.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:enable_web/features/providers/userProvider.dart';
+import 'package:enable_web/core/dio_api.dart';
+import 'package:enable_web/core/api.dart';
+
+// Ingestion progress tracking class
+class IngestionProgress {
+  final String fileId;
+  final String fileName;
+  final String status;
+  final int? progress;
+  final String? message;
+  final DateTime? startedAt;
+  final DateTime? finishedAt;
+  final String? error;
+
+  IngestionProgress({
+    required this.fileId,
+    required this.fileName,
+    required this.status,
+    this.progress,
+    this.message,
+    this.startedAt,
+    this.finishedAt,
+    this.error,
+  });
+
+  factory IngestionProgress.fromJson(Map<String, dynamic> json) {
+    return IngestionProgress(
+      fileId: json['fileId'] ?? '',
+      fileName: json['fileName'] ?? '',
+      status: json['status'] ?? 'unknown',
+      progress: json['progress'],
+      message: json['message'],
+      startedAt: json['startedAt'] != null ? DateTime.parse(json['startedAt']) : null,
+      finishedAt: json['finishedAt'] != null ? DateTime.parse(json['finishedAt']) : null,
+      error: json['error'],
+    );
+  }
+
+  IngestionProgress copyWith({
+    String? fileId,
+    String? fileName,
+    String? status,
+    int? progress,
+    String? message,
+    DateTime? startedAt,
+    DateTime? finishedAt,
+    String? error,
+  }) {
+    return IngestionProgress(
+      fileId: fileId ?? this.fileId,
+      fileName: fileName ?? this.fileName,
+      status: status ?? this.status,
+      progress: progress ?? this.progress,
+      message: message ?? this.message,
+      startedAt: startedAt ?? this.startedAt,
+      finishedAt: finishedAt ?? this.finishedAt,
+      error: error ?? this.error,
+    );
+  }
+}
 
 class GoogleDriveFilesScreen extends StatefulWidget {
   const GoogleDriveFilesScreen({super.key});
@@ -18,18 +82,751 @@ class GoogleDriveFilesScreen extends StatefulWidget {
 }
 
 class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
+  final GoogleDriveController _controller = GoogleDriveController();
+
+  GoogleDriveStructure? _structure;
+  FolderContents? _currentFolder;
+  List<Breadcrumb> _breadcrumbs = [];
+  bool _isLoading = false;
+  String? _error;
+  String? _currentFolderId;
+  bool _showSharedOnly = false;
+  
+  // Selection state variables
+  Set<String> _selectedItems = {};
+  bool _selectAll = false;
+  
+  // Progress tracking state variables
+  Map<String, IngestionProgress> _ingestionProgress = {};
+  bool _isTrackingProgress = false;
+  Timer? _progressTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final googleDriveProvider = Provider.of<GoogleDriveProvider>(
-        context,
-        listen: false,
-      );
-      if (googleDriveProvider.isConnected) {
-        googleDriveProvider.loadFiles();
-      }
+      _loadGoogleDriveStructure();
     });
+  }
+
+  @override
+  void dispose() {
+    _progressTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadGoogleDriveStructure() async {
+    print('🔍 [loadGoogleDriveStructure] Loading Google Drive structure...');
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _controller.getGoogleDriveStructure();
+      result.fold(
+        (failure) {
+          print('❌ [loadGoogleDriveStructure] Failed to load structure: ${failure.toString()}');
+          setState(() {
+            _error =
+                failure is ServerFailure
+                    ? failure.message
+                    : 'Failed to load Google Drive structure';
+            _isLoading = false;
+          });
+        },
+        (structure) {
+          // Debug logging
+          structure.rootItems.forEach((item) {
+          });
+
+          setState(() {
+            _structure = structure;
+            _currentFolder = null;
+            _currentFolderId = null;
+            _breadcrumbs = [];
+            _isLoading = false;
+          });
+          
+        },
+      );
+    } catch (e) {
+      print('❌ [loadGoogleDriveStructure] Exception occurred: $e');
+      setState(() {
+        _error = 'Failed to load Google Drive structure: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _openFolder(String folderId, String folderName) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _controller.getFolderContents(folderId);
+      result.fold(
+        (failure) {
+          setState(() {
+            _error =
+                failure is ServerFailure
+                    ? failure.message
+                    : 'Failed to open folder';
+            _isLoading = false;
+          });
+        },
+        (folderContents) {
+          folderContents.contents.forEach((item) {
+
+          });
+
+          setState(() {
+            _currentFolder = folderContents;
+            _currentFolderId = folderId;
+            _breadcrumbs = folderContents.breadcrumbs;
+            _isLoading = false;
+            // Clear selection when navigating to a new folder
+            _clearSelection();
+          });
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to open folder: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _goToBreadcrumb(String folderId) {
+    if (folderId == 'root') {
+      // Go back to root
+      setState(() {
+        _currentFolder = null;
+        _currentFolderId = null;
+        _breadcrumbs = [];
+        // Clear selection when going back to root
+        _clearSelection();
+      });
+    } else {
+      // Navigate to specific folder
+      _openFolder(folderId, '');
+    }
+  }
+
+  List<GoogleDriveFile> _filterItems(List<GoogleDriveFile> items) {
+    if (!_showSharedOnly) return items;
+
+    // Debug logging
+    items.forEach((item) {
+
+    });
+
+    final sharedItems = items.where((item) => item.isShared).toList();
+
+    return sharedItems;
+  }
+
+  Widget _buildBreadcrumbs() {
+    if (_breadcrumbs.isEmpty) return SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.folder, size: 16, color: Colors.blue[600]),
+          SizedBox(width: 8),
+          ..._breadcrumbs.asMap().entries.map((entry) {
+            final index = entry.key;
+            final crumb = entry.value;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () => _goToBreadcrumb(crumb.id),
+                  child: Text(
+                    crumb.name,
+                    style: TextStyle(
+                      color: Colors.blue[600],
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+                if (index < _breadcrumbs.length - 1)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+              ],
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFolderItem(GoogleDriveFile folder) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Checkbox(
+              value: _selectedItems.contains(folder.id),
+              onChanged: (bool? value) {
+                _toggleItemSelection(folder.id);
+              },
+            ),
+            SizedBox(width: 8),
+            Stack(
+              children: [
+                Icon(
+                  Icons.folder,
+                  color: folder.isShared ? Colors.orange[600] : Colors.blue[600],
+                  size: 32,
+                ),
+                if (folder.isShared)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[600],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.share, color: Colors.white, size: 12),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                folder.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color:
+                      folder.isShared ? Colors.orange[700] : Colors.blue[700],
+                ),
+              ),
+            ),  
+            if (folder.isShared)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Shared',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.orange[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (folder.itemCount != null)
+              Text(
+                '${folder.itemCount} items',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            if (folder.isShared)
+              Text(
+                'Owner: ${folder.owner}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            if (folder.modifiedTime != null)
+              Text(
+                'Modified: ${_formatDate(DateTime.parse(folder.modifiedTime!))}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+          ],
+        ),
+        trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+        onTap: () => _openFolder(folder.id, folder.name),
+      ),
+    );
+  }
+
+  Widget _buildFileItem(GoogleDriveFile file) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Checkbox(
+              value: _selectedItems.contains(file.id),
+              onChanged: (bool? value) {
+                _toggleItemSelection(file.id);
+              },
+            ),
+            SizedBox(width: 8),
+            _getFileIcon(file.mimeType),
+          ],
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                file.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: file.isShared ? Colors.orange[700] : null,
+                ),
+              ),
+            ),
+            if (file.isShared)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Shared',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.orange[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (file.size != null)
+              Text(_formatFileSize(file.size!), style: TextStyle(fontSize: 12)),
+            if (file.isShared)
+              Text(
+                'Owner: ${file.owner}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            if (file.modifiedTime != null)
+              Text(
+                'Modified: ${_formatDate(DateTime.parse(file.modifiedTime!))}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // SelectableText(file.id, style: TextStyle(fontSize: 10)),
+            SizedBox(width: 8),
+            IconButton(
+              onPressed: () => _readFileContent(file.id),
+              icon: Icon(Icons.upload_outlined),
+              tooltip: 'Ingest Data',
+            ),
+            if (file.webViewLink != null)
+              IconButton(
+                onPressed: () => _openFileInBrowser(file.webViewLink!),
+                icon: Icon(Icons.open_in_new),
+                tooltip: 'Open in browser',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    // Check if Google Drive is connected using the provider
+    final googleDriveProvider = Provider.of<GoogleDriveProvider>(
+      context,
+      listen: false,
+    );
+
+    if (!googleDriveProvider.isConnected) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset('assets/icons/drive2.svg', height: 64, width: 64),
+            SizedBox(height: 16),
+            Text(
+              'Google Drive not connected',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Please connect your Google Drive account to view files',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed:
+                  googleDriveProvider.isLoading
+                      ? null
+                      : () => googleDriveProvider.connectGoogleDrive(),
+              child: Text('Connect Google Drive'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading...'),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.red),
+            SizedBox(height: 16),
+            Text(
+              'Error',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadGoogleDriveStructure,
+              child: Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_currentFolder != null) {
+      // Show folder contents
+      return Column(
+        children: [
+          _buildBreadcrumbs(),
+          SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_currentFolder!.folder.name} (${_currentFolder!.totalItems} items)',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Row(
+                children: [
+                  // Select All button
+                  ElevatedButton.icon(
+                    onPressed: _toggleSelectAll,
+                    icon: Icon(_selectAll ? Icons.check_box : Icons.check_box_outline_blank),
+                    label: Text(_selectAll ? 'Deselect All' : 'Select All'),
+                    style: ElevatedButton.styleFrom(
+                    ),
+                  ),
+                  if (_selectedItems.isNotEmpty) ...[
+                    SizedBox(width: 8),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.blue[200]!),
+                      ),
+                      child: Text(
+                        '${_selectedItems.length} selected',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                  SizedBox(width: 8),
+                  // Enqueue Selected button
+                  if (_selectedItems.isNotEmpty)
+                    ElevatedButton.icon(
+                      onPressed: _enqueueSelectedFilesForIngestion,
+                      icon: Icon(Icons.queue),
+                      label: Text('Enqueue Selected (${_selectedItems.length})'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[100],
+                        foregroundColor: Colors.green[700],
+                      ),
+                    ),
+                  if (_selectedItems.isNotEmpty) SizedBox(width: 8),
+                  Text(
+                    '${_currentFolder!.totalFolders} folders, ${_currentFolder!.totalFiles} files',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  // Shared filter toggle
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.share,
+                        size: 16,
+                        color:
+                            _showSharedOnly
+                                ? Colors.orange[600]
+                                : Colors.grey[600],
+                      ),
+                      SizedBox(width: 4),
+                      // Text(
+                      //   'Shared only',
+                      //   style: TextStyle(
+                      //     fontSize: 12,
+                      //     color:
+                      //         _showSharedOnly
+                      //             ? Colors.orange[600]
+                      //             : Colors.grey[600],
+                      //   ),
+                      // ),
+                      // Switch(
+                      //   value: _showSharedOnly,
+                      //   onChanged: (value) {
+                      //     setState(() {
+                      //       _showSharedOnly = value;
+                      //     });
+                      //   },
+                      //   activeColor: Colors.orange[600],
+                      // ),
+                    ],
+                  ),
+                  SizedBox(width: 16),
+                  IconButton(
+                    onPressed:
+                        () => _openFolder(
+                          _currentFolder!.folder.id,
+                          _currentFolder!.folder.name,
+                        ),
+                    icon: Icon(Icons.refresh),
+                    tooltip: 'Refresh folder',
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filterItems(_currentFolder!.contents).length,
+              itemBuilder: (context, index) {
+                // Sort items to show folders first, then files
+                final sortedItems = List<GoogleDriveFile>.from(
+                  _filterItems(_currentFolder!.contents),
+                )..sort((a, b) {
+                  // Folders first
+                  if (a.isFolder && !b.isFolder) return -1;
+                  if (!a.isFolder && b.isFolder) return 1;
+                  // Then sort by name
+                  return a.name.compareTo(b.name);
+                });
+
+                final item = sortedItems[index];
+                if (item.isFolder) {
+                  return _buildFolderItem(item);
+                } else {
+                  return _buildFileItem(item);
+                }
+              },
+            ),
+          ),
+        ],
+      );
+    } else if (_structure != null) {
+      // Show root structure
+      return Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Google Drive (${_structure!.totalFiles + _structure!.totalFolders} items)',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Row(
+                children: [
+                  // Select All button
+                  ElevatedButton.icon(
+                    onPressed: _toggleSelectAll,
+                    icon: Icon(_selectAll ? Icons.check_box : Icons.check_box_outline_blank),
+                    label: Text(_selectAll ? 'Deselect All' : 'Select All'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _selectAll ? Colors.red[100] : Colors.blue[100],
+                      foregroundColor: _selectAll ? Colors.red[700] : Colors.blue[700],
+                    ),
+                  ),
+                  if (_selectedItems.isNotEmpty) ...[
+                    SizedBox(width: 8),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.blue[200]!),
+                      ),
+                      child: Text(
+                        '${_selectedItems.length} selected',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                  SizedBox(width: 8),
+                  // Enqueue Selected button
+                  if (_selectedItems.isNotEmpty)
+                    ElevatedButton.icon(
+                      onPressed: _enqueueSelectedFilesForIngestion,
+                      icon: Icon(Icons.queue),
+                      label: Text('Enqueue Selected (${_selectedItems.length})'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[100],
+                        foregroundColor: Colors.green[700],
+                      ),
+                    ),
+                  if (_selectedItems.isNotEmpty) SizedBox(width: 8),
+                  // Shared filter toggle
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.share,
+                        size: 16,
+                        color:
+                            _showSharedOnly
+                                ? Colors.orange[600]
+                                : Colors.grey[600],
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Shared only',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color:
+                              _showSharedOnly
+                                  ? Colors.orange[600]
+                                  : Colors.grey[600],
+                        ),
+                      ),
+                      Switch(
+                        value: _showSharedOnly,
+                        onChanged: (value) {
+                          setState(() {
+                            _showSharedOnly = value;
+                          });
+                        },
+                        activeColor: Colors.orange[600],
+                      ),
+                    ],
+                  ),
+                  SizedBox(width: 16),
+                  Text(
+                    '${_structure!.rootFolders} folders, ${_structure!.rootFiles} files',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  SizedBox(width: 16),
+                  IconButton(
+                    onPressed: _loadGoogleDriveStructure,
+                    icon: Icon(Icons.refresh),
+                    tooltip: 'Refresh',
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filterItems(_structure!.rootItems).length,
+              itemBuilder: (context, index) {
+                // Sort items to show folders first, then files
+                final sortedItems = List<GoogleDriveFile>.from(
+                  _filterItems(_structure!.rootItems),
+                )..sort((a, b) {
+                  // Folders first
+                  if (a.isFolder && !b.isFolder) return -1;
+                  if (!a.isFolder && b.isFolder) return 1;
+                  // Then sort by name
+                  return a.name.compareTo(b.name);
+                });
+
+                final item = sortedItems[index];
+                if (item.isFolder) {
+                  return _buildFolderItem(item);
+                } else {
+                  return _buildFileItem(item);
+                }
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    // If we have no structure and no current folder, show a message
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SvgPicture.asset('assets/icons/drive2.svg', height: 64, width: 64),
+          SizedBox(height: 16),
+          Text(
+            'No content available',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Try refreshing to load your Google Drive content',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _loadGoogleDriveStructure,
+            child: Text('Refresh'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -50,7 +847,9 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                       children: [
                         SvgPicture.asset('assets/icons/go-back.svg'),
                         Text(
-                          'Google Drive Files',
+                          _currentFolder != null
+                              ? 'Google Drive - ${_currentFolder!.folder.name}'
+                              : 'Google Drive Files',
                           textAlign: TextAlign.start,
                           style: TextStyle(fontSize: 20),
                         ),
@@ -59,245 +858,11 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 20),
-              Expanded(
-                child: Consumer<GoogleDriveProvider>(
-                  builder: (context, googleDriveProvider, child) {
-                    if (!googleDriveProvider.isConnected) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SvgPicture.asset(
-                              'assets/icons/drive2.svg',
-                              height: 64,
-                              width: 64,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Google Drive not connected',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Please connect your Google Drive account to view files',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                            SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed:
-                                  googleDriveProvider.isLoading
-                                      ? null
-                                      : () =>
-                                          googleDriveProvider
-                                              .connectGoogleDrive(),
-                              child: Text('Connect Google Drive'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    if (googleDriveProvider.isLoading && googleDriveProvider.files.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('Loading Google Drive files...'),
-                          ],
-                        ),
-                      );
-                    }
-
-                    if (googleDriveProvider.error != null) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 64,
-                              color: Colors.red,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Error loading files',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              googleDriveProvider.error!,
-                              style: TextStyle(color: Colors.grey[600]),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () {
-                                googleDriveProvider.clearError();
-                                googleDriveProvider.loadFiles();
-                              },
-                              child: Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    if (googleDriveProvider.files.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SvgPicture.asset(
-                              'assets/icons/drive2.svg',
-                              height: 64,
-                              width: 64,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No files found',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Your Google Drive appears to be empty',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    return Column(
-                      children: [
-                        // Header with file count
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Google Drive Files (${googleDriveProvider.files.length})',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                if (googleDriveProvider.lastSync != null)
-                                  Text(
-                                    'Last sync: ${_formatDate(googleDriveProvider.lastSync!)}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                SizedBox(width: 16),
-                                IconButton(
-                                  onPressed:
-                                      googleDriveProvider.isLoading
-                                          ? null
-                                          : () =>
-                                              googleDriveProvider.loadFiles(),
-                                  icon: Icon(Icons.refresh),
-                                  tooltip: 'Refresh files',
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-
-                        // Files list
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: googleDriveProvider.files.length,
-                            itemBuilder: (context, index) {
-                              final file = googleDriveProvider.files[index];
-                              return Card(
-                                margin: EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  leading: _getFileIcon(file.mimeType),
-                                  title: Text(
-                                    file.name,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      if (file.size != null)
-                                        Text(
-                                          _formatFileSize(
-                                            file.size!,
-                                          ).toString(),
-                                          style: TextStyle(fontSize: 12),
-                                        ),
-                                      if (file.modifiedTime != null)
-                                        Text(
-                                          'Modified: ${_formatDate(DateTime.parse(file.modifiedTime!))}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SelectableText(file.id),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            onPressed: () {
-                                              _readFileContent(file.id);
-                                            },
-                                            icon: Icon(Icons.upload_outlined),
-                                            tooltip: 'Ingest Data',
-                                          ),
-                                        ],
-                                      ),
-                                      // Read content button for text files
-                                      //   IconButton(
-                                      //     onPressed:
-                                      //         () => _readFileContent(file.id),
-                                      //     icon: Icon(Icons.description),
-                                      //     tooltip: 'Read content',
-                                      //   ),
-                                      if (file.webViewLink != null)
-                                        IconButton(
-                                          onPressed:
-                                              () => _openFileInBrowser(
-                                                file.webViewLink!,
-                                              ),
-                                          icon: Icon(Icons.open_in_new),
-                                          tooltip: 'Open in browser',
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
+                        SizedBox(height: 20),
+          // Progress tracking section
+          if (_ingestionProgress.isNotEmpty) _buildProgressSection(),
+          SizedBox(height: 16),
+          Expanded(child: _buildContent()),
             ],
           ),
         ),
@@ -345,8 +910,9 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
   String _formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024)
+    if (bytes < 1024 * 1024 * 1024) {
       return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
@@ -395,14 +961,448 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/pdf'
+      'application/pdf',
     ];
     return textMimeTypes.any((type) => mimeType.contains(type));
   }
 
+  // Selection methods
+  void _toggleItemSelection(String itemId) {
+    setState(() {
+      if (_selectedItems.contains(itemId)) {
+        _selectedItems.remove(itemId);
+      } else {
+        _selectedItems.add(itemId);
+      }
+      _updateSelectAllState();
+    });
+  }
 
-  Future<void> listenToFileProgress(String fileId, void Function(int percent, String message) onUpdate) async {
-    final uri = Uri.parse('http://https://enable-be-production.up.railway.app/api/v1/google-drive/files/$fileId/progress');
+  void _toggleSelectAll() {
+    setState(() {
+      if (_selectAll) {
+        _selectedItems.clear();
+        _selectAll = false;
+      } else {
+        final currentItems = _getCurrentItems();
+        _selectedItems = Set.from(currentItems.map((item) => item.id));
+        _selectAll = true;
+      }
+    });
+  }
+
+  void _updateSelectAllState() {
+    final currentItems = _getCurrentItems();
+    if (currentItems.isEmpty) {
+      _selectAll = false;
+    } else {
+      _selectAll = _selectedItems.length == currentItems.length;
+    }
+  }
+
+  List<GoogleDriveFile> _getCurrentItems() {
+    if (_currentFolder != null) {
+      return _filterItems(_currentFolder!.contents);
+    } else if (_structure != null) {
+      return _filterItems(_structure!.rootItems);
+    }
+    return [];
+  }
+
+    void _clearSelection() {
+    setState(() {
+      _selectedItems.clear();
+      _selectAll = false;
+    });
+  }
+
+  // Progress tracking methods
+  void _startProgressTracking() {
+    if (_isTrackingProgress) return;
+    
+    setState(() {
+      _isTrackingProgress = true;
+    });
+    
+    // Poll for progress every 2 seconds
+    _progressTimer = Timer.periodic(Duration(seconds: 2), (timer) {
+      _fetchIngestionProgress();
+    });
+  }
+
+  void _stopProgressTracking() {
+    _progressTimer?.cancel();
+    setState(() {
+      _isTrackingProgress = false;
+    });
+  }
+
+  Future<void> _fetchIngestionProgress() async {
+    if (_ingestionProgress.isEmpty) return;
+    
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final currentUser = userProvider.user;
+      
+      if (currentUser?.agencyId == null) return;
+      
+      final apiClient = ApiClient();
+      final response = await apiClient.get(
+        '${ApiEndpoints.batchIngestionProgress}/${currentUser!.agencyId}',
+      );
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final recentIngestions = data['recentIngestions'] as List? ?? [];
+        
+        setState(() {
+          for (final ingestion in recentIngestions) {
+            final fileId = ingestion['fileId'];
+            if (_ingestionProgress.containsKey(fileId)) {
+              _ingestionProgress[fileId] = _ingestionProgress[fileId]!.copyWith(
+                status: ingestion['status'] ?? 'unknown',
+                message: _getStatusMessage(ingestion['status']),
+                startedAt: ingestion['startedAt'] != null ? DateTime.parse(ingestion['startedAt']) : null,
+                finishedAt: ingestion['finishedAt'] != null ? DateTime.parse(ingestion['finishedAt']) : null,
+                error: ingestion['error'],
+              );
+            }
+          }
+        });
+        
+        // Check if all ingestions are complete
+        final allComplete = _ingestionProgress.values.every((progress) => 
+          progress.status == 'succeeded' || progress.status == 'failed' || progress.status == 'skipped'
+        );
+        
+        if (allComplete) {
+          _stopProgressTracking();
+        }
+      }
+    } catch (e) {
+      print('Error fetching ingestion progress: $e');
+    }
+  }
+
+  String _getStatusMessage(String? status) {
+    switch (status) {
+      case 'queued':
+        return 'Queued for processing';
+      case 'running':
+        return 'Processing file...';
+      case 'processing':
+        return 'Processing file...';
+      case 'uploading':
+        return 'Uploading to S3...';
+      case 'succeeded':
+        return 'Ingestion completed successfully';
+      case 'failed':
+        return 'Ingestion failed';
+      case 'skipped':
+        return 'File already ingested';
+      default:
+        return 'Unknown status';
+    }
+  }
+
+  // Enqueue selected files for ingestion
+  Future<void> _enqueueSelectedFilesForIngestion() async {
+    if (_selectedItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select files to enqueue for ingestion'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Get the current user's agency ID from the provider
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final currentUser = userProvider.user;
+    
+    if (currentUser?.agencyId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Agency ID not found. Please ensure you are properly authenticated.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final apiClient = ApiClient();
+      final response = await apiClient.post(
+        ApiEndpoints.batchIngestionEnqueue,
+        data: {
+          'fileIds': _selectedItems.toList(),
+          'agencyId': currentUser!.agencyId,
+        },
+      );
+
+      if (response.statusCode == 202) {
+        final data = response.data;
+        final queuedCount = data['queued'] ?? 0;
+        final skippedCount = data['skipped'] ?? 0;
+        final errorCount = data['errors'] ?? 0;
+
+        // Initialize progress tracking for queued files
+        final results = data['results'] as List? ?? [];
+        for (final result in results) {
+          if (result['status'] == 'queued') {
+            final fileId = result['fileId'];
+            final fileName = _getFileNameById(fileId);
+            _ingestionProgress[fileId] = IngestionProgress(
+              fileId: fileId,
+              fileName: fileName,
+              status: 'queued',
+              message: 'Queued for processing',
+              startedAt: DateTime.now(),
+            );
+          }
+        }
+
+        // Start progress tracking
+        _startProgressTracking();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Successfully enqueued $queuedCount files for ingestion. '
+              '${skippedCount > 0 ? '$skippedCount skipped (already ingested). ' : ''}'
+              '${errorCount > 0 ? '$errorCount errors occurred.' : ''}'
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
+          ),
+        );
+
+        // Don't clear selection yet - keep it to show progress
+        // _clearSelection();
+      } else {
+        throw Exception('Failed to enqueue files: ${response.statusCode}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to enqueue files for ingestion: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Helper method to get file name by ID
+  String _getFileNameById(String fileId) {
+    if (_currentFolder != null) {
+      final file = _currentFolder!.contents.firstWhere(
+        (item) => item.id == fileId,
+        orElse: () => GoogleDriveFile(id: fileId, name: 'Unknown File', mimeType: '', isFolder: false, type: 'file'),
+      );
+      return file.name;
+    } else if (_structure != null) {
+      final file = _structure!.rootItems.firstWhere(
+        (item) => item.id == fileId,
+        orElse: () => GoogleDriveFile(id: fileId, name: 'Unknown File', mimeType: '', isFolder: false, type: 'file'),
+      );
+      return file.name;
+    }
+    return 'Unknown File';
+  }
+
+  // Build progress tracking section
+  Widget _buildProgressSection() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.sync, color: Colors.blue[700], size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Ingestion Progress',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[700],
+                ),
+              ),
+              Spacer(),
+              if (_isTrackingProgress)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[700]!),
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Live',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 12),
+          ..._ingestionProgress.values.map((progress) => _buildProgressItem(progress)).toList(),
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: _ingestionProgress.values.every((p) => 
+                  p.status == 'succeeded' || p.status == 'failed' || p.status == 'skipped'
+                ) ? () {
+                  setState(() {
+                    _ingestionProgress.clear();
+                    _clearSelection();
+                  });
+                } : null,
+                icon: Icon(Icons.clear, size: 16),
+                label: Text('Clear Progress'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue[700],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build individual progress item
+  Widget _buildProgressItem(IngestionProgress progress) {
+    Color statusColor;
+    IconData statusIcon;
+    
+    switch (progress.status) {
+      case 'queued':
+        statusColor = Colors.orange;
+        statusIcon = Icons.schedule;
+        break;
+      case 'running':
+      case 'processing':
+      case 'uploading':
+        statusColor = Colors.blue;
+        statusIcon = Icons.sync;
+        break;
+      case 'succeeded':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        break;
+      case 'failed':
+        statusColor = Colors.red;
+        statusIcon = Icons.error;
+        break;
+      case 'skipped':
+        statusColor = Colors.grey;
+        statusIcon = Icons.skip_next;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.help;
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: statusColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(statusIcon, color: statusColor, size: 20),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  progress.fileName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  progress.message ?? 'Unknown status',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                if (progress.error != null) ...[
+                  SizedBox(height: 4),
+                  Text(
+                    'Error: ${progress.error}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.red[600],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (progress.status == 'running' || progress.status == 'processing' || progress.status == 'uploading')
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> listenToFileProgress(String fileId, void Function(int percent, String message) onUpdate,) async {
+    final uri = Uri.parse(
+      'http://https://enable-be-production.up.railway.app/api/v1/google-drive/files/$fileId/progress',
+    );
     final request = http.Request('GET', uri);
     final client = http.Client();
     final response = await client.send(request);
@@ -410,39 +1410,48 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
     response.stream
         .transform(utf8.decoder)
         .transform(const LineSplitter())
-        .listen((line) {
-      if (line.startsWith("data: ")) {
-        final dataString = line.substring(6).trim();
-        try {
-          final jsonData = json.decode(dataString);
-          final percent = jsonData['percent'] ?? 0;
-          final message = jsonData['message'] ?? "";
-          onUpdate(percent, message);
-        } catch (e) {
-          print("❌ Failed to parse SSE line: $line");
-        }
-      }
-    }, onError: (e) {
-      print("❌ SSE stream error: $e");
-    }, onDone: () {
-      print("✅ SSE stream closed");
-      client.close();
-    });
+        .listen(
+          (line) {
+            if (line.startsWith("data: ")) {
+              final dataString = line.substring(6).trim();
+              try {
+                final jsonData = json.decode(dataString);
+                final percent = jsonData['percent'] ?? 0;
+                final message = jsonData['message'] ?? "";
+                onUpdate(percent, message);
+              } catch (e) {
+                print("❌ Failed to parse SSE line: $line");
+              }
+            }
+          },
+          onError: (e) {
+            print("❌ SSE stream error: $e");
+          },
+          onDone: () {
+            print("✅ SSE stream closed");
+            client.close();
+          },
+        );
   }
 
   void _readFileContent(String fileId) async {
-    final googleDriveProvider = Provider.of<GoogleDriveProvider>(context, listen: false);
+    final googleDriveProvider = Provider.of<GoogleDriveProvider>(
+      context,
+      listen: false,
+    );
 
     try {
       final result = await googleDriveProvider.readFileContent(fileId);
 
       result.fold(
-            (failure) {
+        (failure) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to read file: ${failure.toString()}')),
+            SnackBar(
+              content: Text('Failed to read file: ${failure.toString()}'),
+            ),
           );
         },
-            (fileList) {
+        (fileList) {
           if (fileList is List && fileList.isNotEmpty) {
             final file = fileList[0];
 
@@ -451,35 +1460,35 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
 
             showDialog(
               context: context,
-              builder: (context) => AlertDialog(
-                title: Text(fileName ?? 'File Content'),
-                content: SingleChildScrollView(
-                  child: SelectableText(
-                    content ?? 'No content available',
-                    style: TextStyle(fontFamily: 'monospace'),
+              builder:
+                  (context) => AlertDialog(
+                    title: Text(fileName ?? 'File Content'),
+                    content: SingleChildScrollView(
+                      child: SelectableText(
+                        content ?? 'No content available',
+                        style: TextStyle(fontFamily: 'monospace'),
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text('Close'),
+                      ),
+                    ],
                   ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text('Close'),
-                  ),
-                ],
-              ),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('No file data returned.')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('No file data returned.')));
           }
         },
       );
     } catch (e) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error reading file: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error reading file: $e')));
     }
   }
-
 }

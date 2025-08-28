@@ -1,11 +1,8 @@
 import 'package:enable_web/features/screens/account/account_file_upload.dart';
 import 'package:enable_web/features/screens/agency/agency.dart';
-import 'package:enable_web/features/screens/agency/knowledgeBase.dart';
-import 'package:enable_web/features/screens/agency/dmc_list_screen.dart';
-import 'package:enable_web/features/screens/agency/external_products_screen.dart';
-import 'package:enable_web/features/screens/agency/service_providers_screen.dart';
-import 'package:enable_web/features/screens/agency/experiences_screen.dart';
-import 'package:enable_web/features/screens/agency/products_screen.dart';
+import 'package:enable_web/features/screens/knowledgebase/chats.dart';
+import 'package:enable_web/features/screens/knowledgebase/itinerary.dart';
+import 'package:enable_web/features/screens/knowledgebase/products.dart';
 import 'package:enable_web/features/screens/welcome/login_screen.dart';
 import 'package:enable_web/features/screens/welcome/loginAgency.dart';
 import 'package:enable_web/features/screens/home_screen.dart';
@@ -23,7 +20,7 @@ import 'package:enable_web/core/auth_utils.dart';
 
 import 'features/screens/account/google_drive_files_screen.dart';
 import 'features/screens/account/google_oauth_callback_screen.dart';
-import 'features/screens/agency/vics.dart';
+import 'features/screens/knowledgebase/vics.dart';
 
 class GoRouteName {
   GoRouteName({
@@ -122,53 +119,64 @@ GoRouteName routeDropboxFiles = GoRouteName(
 );
 
 GoRouteName routeVics = GoRouteName(
-    name: 'vics',
-    path: '/vics',
-    authenticated: true
+  name: 'vics',
+  path: '/vics',
+  authenticated: true,
 );
-GoRouteName routeRegister = GoRouteName(
-  name: "register",
-  path: "/register",
-);
+GoRouteName routeRegister = GoRouteName(name: "register", path: "/register");
 
-GoRouteName routeKnowledgebase=GoRouteName(
-    name: "knowledgebase",
-    path: '/knowledgebase',
-    authenticated: true
+GoRouteName routeKnowledgebase = GoRouteName(
+  name: "knowledgebase",
+  path: '/knowledgebase',
+  authenticated: true,
 );
 
 GoRouteName routeProducts = GoRouteName(
-    name: "products",
-    path: '/products',
-    authenticated: true
+  name: "products",
+  path: '/products',
+  authenticated: true,
 );
 
 GoRouteName routeDMCs = GoRouteName(
-    name: "dmcs",
-    path: '/dmcs',
-    authenticated: true
+  name: "dmcs",
+  path: '/dmcs',
+  authenticated: true,
 );
 
 GoRouteName routeExternalProducts = GoRouteName(
-    name: "external-products",
-    path: '/external-products',
-    authenticated: true
+  name: "external-products",
+  path: '/external-products',
+  authenticated: true,
 );
 
 GoRouteName routeServiceProviders = GoRouteName(
-    name: "service-providers",
-    path: '/service-providers',
-    authenticated: true
+  name: "service-providers",
+  path: '/service-providers',
+  authenticated: true,
 );
 
 GoRouteName routeExperiences = GoRouteName(
-    name: "experiences",
-    path: '/experiences',
-    authenticated: true
+  name: "experiences",
+  path: '/experiences',
+  authenticated: true,
 );
 
-GoRouteName agencyRoute = GoRouteName(name: "agencyRoute", path: "/agencyroute");
-GoRouteName agencyLogin = GoRouteName(name:"agencylogin",path: "/agencylogin");
+GoRouteName routeItinerary = GoRouteName(
+  name: "itinerary",
+  path: "/itinerary",
+  authenticated: true,
+);
+
+GoRouteName agencyRoute = GoRouteName(
+  name: "agencyRoute",
+  path: "/agencyroute",
+);
+GoRouteName agencyLogin = GoRouteName(
+  name: "agencylogin",
+  path: "/agencylogin",
+);
+
+GoRouteName chatsRoute = GoRouteName(name: 'chats', path: '/chats',authenticated: true);
 GoRouteName routeWelcome = GoRouteName(name: "welcome", path: "/welcome");
 GoRouter createGoRouter({String? initialLocation}) {
   return GoRouter(
@@ -179,7 +187,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         routeRegister.path,
         agencyLogin.path,
         routeWelcome.path,
-        routeKnowledgebase.path
+        routeKnowledgebase.path,
       ];
 
       if (unauthenticatedAllowedRoutes.contains(state.matchedLocation)) {
@@ -187,12 +195,28 @@ GoRouter createGoRouter({String? initialLocation}) {
       }
 
       try {
+        // Check if providers are available in this context
+        if (!context.mounted) {
+          print('[Router] Context not mounted, allowing route');
+          return null;
+        }
+
         final userProvider = Provider.of<UserProvider>(context, listen: false);
-        final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
+        final agencyProvider = Provider.of<AgencyProvider>(
+          context,
+          listen: false,
+        );
+
+        print('[Router] Redirect check for route: ${state.matchedLocation}');
+        print('[Router] UserProvider - isAuthenticated: ${userProvider.isAuthenticated}, isInitialized: ${userProvider.isInitialized}, isLoading: ${userProvider.isLoading}');
+        print('[Router] AgencyProvider - isAuthenticated: ${agencyProvider.isAuthenticated}, isInitialized: ${agencyProvider.isInitialized}, isLoading: ${agencyProvider.isLoading}');
 
         // Check if either provider is still loading or not initialized
-        if (userProvider.isLoading || !userProvider.isInitialized || 
-            agencyProvider.isLoading || !agencyProvider.isInitialized) {
+        if (userProvider.isLoading ||
+            !userProvider.isInitialized ||
+            agencyProvider.isLoading ||
+            !agencyProvider.isInitialized) {
+          print('[Router] Providers not ready, allowing route');
           return null;
         }
 
@@ -203,7 +227,9 @@ GoRouter createGoRouter({String? initialLocation}) {
         }
 
         String? userType = AuthUtils.getCurrentUserType(context);
-        print('[Router] User type: $userType, current route: ${state.matchedLocation}');
+        print(
+          '[Router] User type: $userType, current route: ${state.matchedLocation}',
+        );
 
         if (userType == 'agency') {
           // Allow agency routes
@@ -216,14 +242,19 @@ GoRouter createGoRouter({String? initialLocation}) {
 
         // If regular user tries to access agency routes, redirect to home
         if (userType == 'user') {
-          print('[Router] User is regular user, allowing access to: ${state.matchedLocation}');
+          print(
+            '[Router] User is regular user, allowing access to: ${state.matchedLocation}',
+          );
           // Allow users to access all routes including knowledge base and document screens
           return null;
         }
 
         return null;
       } catch (e) {
-        return routeSignIn.path;
+        print('[Router] Error in redirect: $e');
+        // If there's an error accessing providers, allow the route to proceed
+        print('[Router] Allowing route due to error');
+        return null;
       }
     },
     routes: [
@@ -249,12 +280,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeWelcome.name,
         path: routeWelcome.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: Welcome(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: Welcome());
         },
       ),
       // ---------------------------------
@@ -264,12 +290,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: agencyRoute.name,
         path: agencyRoute.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: AgencyView(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: AgencyView());
         },
       ),
 
@@ -280,12 +301,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: agencyLogin.name,
         path: agencyLogin.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const LoginAgency(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const LoginAgency());
         },
       ),
       // ---------------------------------
@@ -295,12 +311,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeSignIn.name,
         path: routeSignIn.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: LoginScreen(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: LoginScreen());
         },
       ),
 
@@ -311,12 +322,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeHome.name,
         path: routeHome.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const HomeScreen(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const HomeScreen());
         },
       ),
       // ---------------------------------
@@ -326,12 +332,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeDashboard.name,
         path: routeDashboard.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const DashboardScreen(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const DashboardScreen());
         },
       ),
       // ---------------------------------
@@ -343,12 +344,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeAccount.name,
         path: routeAccount.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const Account(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const Account());
         },
       ),
 
@@ -359,12 +355,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeAccountFileUpload.name,
         path: routeAccountFileUpload.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const AccountFileUpload(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const AccountFileUpload());
         },
       ),
 
@@ -375,12 +366,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeAccountUploadFile.name,
         path: routeAccountUploadFile.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const AccountFileUpload(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const AccountFileUpload());
         },
       ),
 
@@ -391,12 +377,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeGoogleDriveFiles.name,
         path: routeGoogleDriveFiles.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const GoogleDriveFilesScreen(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const GoogleDriveFilesScreen());
         },
       ),
 
@@ -407,12 +388,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeGoogleOAuthCallback.name,
         path: routeGoogleOAuthCallback.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const GoogleOAuthCallbackScreen(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const GoogleOAuthCallbackScreen());
         },
       ),
 
@@ -423,12 +399,7 @@ GoRouter createGoRouter({String? initialLocation}) {
         name: routeDropboxFiles.name,
         path: routeDropboxFiles.path,
         pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            child: const DropboxFilesScreen(),
-            transitionsBuilder: (context, anim, secondaryAnim, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-          );
+          return MaterialPage(child: const DropboxFilesScreen());
         },
       ),
       // ---------------------------------
@@ -437,13 +408,9 @@ GoRouter createGoRouter({String? initialLocation}) {
       GoRoute(
         path: routeVics.path,
         name: routeVics.name,
-        pageBuilder: (context,state){
-          return CustomTransitionPage(
-              child: Vics(),
-              transitionsBuilder: (context,anim,secondaryAnim,child){
-                return FadeTransition(opacity: anim,child: child);
-              });
-        }
+        pageBuilder: (context, state) {
+          return MaterialPage(child: VICs());
+        },
       ),
       // ---------------------------------
       // Register
@@ -451,105 +418,99 @@ GoRouter createGoRouter({String? initialLocation}) {
       GoRoute(
         path: routeRegister.path,
         name: routeRegister.name,
-        pageBuilder: (context,state){
-          return CustomTransitionPage(
-              child: Register(),
-              transitionsBuilder: (context,anim,secondaryAnim,child){
-                return FadeTransition(opacity: anim,child: child);
-              }
-          );
-        }
+        pageBuilder: (context, state) {
+          return MaterialPage(child: Register());
+        },
+      ),
+
+      // ---------------------------------
+      // Itinerary
+      // ---------------------------------
+
+      GoRoute(
+        path: routeItinerary.path,
+        name: routeItinerary.name,
+        pageBuilder: (context, state) {
+          return MaterialPage(child: Itinerary());
+        },
       ),
       // ---------------------------------
-      // Knowledge Base
+      // Itinerary
       // ---------------------------------
       GoRoute(
-          path: routeKnowledgebase.path,
-          name: routeKnowledgebase.name,
-          pageBuilder: (context,state){
-            return CustomTransitionPage(
-                child: Knowledgebase(),
-                transitionsBuilder: (context,anim,secondaryAnim,child){
-                  return FadeTransition(opacity: anim,child: child);
-                }
-            );
-          }
+        path: chatsRoute.path,
+        name: chatsRoute.name,
+        pageBuilder: (context, state) {
+          return MaterialPage(child: ChatsList());
+        },
       ),
-      // ---------------------------------
-      // Products
-      // ---------------------------------
       GoRoute(
-          path: routeProducts.path,
-          name: routeProducts.name,
-          pageBuilder: (context,state){
-            return CustomTransitionPage(
-                child: ProductsScreen(),
-                transitionsBuilder: (context,anim,secondaryAnim,child){
-                  return FadeTransition(opacity: anim,child: child);
-                }
-            );
-          }
+        path: routeProducts.path,
+        name: routeProducts.name,
+        pageBuilder: (context, state) {
+          return MaterialPage(child: Products());
+        },
       ),
       // ---------------------------------
       // DMCs
       // ---------------------------------
-      GoRoute(
-          path: routeDMCs.path,
-          name: routeDMCs.name,
-          pageBuilder: (context,state){
-            return CustomTransitionPage(
-                child: DMCListScreen(),
-                transitionsBuilder: (context,anim,secondaryAnim,child){
-                  return FadeTransition(opacity: anim,child: child);
-                }
-            );
-          }
-      ),
+      // GoRoute(
+      //     path: routeDMCs.path,
+      //     name: routeDMCs.name,
+      //     pageBuilder: (context,state){
+      //       return CustomTransitionPage(
+      //           child: DMCListScreen(),
+      //           transitionsBuilder: (context,anim,secondaryAnim,child){
+      //             return FadeTransition(opacity: anim,child: child);
+      //           }
+      //       );
+      //     }
+      // ),
       // ---------------------------------
       // External Products
       // ---------------------------------
-      GoRoute(
-          path: routeExternalProducts.path,
-          name: routeExternalProducts.name,
-          pageBuilder: (context,state){
-            return CustomTransitionPage(
-                child: ExternalProductsScreen(),
-                transitionsBuilder: (context,anim,secondaryAnim,child){
-                  return FadeTransition(opacity: anim,child: child);
-                }
-            );
-          }
-      ),
+      // GoRoute(
+      //     path: routeExternalProducts.path,
+      //     name: routeExternalProducts.name,
+      //     pageBuilder: (context,state){
+      //       return CustomTransitionPage(
+      //           child: ExternalProductsScreen(),
+      //           transitionsBuilder: (context,anim,secondaryAnim,child){
+      //             return FadeTransition(opacity: anim,child: child);
+      //           }
+      //       );
+      //     }
+      // ),
       // ---------------------------------
       // Service Providers
       // ---------------------------------
-      GoRoute(
-          path: routeServiceProviders.path,
-          name: routeServiceProviders.name,
-          pageBuilder: (context,state){
-            return CustomTransitionPage(
-                child: ServiceProvidersScreen(),
-                transitionsBuilder: (context,anim,secondaryAnim,child){
-                  return FadeTransition(opacity: anim,child: child);
-                }
-            );
-          }
-      ),
+      // GoRoute(
+      //     path: routeServiceProviders.path,
+      //     name: routeServiceProviders.name,
+      //     pageBuilder: (context,state){
+      //       return CustomTransitionPage(
+      //           child: ServiceProvidersScreen(),
+      //           transitionsBuilder: (context,anim,secondaryAnim,child){
+      //             return FadeTransition(opacity: anim,child: child);
+      //           }
+      //       );
+      //     }
+      // ),
       // ---------------------------------
       // Experiences
       // ---------------------------------
-      GoRoute(
-          path: routeExperiences.path,
-          name: routeExperiences.name,
-          pageBuilder: (context,state){
-            return CustomTransitionPage(
-                child: ExperiencesScreen(),
-                transitionsBuilder: (context,anim,secondaryAnim,child){
-                  return FadeTransition(opacity: anim,child: child);
-                }
-            );
-          }
-      )
+      // GoRoute(
+      //     path: routeExperiences.path,
+      //     name: routeExperiences.name,
+      //     pageBuilder: (context,state){
+      //       return CustomTransitionPage(
+      //           child: ExperiencesScreen(),
+      //           transitionsBuilder: (context,anim,secondaryAnim,child){
+      //             return FadeTransition(opacity: anim,child: child);
+      //           }
+      //       );
+      //     }
+      // )
     ],
   );
 }

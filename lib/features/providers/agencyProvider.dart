@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:enable_web/features/controllers/agencyController.dart';
 import 'package:enable_web/features/entities/productModel.dart';
+import 'package:enable_web/features/entities/dmcModel.dart';
+import 'package:enable_web/features/entities/serviceProviderModel.dart';
+import 'package:enable_web/features/entities/externalProductModel.dart';
+import 'package:enable_web/features/entities/experienceModel.dart';
 import 'package:enable_web/core/failure.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -49,10 +53,10 @@ class AgencyProvider extends ChangeNotifier {
   bool _isLoadingCounts = false;
 
   // Data state
-  List<Map<String, dynamic>> _dmcs = [];
-  List<Map<String, dynamic>> _externalProducts = [];
-  List<Map<String, dynamic>> _serviceProviders = [];
-  List<Map<String, dynamic>> _experiences = [];
+  List<DMC> _dmcs = [];
+  List<ExternalProductModel> _externalProducts = [];
+  List<ServiceProviderModel> _serviceProviders = [];
+  List<ExperienceModel> _experiences = [];
   bool _isLoadingData = false;
 
   AgencyModel? get agency => _agency;
@@ -69,10 +73,10 @@ class AgencyProvider extends ChangeNotifier {
   bool get isLoadingCounts => _isLoadingCounts;
   
   // Data getters
-  List<Map<String, dynamic>> get dmcs => _dmcs;
-  List<Map<String, dynamic>> get externalProducts => _externalProducts;
-  List<Map<String, dynamic>> get serviceProviders => _serviceProviders;
-  List<Map<String, dynamic>> get experiences => _experiences;
+  List<DMC> get dmcs => _dmcs;
+  List<ExternalProductModel> get externalProducts => _externalProducts;
+  List<ServiceProviderModel> get serviceProviders => _serviceProviders;
+  List<ExperienceModel> get experiences => _experiences;
   bool get isLoadingData => _isLoadingData;
 
   AgencyProvider() {
@@ -81,22 +85,29 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<void> _initializeAuth() async {
     try {
+      print('AgencyProvider: Starting _initializeAuth');
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
       final agencyJson = prefs.getString('agency');
+      
+      print('AgencyProvider: Token found: ${token != null}');
+      print('AgencyProvider: Agency JSON found: ${agencyJson != null}');
       
       if (token != null && agencyJson != null) {
         _token = token;
         _agency = AgencyModel.fromJson(jsonDecode(agencyJson));
         _isAuthenticated = true;
+        print('AgencyProvider: Agency authenticated: ${_agency?.name}');
       } else {
         _isAuthenticated = false;
+        print('AgencyProvider: No token or agency data found');
       }
     } catch (e) {
-      print('Error initializing agency auth: $e');
+      print('AgencyProvider: Error initializing agency auth: $e');
       _isAuthenticated = false;
     } finally {
       _isInitialized = true;
+      print('AgencyProvider: Initialization complete - isAuthenticated: $_isAuthenticated, isLoading: $_isLoading, isInitialized: $_isInitialized');
       notifyListeners();
     }
   }
@@ -213,7 +224,7 @@ class AgencyProvider extends ChangeNotifier {
         _errorMessage = (failure as ServerFailure).message;
       },
       (dmcs) {
-        _dmcs = dmcs.map((dmc) => dmc.toJson()).toList();
+        _dmcs = dmcs;
       },
     );
 
@@ -232,7 +243,7 @@ class AgencyProvider extends ChangeNotifier {
         _errorMessage = (failure as ServerFailure).message;
       },
       (externalProducts) {
-        _externalProducts = externalProducts;
+        _externalProducts = externalProducts.map((json) => ExternalProductModel.fromJson(json)).toList();
       },
     );
 
@@ -251,7 +262,7 @@ class AgencyProvider extends ChangeNotifier {
         _errorMessage = (failure as ServerFailure).message;
       },
       (serviceProviders) {
-        _serviceProviders = serviceProviders;
+        _serviceProviders = serviceProviders.map((json) => ServiceProviderModel.fromJson(json)).toList();
       },
     );
 
@@ -260,21 +271,28 @@ class AgencyProvider extends ChangeNotifier {
   }
 
   Future<void> fetchExperiences(String agencyId) async {
+    print('AgencyProvider: Starting fetchExperiences for agency: $agencyId');
     _isLoadingData = true;
     _errorMessage = null;
     notifyListeners();
 
     final result = await _agencyController.getExperiencesByAgencyId(agencyId);
+    print('AgencyProvider: API call result: $result');
+    
     result.fold(
       (failure) {
+        print('AgencyProvider: API call failed with failure: $failure');
         _errorMessage = (failure as ServerFailure).message;
       },
       (experiences) {
-        _experiences = experiences;
+        print('AgencyProvider: API call successful, experiences count: ${experiences.length}');
+        _experiences = experiences.map((json) => ExperienceModel.fromJson(json)).toList();
+        print('AgencyProvider: Parsed experiences count: ${_experiences.length}');
       },
     );
 
     _isLoadingData = false;
+    print('AgencyProvider: fetchExperiences completed, final count: ${_experiences.length}');
     notifyListeners();
   }
 
@@ -298,6 +316,5 @@ class AgencyProvider extends ChangeNotifier {
       _safeNotify(); // <-- single, safe notification after all updates
     }
   }
-
 
 }

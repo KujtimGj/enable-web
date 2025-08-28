@@ -6,6 +6,14 @@ class GoogleDriveFile {
   final int? size;
   final String? modifiedTime;
   final String? webViewLink;
+  final String? iconLink;
+  final bool isFolder;
+  final String type;
+  final List<String>? parents;
+  final int? itemCount;
+  final bool isShared;
+  final String owner;
+  final List<dynamic> permissions;
 
   GoogleDriveFile({
     required this.id,
@@ -14,6 +22,14 @@ class GoogleDriveFile {
     this.size,
     this.modifiedTime,
     this.webViewLink,
+    this.iconLink,
+    required this.isFolder,
+    required this.type,
+    this.parents,
+    this.itemCount,
+    this.isShared = false,
+    this.owner = 'Unknown',
+    this.permissions = const [],
   });
 
   factory GoogleDriveFile.fromJson(Map<String, dynamic> json) {
@@ -32,6 +48,8 @@ class GoogleDriveFile {
     }
 
     final size = parseSize(json['size']);
+    final isFolder = json['mimeType'] == 'application/vnd.google-apps.folder' || json['isFolder'] == true;
+    final type = isFolder ? 'folder' : 'file';
 
     return GoogleDriveFile(
       id: json['id'] ?? '',
@@ -40,6 +58,14 @@ class GoogleDriveFile {
       size: size,
       modifiedTime: json['modifiedTime'] ?? '',
       webViewLink: json['webViewLink'] ?? '',
+      iconLink: json['iconLink'],
+      isFolder: isFolder,
+      type: type,
+      parents: json['parents'] != null ? List<String>.from(json['parents']) : null,
+      itemCount: json['itemCount'],
+      isShared: json['isShared'] ?? false,
+      owner: json['owner'] ?? 'Unknown',
+      permissions: json['permissions'] != null ? List<dynamic>.from(json['permissions']) : [],
     );
   }
 }
@@ -59,6 +85,120 @@ class GoogleDriveStatus {
       lastSync: json['lastSync'] != null 
           ? DateTime.parse(json['lastSync']) 
           : null,
+    );
+  }
+}
+
+class GoogleDriveFolder {
+  final String id;
+  final String name;
+  final List<String>? parents;
+  final String? webViewLink;
+  final String? iconLink;
+
+  GoogleDriveFolder({
+    required this.id,
+    required this.name,
+    this.parents,
+    this.webViewLink,
+    this.iconLink,
+  });
+
+  factory GoogleDriveFolder.fromJson(Map<String, dynamic> json) {
+    return GoogleDriveFolder(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      parents: json['parents'] != null ? List<String>.from(json['parents']) : null,
+      webViewLink: json['webViewLink'],
+      iconLink: json['iconLink'],
+    );
+  }
+}
+
+class Breadcrumb {
+  final String id;
+  final String name;
+
+  Breadcrumb({
+    required this.id,
+    required this.name,
+  });
+
+  factory Breadcrumb.fromJson(Map<String, dynamic> json) {
+    return Breadcrumb(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+    );
+  }
+}
+
+class FolderContents {
+  final GoogleDriveFolder folder;
+  final List<Breadcrumb> breadcrumbs;
+  final List<GoogleDriveFile> contents;
+  final int totalItems;
+  final int totalFolders;
+  final int totalFiles;
+
+  FolderContents({
+    required this.folder,
+    required this.breadcrumbs,
+    required this.contents,
+    required this.totalItems,
+    required this.totalFolders,
+    required this.totalFiles,
+  });
+
+  factory FolderContents.fromJson(Map<String, dynamic> json) {
+    return FolderContents(
+      folder: GoogleDriveFolder.fromJson(json['folder'] ?? {}),
+      breadcrumbs: (json['breadcrumbs'] as List<dynamic>?)
+          ?.map((crumb) => Breadcrumb.fromJson(crumb))
+          .toList() ?? [],
+      contents: (json['contents'] as List<dynamic>?)
+          ?.map((item) => GoogleDriveFile.fromJson(item))
+          .toList() ?? [],
+      totalItems: json['totalItems'] ?? 0,
+      totalFolders: json['totalFolders'] ?? 0,
+      totalFiles: json['totalFiles'] ?? 0,
+    );
+  }
+}
+
+class GoogleDriveStructure {
+  final List<GoogleDriveFile> folderStructure;
+  final List<GoogleDriveFile> rootItems;
+  final List<GoogleDriveFile> files;
+  final int totalFiles;
+  final int totalFolders;
+  final int rootFolders;
+  final int rootFiles;
+
+  GoogleDriveStructure({
+    required this.folderStructure,
+    required this.rootItems,
+    required this.files,
+    required this.totalFiles,
+    required this.totalFolders,
+    required this.rootFolders,
+    required this.rootFiles,
+  });
+
+  factory GoogleDriveStructure.fromJson(Map<String, dynamic> json) {
+    return GoogleDriveStructure(
+      folderStructure: (json['folderStructure'] as List<dynamic>?)
+          ?.map((item) => GoogleDriveFile.fromJson(item))
+          .toList() ?? [],
+      rootItems: (json['rootItems'] as List<dynamic>?)
+          ?.map((item) => GoogleDriveFile.fromJson(item))
+          .toList() ?? [],
+      files: (json['files'] as List<dynamic>?)
+          ?.map((item) => GoogleDriveFile.fromJson(item))
+          .toList() ?? [],
+      totalFiles: json['totalFiles'] ?? 0,
+      totalFolders: json['totalFolders'] ?? 0,
+      rootFolders: json['rootFolders'] ?? 0,
+      rootFiles: json['rootFiles'] ?? 0,
     );
   }
 }

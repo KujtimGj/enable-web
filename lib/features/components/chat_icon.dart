@@ -5,7 +5,7 @@ Widget chatIcon(height, width) {
     height: height,
     width: width,
     padding: EdgeInsets.all(10),
-    decoration: BoxDecoration(color: Color(0xff292525)),
+    decoration: BoxDecoration(color: Color(0xff292525),borderRadius: BorderRadius.circular(10)),
     child: Center(
       child: Icon(Icons.chat_outlined, size: 25, color: Colors.white),
     ),

@@ -1,4 +1,5 @@
 import 'package:enable_web/core/dimensions.dart';
+import 'package:enable_web/features/components/widgets.dart';
 import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -210,58 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             return Row(
               children: [
-                Consumer<UserProvider>(
-                  builder: (context, authProvider, child) {
-                    return Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              context.go('/vics');
-                            },
-                            child: SvgPicture.asset('assets/icons/vics.svg'),
-                          ),
-                          SizedBox(height: 10),
-                          SvgPicture.asset('assets/icons/diamond.svg'),
-                          SizedBox(height: 10),
-                          GestureDetector(
-                            onTap: () {
-                              context.go("/knowledgebase");
-                            },
-                            child: SvgPicture.asset('assets/icons/Icon.svg'),
-                          ),
-                          SizedBox(height: 10),
-                          GestureDetector(
-                            onTap: () {
-                              showAccountOverlay(context);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: CircleAvatar(
-                                maxRadius: 14,
-                                minRadius: 14,
-                                backgroundColor: Color(0xff574131),
-                                child: Text(
-                                  user?.name.isNotEmpty == true
-                                      ? user!.name[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                bottomLeftBar(),
                 SizedBox(width: 5),
                 Expanded(
                   flex: 1,

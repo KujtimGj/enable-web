@@ -5,6 +5,8 @@ import 'package:enable_web/features/providers/agentProvider.dart';
 import 'package:enable_web/features/providers/dropbox_provider.dart';
 import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:enable_web/features/providers/google_drive_provider.dart';
+import 'package:enable_web/features/providers/vicProvider.dart';
+import 'package:enable_web/features/providers/productProvider.dart';
 import 'package:enable_web/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -41,7 +43,6 @@ class MyApp extends StatelessWidget {
 
   //   return '/welcome';
   // }
-
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -50,7 +51,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GoogleDriveProvider()),
         ChangeNotifierProvider(create: (_)=> DropboxProvider()),
         ChangeNotifierProvider(create: (_)=>AgencyProvider()),
-        ChangeNotifierProvider(create: (_)=>ChatProvider())
+        ChangeNotifierProvider(create: (_)=>ChatProvider()),
+        ChangeNotifierProvider(create: (_)=>VICProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
       ],
       child: Consumer2<UserProvider, AgencyProvider>(
         builder: (context, userProvider, agencyProvider, child) {
@@ -72,9 +75,7 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             title: AppConstants.appName,
             theme: EnableTheme.defaultTheme(context),
-            routerConfig: createGoRouter(
-              initialLocation: '/home',
-            ),
+            routerConfig: createGoRouter(initialLocation: '/home'),
           );
         },
       ),

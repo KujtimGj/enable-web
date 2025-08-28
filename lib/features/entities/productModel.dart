@@ -17,11 +17,11 @@ class ProductModel {
   final String? availability;
   final double? priceMin;
   final double? priceMax;
-  final Map<String, dynamic>? features;
-  final List<double> embedding;
+  final dynamic features; // Changed to dynamic to handle both array and object
+  final List<double>? embedding; // Made nullable since it might not always be present
   final String agencyId;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? createdAt; // Made nullable
+  final DateTime? updatedAt; // Made nullable
 
   ProductModel({
     required this.id,
@@ -43,40 +43,132 @@ class ProductModel {
     this.priceMin,
     this.priceMax,
     this.features,
-    required this.embedding,
+    this.embedding,
     required this.agencyId,
-    required this.createdAt,
-    required this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
-      id: json['_id'],
-      name: json['name'],
-      category: json['category'],
-      subcategory: json['subcategory'],
-      description: json['description'],
-      country: json['country'],
-      city: json['city'],
-      lat: (json['lat'] as num?)?.toDouble(),
-      lng: (json['lng'] as num?)?.toDouble(),
-      tags: Map<String, dynamic>.from(json['tags'] ?? {}),
-      providerName: json['providerName'],
-      providerWebsite: json['providerWebsite'],
-      providerContact: json['providerContact'],
-      mediaPhotos: (json['mediaPhotos'] as List?)
-          ?.map((e) => MediaPhoto.fromJson(e))
-          .toList(),
-      rating: (json['rating'] as num?)?.toDouble(),
-      availability: json['availability'],
-      priceMin: (json['priceMin'] as num?)?.toDouble(),
-      priceMax: (json['priceMax'] as num?)?.toDouble(),
-      features: Map<String, dynamic>.from(json['features'] ?? {}),
-      embedding: List<double>.from((json['embedding'] ?? []).map((e) => e.toDouble())),
-      agencyId: json['agencyId'],
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
+      id: json['_id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      subcategory: json['subcategory']?.toString(),
+      description: json['description']?.toString(),
+      country: json['country']?.toString(),
+      city: json['city']?.toString(),
+      lat: _parseDouble(json['lat']),
+      lng: _parseDouble(json['lng']),
+      tags: _parseTags(json['tags']),
+      providerName: json['providerName']?.toString(),
+      providerWebsite: json['providerWebsite']?.toString(),
+      providerContact: json['providerContact']?.toString(),
+      mediaPhotos: _parseMediaPhotos(json['mediaPhotos']),
+      rating: _parseDouble(json['rating']),
+      availability: json['availability']?.toString(),
+      priceMin: _parseDouble(json['priceMin']),
+      priceMax: _parseDouble(json['priceMax']),
+      features: json['features'], // Keep as dynamic to handle both types
+      embedding: _parseEmbedding(json['embedding']),
+      agencyId: json['agencyId']?.toString() ?? '',
+      createdAt: _parseDateTime(json['createdAt']),
+      updatedAt: _parseDateTime(json['updatedAt']),
     );
+  }
+
+  // Helper method to safely parse double values
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Helper method to safely parse tags
+  static Map<String, dynamic>? _parseTags(dynamic tags) {
+    if (tags == null) return null;
+    if (tags is Map<String, dynamic>) return tags;
+    if (tags is Map) {
+      // Convert any Map to Map<String, dynamic>
+      return Map<String, dynamic>.from(tags);
+    }
+    return null;
+  }
+
+  // Helper method to safely parse media photos
+  static List<MediaPhoto>? _parseMediaPhotos(dynamic mediaPhotos) {
+    if (mediaPhotos == null) return null;
+    if (mediaPhotos is List) {
+      return mediaPhotos
+          .where((item) => item is Map<String, dynamic>)
+          .map((item) => MediaPhoto.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+    return null;
+  }
+
+  // Helper method to safely parse embedding
+  static List<double>? _parseEmbedding(dynamic embedding) {
+    if (embedding == null) return null;
+    if (embedding is List) {
+      return embedding
+          .where((item) => item != null)
+          .map((item) => _parseDouble(item))
+          .where((item) => item != null)
+          .cast<double>()
+          .toList();
+    }
+    return null;
+  }
+
+  // Helper method to safely parse DateTime
+  static DateTime? _parseDateTime(dynamic dateTime) {
+    if (dateTime == null) return null;
+    if (dateTime is DateTime) return dateTime;
+    if (dateTime is String) {
+      try {
+        return DateTime.parse(dateTime);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+      'category': category,
+      'subcategory': subcategory,
+      'description': description,
+      'country': country,
+      'city': city,
+      'lat': lat,
+      'lng': lng,
+      'tags': tags,
+      'providerName': providerName,
+      'providerWebsite': providerWebsite,
+      'providerContact': providerContact,
+      'mediaPhotos': mediaPhotos?.map((photo) => photo.toJson()).toList(),
+      'rating': rating,
+      'availability': availability,
+      'priceMin': priceMin,
+      'priceMax': priceMax,
+      'features': features,
+      'embedding': embedding,
+      'agencyId': agencyId,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+    };
   }
 }
 
@@ -88,8 +180,15 @@ class MediaPhoto {
 
   factory MediaPhoto.fromJson(Map<String, dynamic> json) {
     return MediaPhoto(
-      imageUrl: json['imageUrl'],
-      signedUrl: json['signedUrl'],
+      imageUrl: json['imageUrl']?.toString(),
+      signedUrl: json['signedUrl']?.toString(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'imageUrl': imageUrl,
+      'signedUrl': signedUrl,
+    };
   }
 }

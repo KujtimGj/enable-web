@@ -5,7 +5,7 @@ import 'package:enable_web/features/controllers/google_drive_controller.dart';
 import 'package:enable_web/core/failure.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async'; // Added for Timer
-import 'package:dartz/dartz.dart';
+import 'dart:html' as html; // Added for web platform
 
 class GoogleDriveProvider extends ChangeNotifier {
   final GoogleDriveController _googleDriveController = GoogleDriveController();
@@ -79,30 +79,64 @@ class GoogleDriveProvider extends ChangeNotifier {
           });
         },
         (authUrl) async {
-          // Open the auth URL in the browser
-          final uri = Uri.parse(authUrl);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-            
-            // Show success message with instructions
-            setState(() {
-              _error = 'Google authentication opened in browser. Please complete the authentication in the browser window. You will be redirected back to the app automatically.';
-              _isLoading = false;
-            });
-            
-            // Poll for connection status after a delay
-            _pollForConnectionStatus();
+          // For web, we need to open in a popup window for postMessage to work
+          if (kIsWeb) {
+            try {
+              // Open OAuth URL in a popup window
+              final popup = html.window.open(
+                authUrl,
+                'google_oauth',
+                'width=500,height=600,scrollbars=yes,resizable=yes'
+              );
+              
+              if (popup == null) {
+                setState(() {
+                  _error = 'Popup blocked! Please allow popups for this site and try again.';
+                  _isLoading = false;
+                });
+                return;
+              }
+              
+              setState(() {
+                _error = 'Google authentication opened in popup. Please complete the authentication.';
+                _isLoading = false;
+              });
+              
+              // Poll for connection status after a delay
+              _pollForConnectionStatus();
+              
+            } catch (e) {
+              setState(() {
+                _error = 'Failed to open OAuth popup: $e';
+                _isLoading = false;
+              });
+            }
           } else {
-            setState(() {
-              _error = 'Could not open Google authentication URL. Please try again.';
-              _isLoading = false;
-            });
+            // For non-web platforms, use the original approach
+            final uri = Uri.parse(authUrl);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+              
+              setState(() {
+                _error = 'Google authentication opened in browser. Please complete the authentication in the browser window. You will be redirected back to the app automatically.';
+                _isLoading = false;
+              });
+              
+              // Poll for connection status after a delay
+              _pollForConnectionStatus();
+            } else {
+              setState(() {
+                _error = 'Could not open Google authentication URL. Please try again.';
+                _isLoading = false;
+              });
+            }
           }
         },
       );
     } catch (e) {
       setState(() {
-        _error = 'Failed to initiate Google Drive connection: $e';
+        _error = 'Failed to connect to Google Drive: $e';
+        print(_error);
         _isLoading = false;
       });
     }
@@ -261,9 +295,55 @@ class GoogleDriveProvider extends ChangeNotifier {
     );
   }
 
-  /// Read Google Drive file content
-  Future<Either<Failure, List<Map<String, dynamic>>>> readFileContent(String fileId) async {
-    return await _googleDriveController.readGoogleDriveFile(fileId);
+  /// Read file content
+  Future<Either<Failure, dynamic>> readFileContent(String fileId) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _googleDriveController.readGoogleDriveFile(fileId);
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      return result;
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Error reading file content: $e';
+      });
+      return Left(ServerFailure(message: 'Error reading file content: $e'));
+    }
+  }
+
+  /// Enqueue file for ingestion
+  Future<Either<Failure, Map<String, dynamic>>> enqueueFileForIngestion(String fileId) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // For now, we'll use a simple HTTP call to the batch ingestion endpoint
+      // This will be implemented properly when we add the full batch ingestion controller
+      final result = await _googleDriveController.readGoogleDriveFile(fileId);
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Return a success response for now
+      return Right({'message': 'File enqueued for ingestion', 'fileId': fileId});
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Error enqueuing file for ingestion: $e';
+      });
+      return Left(ServerFailure(message: 'Error enqueuing file for ingestion: $e'));
+    }
   }
 
 

@@ -13,6 +13,7 @@ import '../../../core/responsive_utils.dart';
 import '../../entities/user.dart';
 import '../../providers/google_drive_provider.dart';
 import '../../providers/dropbox_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class Account extends StatefulWidget {
   const Account({super.key});
@@ -78,6 +79,10 @@ class _AccountState extends State<Account> {
     _emailController.dispose();
     _phoneController.dispose();
     _logoController.dispose();
+    // Clean up message listener
+    if (kIsWeb) {
+      html.window.removeEventListener('message', _messageHandler);
+    }
     super.dispose();
   }
 
@@ -87,106 +92,157 @@ class _AccountState extends State<Account> {
     getToken();
     super.initState();
     
-    // Check for OAuth callback after the widget is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkForOAuthCallback();
-    });
-  }
-
-  void _checkForOAuthCallback() {
-    final uri = Uri.base;
-    String? tokens;
-    String? error;
-
-    tokens = uri.queryParameters['tokens'];
-    error = uri.queryParameters['error'];
-
-    // If not found, try parsing from the fragment (hash route)
-    if (uri.fragment.isNotEmpty) {
-      final fragment = uri.fragment;
-      final queryPart = fragment.contains('?') ? fragment.split('?')[1] : '';
-      final fragmentParams = Uri.splitQueryString(queryPart);
-
-      print('[Account] Fragment params: $fragmentParams');
-      if (tokens == null) tokens = fragmentParams['tokens'];
-      if (error == null) error = fragmentParams['error'];
-     }
-
-    print('[Account] Tokens found: ${tokens != null}');
-    print('[Account] Error found: ${error != null}');
-
-    if (error != null && error.isNotEmpty) {
-      print('[Account] Processing error: $error');
-      WidgetsBinding.instance.addPostFrameCallback((_) { 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Drive connection failed: $error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      });
-    } else if (tokens != null && tokens.isNotEmpty) {
-      print('[Account] Processing tokens...');
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleTokensReceived(tokens!);
-      });
+    print('[Account] initState called, setting up message listener');
+    
+    // Set up message listener for OAuth callbacks
+    if (kIsWeb) {
+      print('[Account] Setting up message listener for web');
+      // Remove any existing listeners first
+      html.window.removeEventListener('message', _messageHandler);
+      // Add the new listener
+      html.window.addEventListener('message', _messageHandler);
+      print('[Account] Message listener set up successfully');
     } else {
-      print('[Account] No tokens or error found');
+      print('[Account] Not web platform, skipping message listener');
     }
   }
 
-  Future<void> _handleTokensReceived(String tokensJson) async {
+  // Define the message handler as a separate method for proper cleanup
+  void _messageHandler(html.Event event) {
+    print('[Account] Message event received: $event');
+    if (event is html.MessageEvent) {
+      print('[Account] MessageEvent detected, calling handler');
+      _handleOAuthMessage(event);
+    } else {
+      print('[Account] Event is not MessageEvent: ${event.runtimeType}');
+    }
+  }
+
+  void _handleOAuthMessage(html.MessageEvent event) { 
+    print('[Account] _handleOAuthMessage called with event: $event');
+    print('[Account] Event origin: ${event.origin}');
+    print('[Account] Event data: ${event.data}');
+    
+    // Accept messages from both localhost (dev) and Railway (production)
+    final allowedOrigins = [
+      'http://localhost:3000',
+      'https://enable-be-production.up.railway.app'
+    ];
+    
+    if (!allowedOrigins.contains(event.origin)) {
+      print('[Account] Origin mismatch, expected one of: $allowedOrigins, got: ${event.origin}');
+      return;
+    }
+
+    print('[Account] Origin verified, processing message');
+    print('[Account] Received message from OAuth bridge: ${event.data}');
+    
+    // Handle the data as a Dart Map
+    if (event.data is Map) {
+      final data = event.data as Map;
+      final messageType = data['type'];
+      print('[Account] Message type: $messageType');
+      
+      if (messageType == 'GOOGLE_DRIVE_SUCCESS') {
+        final tokens = data['tokens'];
+        print('[Account] Processing OAuth success with tokens: $tokens');
+        
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _handleOAuthSuccess(tokens);
+        });
+      } else if (messageType == 'GOOGLE_DRIVE_ERROR') {
+        final error = data['error'];
+        print('[Account] Processing OAuth error: $error');
+        
+        WidgetsBinding.instance.addPostFrameCallback((_) { 
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Google Drive connection failed: $error'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        });
+      } else {
+        print('[Account] Unknown message type: $messageType');
+      }
+    } else {
+      print('[Account] Event data is not a Map: ${event.data.runtimeType}');
+    }
+  }
+
+  Future<void> _handleOAuthSuccess(String tokenData) async {
     try {
-      print('Handling tokens received: $tokensJson');
+      print('[Account] Handling OAuth success for token data: ${tokenData.length} chars');
       
-      // Decode the tokens from the URL parameter
-      final decodedTokens = Uri.decodeComponent(tokensJson);
-      print('Decoded tokens: $decodedTokens');
+      // Check if widget is still mounted before showing UI
+      if (!mounted) return;
       
-      final tokens = jsonDecode(decodedTokens);
-      print('Parsed tokens: ${tokens.toString()}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Connecting to Google Drive...'),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 3),
+        ),
+      );
       
       final googleDriveProvider = Provider.of<GoogleDriveProvider>(
         context,
         listen: false,
       );
       
-      // Associate the tokens directly
+      final decodedTokens = Uri.decodeComponent(tokenData);
+      print('[Account] Decoded tokens: ${decodedTokens.length} chars');
+      final tokens = jsonDecode(decodedTokens);
+      print('[Account] Parsed tokens: ${tokens.toString()}');
+      print('[Account] Access token length: ${tokens['accessToken']?.length ?? 0}');
+      print('[Account] Refresh token length: ${tokens['refreshToken']?.length ?? 0}');
+      print('[Account] Calling associateGoogleDriveTokens...');
+      
       await googleDriveProvider.associateGoogleDriveTokens(
         tokens['accessToken'],
         tokens['refreshToken'],
         tokens['expiryDate']?.toString(),
       );
-
-      // Check if the connection was successful
+      
+      print('[Account] Connection status: ${googleDriveProvider.isConnected}');
+      print('[Account] Error: ${googleDriveProvider.error}');
+      
+      // Check if widget is still mounted before showing UI
+      if (!mounted) return;
+      
       if (googleDriveProvider.isConnected) {
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Google Drive connected successfully!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
           ),
         );
-        
-        // Refresh the connection status
         await googleDriveProvider.checkConnectionStatus();
       } else {
-        // Show error message
+        final errorMsg = googleDriveProvider.error ?? "Unknown error";
+        print('[Account] Connection failed: $errorMsg');
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to connect Google Drive: ${googleDriveProvider.error ?? "Unknown error"}'),
+            content: Text('Failed to connect Google Drive: $errorMsg'),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
           ),
         );
       }
-
     } catch (e) {
-      print('Error handling tokens: $e');
-      // Show error message
+      print('[Account] Error handling OAuth success: $e');
+      
+      // Check if widget is still mounted before showing UI
+      if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to connect Google Drive: $e'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
         ),
       );
     }
@@ -532,7 +588,7 @@ class _AccountState extends State<Account> {
                 Expanded(
                   flex: 2,
                   child: Container(
-                    padding: EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20), 
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: Colors.grey[600]!, width: 1),

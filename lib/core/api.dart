@@ -33,6 +33,12 @@ class ApiEndpoints {
 
   // File upload endpoints
   static const String uploadFileToAgency = '/upload/agency';
+  
+  // Batch ingestion endpoints
+  static const String batchIngestionEnqueue = '/batch-ingestion/enqueue';
+  static const String batchIngestionStatus = '/batch-ingestion/status';
+  static const String batchIngestionProgress = '/batch-ingestion/progress';
+
   static const String getAgencyFiles = '/upload/agency/{agencyId}';
   static const String deleteAgencyFile = '/upload/agency/{agencyId}/{fileId}';
 
@@ -44,6 +50,7 @@ class ApiEndpoints {
   static const String googleDriveFilesMore = '/google-drive/files/more';
   static const String googleDriveFileContent = '/google-drive/files/{fileId}/content';
   static const String googleDriveFilePreview = '/google-drive/files/{fileId}/preview';
+  static const String googleDriveFolderContents = '/google-drive/folders/{folderId}/contents';
   static const String googleDriveDisconnect = '/google-drive/disconnect';
   static const String googleDriveStatus = '/google-drive/status';
 

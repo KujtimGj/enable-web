@@ -29,6 +29,23 @@ class GoogleDriveController {
 
 
 
+  Future<Either<Failure, GoogleDriveStructure>> getGoogleDriveStructure() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.googleDriveFiles);
+      
+      if (response.statusCode == 200) {
+        final structure = GoogleDriveStructure.fromJson(response.data);
+        return Right(structure);
+      } else {
+        return Left(ServerFailure(
+          message: response.data['error'] ?? 'Failed to fetch Google Drive structure'
+        ));
+      }
+    } catch (e) {
+      return Left(ServerFailure(message: 'Failed to fetch Google Drive structure'));
+    }
+  }
+
   Future<Either<Failure, List<GoogleDriveFile>>> getGoogleDriveFiles() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.googleDriveFiles);
@@ -46,6 +63,24 @@ class GoogleDriveController {
       }
     } catch (e) {
       return Left(ServerFailure(message: 'Failed to fetch Google Drive files'));
+    }
+  }
+
+  Future<Either<Failure, FolderContents>> getFolderContents(String folderId) async {
+    try {
+      final endpoint = ApiEndpoints.googleDriveFolderContents.replaceAll('{folderId}', folderId);
+      final response = await _apiClient.get(endpoint);
+      
+      if (response.statusCode == 200) {
+        final folderContents = FolderContents.fromJson(response.data);
+        return Right(folderContents);
+      } else {
+        return Left(ServerFailure(
+          message: response.data['error'] ?? 'Failed to fetch folder contents'
+        ));
+      }
+    } catch (e) {
+      return Left(ServerFailure(message: 'Failed to fetch folder contents'));
     }
   }
 
