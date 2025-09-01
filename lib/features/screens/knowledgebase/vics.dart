@@ -132,37 +132,6 @@ class _VICsState extends State<VICs> {
                                 textAlign: TextAlign.center,
                               ),
                               SizedBox(height: 16),
-                              Container(
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.green[50],
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.green[200]!),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.check_circle_outline, color: Colors.green[600]),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'VIC system is ready!',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green[800],
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'All backend endpoints are implemented.\nCreate your first VIC to get started!',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.green[700],
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
                             ],
                           ),
                         );
@@ -201,26 +170,6 @@ class _VICsState extends State<VICs> {
                         ),
                       );
                     },
-                  ),
-                  // Floating Action Button for creating new VICs
-                  Positioned(
-                    bottom: 20,
-                    right: 20,
-                    child: FloatingActionButton.extended(
-                      onPressed: () {
-                        // TODO: Navigate to create VIC page
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Create new VIC functionality coming soon!'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      icon: Icon(Icons.person_add),
-                      label: Text('New VIC'),
-                      backgroundColor: Theme.of(context).primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
                   ),
                 ],
               ),

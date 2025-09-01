@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 class ItineraryItemModel {
   final int? day;
@@ -82,25 +81,31 @@ class ItineraryItemModel {
   }
 
   factory ItineraryItemModel.fromJson(Map<String, dynamic> json) {
-    return ItineraryItemModel(
-      day: json['day'],
-      order: json['order'],
-      type: json['type'],
-      status: json['status'],
-      startAt: json['startAt'] != null 
-          ? DateTime.parse(json['startAt']) 
-          : null,
-      endAt: json['endAt'] != null 
-          ? DateTime.parse(json['endAt']) 
-          : null,
-      productRef: json['productRef'],
-      supplier: json['supplier'],
-      price: json['price'],
-      location: json['location'],
-      details: json['details'],
-      extras: json['extras'],
-      snapshot: json['snapshot'],
-    );
+    try {
+      return ItineraryItemModel(
+        day: json['day'] != null ? json['day'] as int : null,
+        order: json['order'] != null ? json['order'] as int : null,
+        type: json['type'],
+        status: json['status'],
+        startAt: json['startAt'] != null 
+            ? DateTime.parse(json['startAt']) 
+            : null,
+        endAt: json['endAt'] != null 
+            ? DateTime.parse(json['endAt']) 
+            : null,
+        productRef: json['productRef'] != null ? Map<String, dynamic>.from(json['productRef']) : null,
+        supplier: json['supplier'] != null ? Map<String, dynamic>.from(json['supplier']) : null,
+        price: json['price'] != null ? Map<String, dynamic>.from(json['price']) : null,
+        location: json['location'] != null ? Map<String, dynamic>.from(json['location']) : null,
+        details: json['details'] != null ? Map<String, dynamic>.from(json['details']) : null,
+        extras: json['extras'] != null ? Map<String, dynamic>.from(json['extras']) : null,
+        snapshot: json['snapshot'] != null ? Map<String, dynamic>.from(json['snapshot']) : null,
+      );
+    } catch (e) {
+      print('Error parsing ItineraryItemModel from JSON: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
   }
 }
 
@@ -221,42 +226,51 @@ class ExperienceModel {
   }
 
   factory ExperienceModel.fromJson(Map<String, dynamic> json) {
-    return ExperienceModel(
-      id: json['_id'] ?? json['id'],
-      agencyId: json['agencyId'],
-      vicId: json['vicId'],
-      destination: json['destination'],
-      country: json['country'],
-      startDate: json['startDate'] != null 
-          ? DateTime.parse(json['startDate']) 
-          : null,
-      endDate: json['endDate'] != null 
-          ? DateTime.parse(json['endDate']) 
-          : null,
-      party: json['party'],
-      status: json['status'],
-      notes: json['notes'],
-      tags: json['tags'],
-      extras: json['extras'],
-      totals: json['totals'],
-      itinerary: json['itinerary'] != null 
-          ? (json['itinerary'] as List)
-              .map((item) => ItineraryItemModel.fromJson(item))
-              .toList()
-          : null,
-      feedback: json['feedback'],
-      rating: json['rating'],
-      totalSpent: json['totalSpent']?.toDouble(),
-      embedding: json['embedding'] != null 
-          ? List<double>.from(json['embedding'])
-          : null,
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
-          : null,
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
-          : null,
-    );
+    try {
+      return ExperienceModel(
+        id: json['_id'] ?? json['id'],
+        agencyId: json['agencyId']?.toString(),
+        vicId: json['vicId']?.toString(),
+        destination: json['destination'],
+        country: json['country'],
+        startDate: json['startDate'] != null 
+            ? DateTime.parse(json['startDate']) 
+            : null,
+        endDate: json['endDate'] != null 
+            ? DateTime.parse(json['endDate']) 
+            : null,
+        party: json['party'] != null ? {
+          'adults': json['party']['adults'] ?? 0,
+          'children': json['party']['children'] ?? 0,
+        } : null,
+        status: json['status'],
+        notes: json['notes'],
+        tags: json['tags'] != null ? Map<String, dynamic>.from(json['tags']) : null,
+        extras: json['extras'] != null ? Map<String, dynamic>.from(json['extras']) : null,
+        totals: json['totals'] != null ? Map<String, dynamic>.from(json['totals']) : null,
+        itinerary: json['itinerary'] != null 
+            ? (json['itinerary'] as List)
+                .map((item) => ItineraryItemModel.fromJson(item))
+                .toList()
+            : null,
+        feedback: json['feedback'],
+        rating: json['rating'] != null ? json['rating'] as int : null,
+        totalSpent: json['totalSpent'] != null ? json['totalSpent'].toDouble() : null,
+        embedding: json['embedding'] != null 
+            ? (json['embedding'] as List).map((item) => item?.toDouble()).whereType<double>().toList()
+            : null,
+        createdAt: json['createdAt'] != null 
+            ? DateTime.parse(json['createdAt']) 
+            : null,
+        updatedAt: json['updatedAt'] != null 
+            ? DateTime.parse(json['updatedAt']) 
+            : null,
+      );
+    } catch (e) {
+      print('Error parsing ExperienceModel from JSON: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
   }
 
   @override

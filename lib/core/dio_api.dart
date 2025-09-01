@@ -24,10 +24,18 @@ class ApiClient {
             options.headers['Authorization'] = 'Bearer $token';
           }
           
+          print("🔍 Debug: Request headers: ${options.headers}");
+          print("🔍 Debug: Request method: ${options.method}");
+          print("🔍 Debug: Request URL: ${options.uri}");
+          print("🔍 Debug: Request data: ${options.data}");
+          
           return handler.next(options);
         },
         onError: (DioException e, handler) {
           print("Dio Error: ${e.message}");
+          print("Dio Error Status: ${e.response?.statusCode}");
+          print("Dio Error Data: ${e.response?.data}");
+          print("Dio Error Headers: ${e.response?.headers}");
           
           if (e.response?.statusCode == 401) {
             _handleTokenExpiration();

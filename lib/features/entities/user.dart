@@ -22,7 +22,7 @@ class UserModel {
       name: json['name'] as String,
       email: json['email'] as String,
       password: json['password'] as String,
-      agencyId: json['agencyId'] as String,
+      agencyId: json['agencyId']?.toString() ?? '', // Convert ObjectId to String
       role: json['role'] as String,
     );
   }

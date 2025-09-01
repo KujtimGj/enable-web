@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 class VICModel {
   final String? id;

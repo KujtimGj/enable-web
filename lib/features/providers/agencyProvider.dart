@@ -276,23 +276,31 @@ class AgencyProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _agencyController.getExperiencesByAgencyId(agencyId);
-    print('AgencyProvider: API call result: $result');
-    
-    result.fold(
-      (failure) {
-        print('AgencyProvider: API call failed with failure: $failure');
-        _errorMessage = (failure as ServerFailure).message;
-      },
-      (experiences) {
-        print('AgencyProvider: API call successful, experiences count: ${experiences.length}');
-        _experiences = experiences.map((json) => ExperienceModel.fromJson(json)).toList();
-        print('AgencyProvider: Parsed experiences count: ${_experiences.length}');
-      },
-    );
+                  try {
+      print('AgencyProvider: Making API call to getExperiencesByAgencyId');
+      final result = await _agencyController.getExperiencesByAgencyId(agencyId);
+      print('AgencyProvider: API call result: $result');
+      
+      result.fold(
+        (failure) {
+          print('AgencyProvider: API call failed with failure: $failure');
+          _errorMessage = (failure as ServerFailure).message;
+        },
+        (experiences) {
+          print('AgencyProvider: API call successful, experiences count: ${experiences.length}');
+          _experiences = experiences.map((json) => ExperienceModel.fromJson(json)).toList();
+          print('AgencyProvider: Parsed experiences count: ${_experiences.length}');
+        },
+      );
+    } catch (e, stackTrace) {
+      print('AgencyProvider: Exception in fetchExperiences: $e');
+      print('AgencyProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred: $e';
+    }
 
     _isLoadingData = false;
     print('AgencyProvider: fetchExperiences completed, final count: ${_experiences.length}');
+    print('AgencyProvider: isLoadingData set to false');
     notifyListeners();
   }
 

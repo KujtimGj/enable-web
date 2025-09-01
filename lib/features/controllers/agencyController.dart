@@ -79,15 +79,10 @@ class AgencyController {
   Future<Either<Failure, AgencyModel>> createAgency(AgencyModel agencyModel) async {
     try {
       var body = agencyModel.toJson();
-      print('📤 Sending to backend: $body');
 
       final endpoint = ApiEndpoints.registerAgency.replaceFirst(ApiEndpoints.baseUrl, '');
-      print('🌐 POST $endpoint');
 
       final response = await _apiClient.post(endpoint, data: body);
-
-      print('✅ Status Code: ${response.statusCode}');
-      print('✅ Response Body: ${response.data}');
 
       if (response.statusCode == 200) {
         final agency = AgencyModel.fromJson(response.data);
@@ -177,6 +172,7 @@ class AgencyController {
       return Left(ServerFailure(message: 'Error occurred: $e'));
     }
   }
+
   Future<Either<Failure,List<DMC>>> getDMCs(String agencyId) async{
     try{
       final apiClient = ApiClient();
@@ -275,18 +271,27 @@ class AgencyController {
 
   Future<Either<Failure, List<Map<String, dynamic>>>> getExperiencesByAgencyId(String agencyId) async {
     try {
+                      print('AgencyController: Starting getExperiencesByAgencyId for agencyId: $agencyId');
       final endpoint = ApiEndpoints.getExperiences.replaceFirst('{agencyId}', agencyId);
+      print('AgencyController: Endpoint: $endpoint');
+      print('AgencyController: Full URL: ${ApiEndpoints.baseUrl}$endpoint');
+      
       final response = await _apiClient.get(endpoint);
+      print('AgencyController: Response status: ${response.statusCode}');
+      print('AgencyController: Response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
+        print('AgencyController: Data length: ${data.length}');
         return Right(data.cast<Map<String, dynamic>>());
       } else {
+        print('AgencyController: Error response: ${response.data}');
         return Left(ServerFailure(
           message: response.data['message'] ?? 'Failed to get experiences',
         ));
       }
     } catch (e) {
+      print('AgencyController: Exception in getExperiencesByAgencyId: $e');
       return Left(ServerFailure(message: 'Failed to get experiences: $e'));
     }
   }

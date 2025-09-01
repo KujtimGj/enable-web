@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 class ExternalProductModel {
   final String? id;

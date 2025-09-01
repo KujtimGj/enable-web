@@ -179,7 +179,209 @@ GoRouteName agencyLogin = GoRouteName(
 GoRouteName chatsRoute = GoRouteName(name: 'chats', path: '/chats',authenticated: true);
 GoRouteName routeWelcome = GoRouteName(name: "welcome", path: "/welcome");
 GoRouter createGoRouter({String? initialLocation}) {
-  return GoRouter(
+  print('[Router] ====== CREATING NEW ROUTER INSTANCE ======');
+  print('[Router] Creating GoRouter with initialLocation: $initialLocation');
+  
+  final routes = [
+    // ---------------------------------
+    // Root
+    // ---------------------------------
+    GoRoute(
+      name: routeRoot.name,
+      path: routeRoot.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(
+          child: const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          ),
+        );
+      },
+    ),
+    // ---------------------------------
+    // Welcome
+    // ---------------------------------
+    GoRoute(
+      name: routeWelcome.name,
+      path: routeWelcome.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: Welcome());
+      },
+    ),
+    // ---------------------------------
+    // Agency View
+    // ---------------------------------
+    GoRoute(
+      name: agencyRoute.name,
+      path: agencyRoute.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: AgencyView());
+      },
+    ),
+
+    // ---------------------------------
+    // Agency Login
+    // ---------------------------------
+    GoRoute(
+      name: agencyLogin.name,
+      path: agencyLogin.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const LoginAgency());
+      },
+    ),
+    // ---------------------------------
+    // Authentication
+    // ---------------------------------
+    GoRoute(
+      name: routeSignIn.name,
+      path: routeSignIn.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: LoginScreen());
+      },
+    ),
+
+    // ---------------------------------
+    // Home
+    // ---------------------------------
+    GoRoute(
+      name: routeHome.name,
+      path: routeHome.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const HomeScreen());
+      },
+    ),
+    // ---------------------------------
+    // Dashboard
+    // ---------------------------------
+    GoRoute(
+      name: routeDashboard.name,
+      path: routeDashboard.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const DashboardScreen());
+      },
+    ),
+    // ---------------------------------
+    // Account
+    // ---------------------------------
+    // Note: Query parameters (e.g., ?dropboxTokenId=...) are not part of the route path.
+    // They are accessible in the Account screen via Uri.base.queryParameters.
+    GoRoute(
+      name: routeAccount.name,
+      path: routeAccount.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const Account());
+      },
+    ),
+
+    // ---------------------------------
+    // Account file upload
+    // ---------------------------------
+    GoRoute(
+      name: routeAccountFileUpload.name,
+      path: routeAccountFileUpload.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const AccountFileUpload());
+      },
+    ),
+
+    // ---------------------------------
+    // Account upload file (alternative path)
+    // ---------------------------------
+    GoRoute(
+      name: routeAccountUploadFile.name,
+      path: routeAccountUploadFile.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const AccountFileUpload());
+      },
+    ),
+
+    // ---------------------------------
+    // Google Drive Files
+    // ---------------------------------
+    GoRoute(
+      name: routeGoogleDriveFiles.name,
+      path: routeGoogleDriveFiles.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const GoogleDriveFilesScreen());
+      },
+    ),
+
+    // ---------------------------------
+    // Google OAuth Callback
+    // ---------------------------------
+    GoRoute(
+      name: routeGoogleOAuthCallback.name,
+      path: routeGoogleOAuthCallback.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const GoogleOAuthCallbackScreen());
+      },
+    ),
+
+    // ---------------------------------
+    // Dropbox Files
+    // ---------------------------------
+    GoRoute(
+      name: routeDropboxFiles.name,
+      path: routeDropboxFiles.path,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: const DropboxFilesScreen());
+      },
+    ),
+    // ---------------------------------
+    // Vics
+    // ---------------------------------
+    GoRoute(
+      path: routeVics.path,
+      name: routeVics.name,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: VICs());
+      },
+    ),
+    // ---------------------------------
+    // Register
+    // ---------------------------------
+    GoRoute(
+      path: routeRegister.path,
+      name: routeRegister.name,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: Register());
+      },
+    ),
+
+    // ---------------------------------
+    // Itinerary
+    // ---------------------------------
+
+    GoRoute(
+      path: routeItinerary.path,
+      name: routeItinerary.name,
+      pageBuilder: (context, state) {
+        print('[Router] Building itinerary page');
+        return MaterialPage(child: Itinerary());
+      },
+    ),
+    // ---------------------------------
+    // Chats
+    // ---------------------------------
+    GoRoute(
+      path: chatsRoute.path,
+      name: chatsRoute.name,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: ChatsList());
+      },
+    ),
+    GoRoute(
+      path: routeProducts.path,
+      name: routeProducts.name,
+      pageBuilder: (context, state) {
+        return MaterialPage(child: Products());
+      },
+    ),
+  ];
+  
+  print('[Router] Routes array created with ${routes.length} routes');
+  print('[Router] Route paths: ${routes.map((r) => r.path).toList()}');
+  
+  final router = GoRouter(
     initialLocation: initialLocation ?? '/home',
     redirect: (context, state) {
       final unauthenticatedAllowedRoutes = [
@@ -195,12 +397,6 @@ GoRouter createGoRouter({String? initialLocation}) {
       }
 
       try {
-        // Check if providers are available in this context
-        if (!context.mounted) {
-          print('[Router] Context not mounted, allowing route');
-          return null;
-        }
-
         final userProvider = Provider.of<UserProvider>(context, listen: false);
         final agencyProvider = Provider.of<AgencyProvider>(
           context,
@@ -252,265 +448,14 @@ GoRouter createGoRouter({String? initialLocation}) {
         return null;
       } catch (e) {
         print('[Router] Error in redirect: $e');
-        // If there's an error accessing providers, allow the route to proceed
-        print('[Router] Allowing route due to error');
-        return null;
+        return routeSignIn.path;
       }
     },
-    routes: [
-      // ---------------------------------
-      // Root
-      // ---------------------------------
-      GoRoute(
-        name: routeRoot.name,
-        path: routeRoot.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(
-            child: const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
-          );
-        },
-      ),
-
-      // ---------------------------------
-      // Welcome
-      // ---------------------------------
-      GoRoute(
-        name: routeWelcome.name,
-        path: routeWelcome.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: Welcome());
-        },
-      ),
-      // ---------------------------------
-      // Agency View
-      // ---------------------------------
-      GoRoute(
-        name: agencyRoute.name,
-        path: agencyRoute.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: AgencyView());
-        },
-      ),
-
-      // ---------------------------------
-      // Agency Login
-      // ---------------------------------
-      GoRoute(
-        name: agencyLogin.name,
-        path: agencyLogin.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const LoginAgency());
-        },
-      ),
-      // ---------------------------------
-      // Authentication
-      // ---------------------------------
-      GoRoute(
-        name: routeSignIn.name,
-        path: routeSignIn.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: LoginScreen());
-        },
-      ),
-
-      // ---------------------------------
-      // Home
-      // ---------------------------------
-      GoRoute(
-        name: routeHome.name,
-        path: routeHome.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const HomeScreen());
-        },
-      ),
-      // ---------------------------------
-      // Dashboard
-      // ---------------------------------
-      GoRoute(
-        name: routeDashboard.name,
-        path: routeDashboard.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const DashboardScreen());
-        },
-      ),
-      // ---------------------------------
-      // Account
-      // ---------------------------------
-      // Note: Query parameters (e.g., ?dropboxTokenId=...) are not part of the route path.
-      // They are accessible in the Account screen via Uri.base.queryParameters.
-      GoRoute(
-        name: routeAccount.name,
-        path: routeAccount.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const Account());
-        },
-      ),
-
-      // ---------------------------------
-      // Account file upload
-      // ---------------------------------
-      GoRoute(
-        name: routeAccountFileUpload.name,
-        path: routeAccountFileUpload.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const AccountFileUpload());
-        },
-      ),
-
-      // ---------------------------------
-      // Account upload file (alternative path)
-      // ---------------------------------
-      GoRoute(
-        name: routeAccountUploadFile.name,
-        path: routeAccountUploadFile.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const AccountFileUpload());
-        },
-      ),
-
-      // ---------------------------------
-      // Google Drive Files
-      // ---------------------------------
-      GoRoute(
-        name: routeGoogleDriveFiles.name,
-        path: routeGoogleDriveFiles.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const GoogleDriveFilesScreen());
-        },
-      ),
-
-      // ---------------------------------
-      // Google OAuth Callback
-      // ---------------------------------
-      GoRoute(
-        name: routeGoogleOAuthCallback.name,
-        path: routeGoogleOAuthCallback.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const GoogleOAuthCallbackScreen());
-        },
-      ),
-
-      // ---------------------------------
-      // Dropbox Files
-      // ---------------------------------
-      GoRoute(
-        name: routeDropboxFiles.name,
-        path: routeDropboxFiles.path,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: const DropboxFilesScreen());
-        },
-      ),
-      // ---------------------------------
-      // Vics
-      // ---------------------------------
-      GoRoute(
-        path: routeVics.path,
-        name: routeVics.name,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: VICs());
-        },
-      ),
-      // ---------------------------------
-      // Register
-      // ---------------------------------
-      GoRoute(
-        path: routeRegister.path,
-        name: routeRegister.name,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: Register());
-        },
-      ),
-
-      // ---------------------------------
-      // Itinerary
-      // ---------------------------------
-
-      GoRoute(
-        path: routeItinerary.path,
-        name: routeItinerary.name,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: Itinerary());
-        },
-      ),
-      // ---------------------------------
-      // Itinerary
-      // ---------------------------------
-      GoRoute(
-        path: chatsRoute.path,
-        name: chatsRoute.name,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: ChatsList());
-        },
-      ),
-      GoRoute(
-        path: routeProducts.path,
-        name: routeProducts.name,
-        pageBuilder: (context, state) {
-          return MaterialPage(child: Products());
-        },
-      ),
-      // ---------------------------------
-      // DMCs
-      // ---------------------------------
-      // GoRoute(
-      //     path: routeDMCs.path,
-      //     name: routeDMCs.name,
-      //     pageBuilder: (context,state){
-      //       return CustomTransitionPage(
-      //           child: DMCListScreen(),
-      //           transitionsBuilder: (context,anim,secondaryAnim,child){
-      //             return FadeTransition(opacity: anim,child: child);
-      //           }
-      //       );
-      //     }
-      // ),
-      // ---------------------------------
-      // External Products
-      // ---------------------------------
-      // GoRoute(
-      //     path: routeExternalProducts.path,
-      //     name: routeExternalProducts.name,
-      //     pageBuilder: (context,state){
-      //       return CustomTransitionPage(
-      //           child: ExternalProductsScreen(),
-      //           transitionsBuilder: (context,anim,secondaryAnim,child){
-      //             return FadeTransition(opacity: anim,child: child);
-      //           }
-      //       );
-      //     }
-      // ),
-      // ---------------------------------
-      // Service Providers
-      // ---------------------------------
-      // GoRoute(
-      //     path: routeServiceProviders.path,
-      //     name: routeServiceProviders.name,
-      //     pageBuilder: (context,state){
-      //       return CustomTransitionPage(
-      //           child: ServiceProvidersScreen(),
-      //           transitionsBuilder: (context,anim,secondaryAnim,child){
-      //             return FadeTransition(opacity: anim,child: child);
-      //           }
-      //       );
-      //     }
-      // ),
-      // ---------------------------------
-      // Experiences
-      // ---------------------------------
-      // GoRoute(
-      //     path: routeExperiences.path,
-      //     name: routeExperiences.name,
-      //     pageBuilder: (context,state){
-      //       return CustomTransitionPage(
-      //           child: ExperiencesScreen(),
-      //           transitionsBuilder: (context,anim,secondaryAnim,child){
-      //             return FadeTransition(opacity: anim,child: child);
-      //           }
-      //       );
-      //     }
-      // )
-    ],
+    routes: routes,
   );
+  
+  print('[Router] GoRouter created with ${router.routerDelegate.currentConfiguration.routes.length} routes');
+  print('[Router] Available routes: ${router.routerDelegate.currentConfiguration.routes.map((r) => (r as GoRoute).path).toList()}');
+  
+  return router;
 }

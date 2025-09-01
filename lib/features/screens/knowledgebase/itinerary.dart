@@ -9,7 +9,6 @@ import '../../providers/experienceProvider.dart';
 import '../../providers/agencyProvider.dart';
 import '../../providers/userProvider.dart';
 import '../../entities/experienceModel.dart';
-
 class Itinerary extends StatefulWidget {
   const Itinerary({super.key});
 
@@ -55,13 +54,13 @@ class _ItineraryState extends State<Itinerary> {
             children: [
               Icon(Icons.arrow_back, size: 20),
               SizedBox(width: 4),
-              Text("Itinerary", style: TextStyle(fontSize: 14)),
+              Text("Experiences", style: TextStyle(fontSize: 14)),
             ],
           ),
         ),
         centerTitle: true,
         title: customForm(context),
-        actions: [customButton((){context.go("/");})],
+        actions: [customButton((){context.go("/home");})],
       ),
       body: ResponsiveContainer(
         child: Row(
@@ -103,7 +102,7 @@ class _ItineraryState extends State<Itinerary> {
                             onPressed: () {
                               final userProvider = Provider.of<UserProvider>(context, listen: false);
                               if (userProvider.user?.agencyId != null) {
-                                agencyProvider.fetchExperiences(userProvider.user!.agencyId!);
+                                agencyProvider.fetchExperiences(userProvider.user!.agencyId);
                               }
                             },
                             child: Text('Retry'),
@@ -149,7 +148,7 @@ class _ItineraryState extends State<Itinerary> {
                       onRefresh: () async {
                         final userProvider = Provider.of<UserProvider>(context, listen: false);
                         if (userProvider.user?.agencyId != null) {
-                          await agencyProvider.fetchExperiences(userProvider.user!.agencyId!);
+                          await agencyProvider.fetchExperiences(userProvider.user!.agencyId);
                         }
                       },
                       child: GridView.builder(
@@ -176,26 +175,6 @@ class _ItineraryState extends State<Itinerary> {
                   );
                 },
               ),
-                  // Floating Action Button for creating new experiences
-                  Positioned(
-                    bottom: 20,
-                    right: 20,
-                    child: FloatingActionButton.extended(
-                      onPressed: () {
-                        // TODO: Navigate to create experience page
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Create new experience functionality coming soon!'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      icon: Icon(Icons.add),
-                      label: Text('New Experience'),
-                      backgroundColor: Theme.of(context).primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -218,17 +197,8 @@ class _ItineraryState extends State<Itinerary> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            border: Border.all(width: 1, color: Colors.grey[300]!),
+            border: Border.all(width: 1, color: Colors.grey),
             borderRadius: BorderRadius.circular(10),
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: Offset(0, 1),
-              ),
-            ],
           ),
           child: Padding(
             padding: EdgeInsets.all(12),
@@ -396,11 +366,11 @@ class _ItineraryState extends State<Itinerary> {
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case 'confirmed':
-        return Colors.green;
+        return Color(0xff1e1e1e);
       case 'proposed':
-        return Colors.orange;
+        return Color(0xff1e1e1e);
       case 'cancelled':
-        return Colors.red;
+        return Color(0xff1e1e1e);
       case 'draft':
       default:
         return Color(0xff1e1e1e);
@@ -542,9 +512,9 @@ class _ItineraryState extends State<Itinerary> {
                 
                 // Actions
                 Container(
-                  padding: EdgeInsets.all(24),
+                  padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: Color(0xff1e1e1e),
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(20),
                       bottomRight: Radius.circular(20),
@@ -572,17 +542,6 @@ class _ItineraryState extends State<Itinerary> {
                             onPressed: () => Navigator.of(context).pop(),
                             child: Text('Close'),
                           ),
-                          SizedBox(width: 12),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              // TODO: Navigate to edit experience page
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Edit experience functionality coming soon!')),
-                              );
-                            },
-                            icon: Icon(Icons.edit),
-                            label: Text('Edit Experience'),
-                          ),
                         ],
                       ),
                     ],
@@ -600,11 +559,6 @@ class _ItineraryState extends State<Itinerary> {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.blue[50]!, Colors.indigo[50]!],
-        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.blue[200]!),
       ),
@@ -620,7 +574,7 @@ class _ItineraryState extends State<Itinerary> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue[800],
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -679,7 +633,6 @@ class _ItineraryState extends State<Itinerary> {
                       return Container(
                         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.blue[100],
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.blue[300]!),
                         ),
@@ -687,7 +640,7 @@ class _ItineraryState extends State<Itinerary> {
                           entry.value.toString(),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.blue[800],
+                            color: Colors.white,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -762,30 +715,29 @@ class _ItineraryState extends State<Itinerary> {
       children: [
         Row(
           children: [
-            Icon(Icons.timeline, size: 24, color: Colors.orange[700]),
+            Icon(Icons.timeline, size: 24, color: Colors.white),
             SizedBox(width: 12),
             Text(
               'Itinerary Timeline',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+                color: Colors.white,
               ),
             ),
             Spacer(),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.orange[100],
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.orange[300]!),
+                border: Border.all(color: Colors.white),
               ),
               child: Text(
                 '${sortedDays.length} days',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange[800],
+                  color: Colors.white,
                 ),
               ),
             ),

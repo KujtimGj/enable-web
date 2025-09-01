@@ -16,7 +16,6 @@ import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:enable_web/core/dio_api.dart';
 import 'package:enable_web/core/api.dart';
 
-// Ingestion progress tracking class
 class IngestionProgress {
   final String fileId;
   final String fileName;
@@ -217,16 +216,21 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
   }
 
   List<GoogleDriveFile> _filterItems(List<GoogleDriveFile> items) {
-    if (!_showSharedOnly) return items;
+    try {
+      if (!_showSharedOnly) return items;
 
-    // Debug logging
-    items.forEach((item) {
+      // Debug logging
+      items.forEach((item) {
 
-    });
+      });
 
-    final sharedItems = items.where((item) => item.isShared).toList();
+      final sharedItems = items.where((item) => item.isShared).toList();
 
-    return sharedItems;
+      return sharedItems;
+    } catch (e) {
+      print('Error filtering items: $e');
+      return items; // Return original items if filtering fails
+    }
   }
 
   Widget _buildBreadcrumbs() {
@@ -356,7 +360,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                 'Owner: ${folder.owner}',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.orange[600],
+                  color: Colors.grey[600],
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -968,18 +972,42 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
 
   // Selection methods
   void _toggleItemSelection(String itemId) {
-    setState(() {
+    try {
+      setState(() {
+        if (_selectedItems.contains(itemId)) {
+          _selectedItems.remove(itemId);
+        } else {
+          _selectedItems.add(itemId);
+        }
+        _updateSelectAllState();
+      });
+    } catch (e) {
+      print('Error toggling item selection: $e');
+      // Ensure selection is updated even if setState fails
       if (_selectedItems.contains(itemId)) {
         _selectedItems.remove(itemId);
       } else {
         _selectedItems.add(itemId);
       }
       _updateSelectAllState();
-    });
+    }
   }
 
   void _toggleSelectAll() {
-    setState(() {
+    try {
+      setState(() {
+        if (_selectAll) {
+          _selectedItems.clear();
+          _selectAll = false;
+        } else {
+          final currentItems = _getCurrentItems();
+          _selectedItems = Set.from(currentItems.map((item) => item.id));
+          _selectAll = true;
+        }
+      });
+    } catch (e) {
+      print('Error toggling select all: $e');
+      // Ensure selection is updated even if setState fails
       if (_selectAll) {
         _selectedItems.clear();
         _selectAll = false;
@@ -988,64 +1016,100 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         _selectedItems = Set.from(currentItems.map((item) => item.id));
         _selectAll = true;
       }
-    });
+    }
   }
 
   void _updateSelectAllState() {
-    final currentItems = _getCurrentItems();
-    if (currentItems.isEmpty) {
+    try {
+      final currentItems = _getCurrentItems();
+      if (currentItems.isEmpty) {
+        _selectAll = false;
+      } else {
+        _selectAll = _selectedItems.length == currentItems.length;
+      }
+    } catch (e) {
+      print('Error updating select all state: $e');
+      // Ensure state is updated even if there's an error
       _selectAll = false;
-    } else {
-      _selectAll = _selectedItems.length == currentItems.length;
     }
   }
 
   List<GoogleDriveFile> _getCurrentItems() {
-    if (_currentFolder != null) {
-      return _filterItems(_currentFolder!.contents);
-    } else if (_structure != null) {
-      return _filterItems(_structure!.rootItems);
+    try {
+      if (_currentFolder != null) {
+        return _filterItems(_currentFolder!.contents);
+      } else if (_structure != null) {
+        return _filterItems(_structure!.rootItems);
+      }
+      return [];
+    } catch (e) {
+      print('Error getting current items: $e');
+      return [];
     }
-    return [];
   }
 
     void _clearSelection() {
-    setState(() {
+    try {
+      setState(() {
+        _selectedItems.clear();
+        _selectAll = false;
+      });
+    } catch (e) {
+      print('Error clearing selection: $e');
+      // Ensure selection is cleared even if setState fails
       _selectedItems.clear();
       _selectAll = false;
-    });
+    }
   }
 
   // Progress tracking methods
   void _startProgressTracking() {
     if (_isTrackingProgress) return;
     
-    setState(() {
-      _isTrackingProgress = true;
-    });
-    
-    // Poll for progress every 2 seconds
-    _progressTimer = Timer.periodic(Duration(seconds: 2), (timer) {
-      _fetchIngestionProgress();
-    });
+    try {
+      setState(() {
+        _isTrackingProgress = true;
+      });
+      
+      // Poll for progress every 2 seconds
+      _progressTimer = Timer.periodic(Duration(seconds: 2), (timer) {
+        try {
+          _fetchIngestionProgress();
+        } catch (e) {
+          print('Error in progress tracking timer: $e');
+          // Don't stop tracking on individual errors
+        }
+      });
+    } catch (e) {
+      print('Error starting progress tracking: $e');
+      setState(() {
+        _isTrackingProgress = false;
+      });
+    }
   }
 
   void _stopProgressTracking() {
-    _progressTimer?.cancel();
-    setState(() {
-      _isTrackingProgress = false;
-    });
+    try {
+      _progressTimer?.cancel();
+      setState(() {
+        _isTrackingProgress = false;
+      });
+    } catch (e) {
+      print('Error stopping progress tracking: $e');
+      // Ensure timer is cancelled even if setState fails
+      _progressTimer?.cancel();
+    }
   }
 
   Future<void> _fetchIngestionProgress() async {
     if (_ingestionProgress.isEmpty) return;
-    
+
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final currentUser = userProvider.user;
       
       if (currentUser?.agencyId == null) return;
-      
+
       final apiClient = ApiClient();
       final response = await apiClient.get(
         '${ApiEndpoints.batchIngestionProgress}/${currentUser!.agencyId}',
@@ -1057,15 +1121,20 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         
         setState(() {
           for (final ingestion in recentIngestions) {
-            final fileId = ingestion['fileId'];
-            if (_ingestionProgress.containsKey(fileId)) {
-              _ingestionProgress[fileId] = _ingestionProgress[fileId]!.copyWith(
-                status: ingestion['status'] ?? 'unknown',
-                message: _getStatusMessage(ingestion['status']),
-                startedAt: ingestion['startedAt'] != null ? DateTime.parse(ingestion['startedAt']) : null,
-                finishedAt: ingestion['finishedAt'] != null ? DateTime.parse(ingestion['finishedAt']) : null,
-                error: ingestion['error'],
-              );
+            try {
+              final fileId = ingestion['fileId']?.toString();
+              if (fileId != null && fileId.isNotEmpty && _ingestionProgress.containsKey(fileId)) {
+                _ingestionProgress[fileId] = _ingestionProgress[fileId]!.copyWith(
+                  status: ingestion['status']?.toString() ?? 'unknown',
+                  message: _getStatusMessage(ingestion['status']?.toString()),
+                  startedAt: ingestion['startedAt'] != null ? DateTime.parse(ingestion['startedAt'].toString()) : null,
+                  finishedAt: ingestion['finishedAt'] != null ? DateTime.parse(ingestion['finishedAt'].toString()) : null,
+                  error: ingestion['error']?.toString(),
+                );
+              }
+            } catch (e) {
+              print('Error updating progress for ingestion: $e');
+              // Continue with other ingestions even if one fails
             }
           }
         });
@@ -1085,23 +1154,30 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
   }
 
   String _getStatusMessage(String? status) {
-    switch (status) {
-      case 'queued':
-        return 'Queued for processing';
-      case 'running':
-        return 'Processing file...';
-      case 'processing':
-        return 'Processing file...';
-      case 'uploading':
-        return 'Uploading to S3...';
-      case 'succeeded':
-        return 'Ingestion completed successfully';
-      case 'failed':
-        return 'Ingestion failed';
-      case 'skipped':
-        return 'File already ingested';
-      default:
-        return 'Unknown status';
+    if (status == null) return 'Unknown status';
+    
+    try {
+      switch (status.toLowerCase()) {
+        case 'queued':
+          return 'Queued for processing';
+        case 'running':
+          return 'Processing file...';
+        case 'processing':
+          return 'Processing file...';
+        case 'uploading':
+          return 'Uploading to S3...';
+        case 'succeeded':
+          return 'Ingestion completed successfully';
+        case 'failed':
+          return 'Ingestion failed';
+        case 'skipped':
+          return 'File already ingested';
+        default:
+          return 'Unknown status: $status';
+      }
+    } catch (e) {
+      print('Error getting status message for status: $status, error: $e');
+      return 'Unknown status: $status';
     }
   }
 
@@ -1154,16 +1230,25 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         // Initialize progress tracking for queued files
         final results = data['results'] as List? ?? [];
         for (final result in results) {
-          if (result['status'] == 'queued') {
-            final fileId = result['fileId'];
-            final fileName = _getFileNameById(fileId);
-            _ingestionProgress[fileId] = IngestionProgress(
-              fileId: fileId,
-              fileName: fileName,
-              status: 'queued',
-              message: 'Queued for processing',
-              startedAt: DateTime.now(),
-            );
+          try {
+            if (result is Map<String, dynamic> && result['status'] == 'queued') {
+              final fileId = result['fileId']?.toString();
+              if (fileId != null && fileId.isNotEmpty) {
+                final fileName = _getFileNameById(fileId);
+                if (fileName.isNotEmpty) {
+                  _ingestionProgress[fileId] = IngestionProgress(
+                    fileId: fileId,
+                    fileName: fileName,
+                    status: 'queued',
+                    message: 'Queued for processing',
+                    startedAt: DateTime.now(),
+                  );
+                }
+              }
+            }
+          } catch (e) {
+            print('Error initializing progress for file result: $e, result: $result');
+            // Continue with other files even if one fails
           }
         }
 
@@ -1204,103 +1289,58 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
 
   // Helper method to get file name by ID
   String _getFileNameById(String fileId) {
-    if (_currentFolder != null) {
-      final file = _currentFolder!.contents.firstWhere(
-        (item) => item.id == fileId,
-        orElse: () => GoogleDriveFile(id: fileId, name: 'Unknown File', mimeType: '', isFolder: false, type: 'file'),
-      );
-      return file.name;
-    } else if (_structure != null) {
-      final file = _structure!.rootItems.firstWhere(
-        (item) => item.id == fileId,
-        orElse: () => GoogleDriveFile(id: fileId, name: 'Unknown File', mimeType: '', isFolder: false, type: 'file'),
-      );
-      return file.name;
+    try {
+      if (_currentFolder != null) {
+        final file = _currentFolder!.contents.firstWhere(
+          (item) => item.id == fileId,
+          orElse: () => GoogleDriveFile(id: fileId, name: 'Unknown File', mimeType: '', isFolder: false, type: 'file'),
+        );
+        return file.name.isNotEmpty ? file.name : 'Unknown File';
+      } else if (_structure != null) {
+        final file = _structure!.rootItems.firstWhere(
+          (item) => item.id == fileId,
+          orElse: () => GoogleDriveFile(id: fileId, name: 'Unknown File', mimeType: '', isFolder: false, type: 'file'),
+        );
+        return file.name.isNotEmpty ? file.name : 'Unknown File';
+      }
+      return 'Unknown File';
+    } catch (e) {
+      print('Error getting file name for ID $fileId: $e');
+      return 'Unknown File';
     }
-    return 'Unknown File';
   }
 
   // Build progress tracking section
   Widget _buildProgressSection() {
     return Container(
+      height: 300,
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue[50],
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.sync, color: Colors.blue[700], size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Ingestion Progress',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
-                ),
-              ),
-              Spacer(),
-              if (_isTrackingProgress)
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[700]!),
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Live',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.blue[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+      ), 
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.sync, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Ingestion Progress',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-            ],
-          ),
-          SizedBox(height: 12),
-          ..._ingestionProgress.values.map((progress) => _buildProgressItem(progress)).toList(),
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton.icon(
-                onPressed: _ingestionProgress.values.every((p) => 
-                  p.status == 'succeeded' || p.status == 'failed' || p.status == 'skipped'
-                ) ? () {
-                  setState(() {
-                    _ingestionProgress.clear();
-                    _clearSelection();
-                  });
-                } : null,
-                icon: Icon(Icons.clear, size: 16),
-                label: Text('Clear Progress'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.blue[700],
-                ),
-              ),
-            ],
-          ),
-        ],
+                Spacer(),
+              ],
+            ),
+            SizedBox(height: 12),
+            ..._ingestionProgress.values.map((progress) => _buildProgressItem(progress)).toList(),
+          ],
+        ),
       ),
     );
   }
@@ -1342,7 +1382,6 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
       margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: statusColor.withOpacity(0.3)),
       ),
@@ -1435,60 +1474,132 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
   }
 
   void _readFileContent(String fileId) async {
-    final googleDriveProvider = Provider.of<GoogleDriveProvider>(
-      context,
-      listen: false,
-    );
-
     try {
-      final result = await googleDriveProvider.readFileContent(fileId);
-
-      result.fold(
-        (failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to read file: ${failure.toString()}'),
+      // Show ingestion progress dialog instead of reading content
+      final fileName = _getFileNameById(fileId);
+      
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: Text('Ingest File'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Do you want to ingest "$fileName" for AI processing?'),
+              SizedBox(height: 8),
+              Text(
+                'This will:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 4),
+              Text('• Download the file from Google Drive'),
+              Text('• Extract text and images'),
+              Text('• Process content with AI agents'),
+              Text('• Store results in your knowledge base'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
             ),
-          );
-        },
-        (fileList) {
-          if (fileList is List && fileList.isNotEmpty) {
-            final file = fileList[0];
-
-            final fileName = file['fileName'];
-            final content = file['content'];
-
-            showDialog(
-              context: context,
-              builder:
-                  (context) => AlertDialog(
-                    title: Text(fileName ?? 'File Content'),
-                    content: SingleChildScrollView(
-                      child: SelectableText(
-                        content ?? 'No content available',
-                        style: TextStyle(fontFamily: 'monospace'),
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text('Close'),
-                      ),
-                    ],
-                  ),
-            );
-          } else {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('No file data returned.')));
-          }
-        },
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _ingestSingleFile(fileId, fileName);
+              },
+              child: Text('Start Ingestion'),
+            ),
+          ],
+        ),
       );
     } catch (e) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error reading file: $e')));
+      print('Error showing ingestion dialog: $e');
+      // Fallback to simple ingestion without dialog
+      _ingestSingleFile(fileId, 'Unknown File');
+    }
+  }
+
+  // Ingest a single file with progress tracking
+  Future<void> _ingestSingleFile(String fileId, String fileName) async {
+    // Get the current user's agency ID from the provider
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final currentUser = userProvider.user;
+    
+    if (currentUser?.agencyId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Agency ID not found. Please ensure you are properly authenticated.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final apiClient = ApiClient();
+      final response = await apiClient.post(
+        ApiEndpoints.batchIngestionEnqueue,
+        data: {
+          'fileIds': [fileId],
+          'agencyId': currentUser!.agencyId,
+        },
+      );
+
+      if (response.statusCode == 202) {
+        final data = response.data;
+        final queuedCount = data['queued'] ?? 0;
+
+        if (queuedCount > 0) {
+          // Initialize progress tracking for the file
+          _ingestionProgress[fileId] = IngestionProgress(
+            fileId: fileId,
+            fileName: fileName,
+            status: 'queued',
+            message: 'Queued for processing',
+            startedAt: DateTime.now(),
+          );
+
+          // Start progress tracking
+          _startProgressTracking();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('File "$fileName" queued for ingestion'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('File "$fileName" was not queued. It may already be ingested.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Failed to enqueue file: ${response.statusCode}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to queue file for ingestion: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 }

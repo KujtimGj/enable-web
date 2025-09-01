@@ -9,6 +9,7 @@ class ChatProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   String? _conversationId;
+  String? _structuredSummary;
 
   // Getters
   String? get message => _message;
@@ -16,6 +17,7 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get conversationId => _conversationId;
+  String? get structuredSummary => _structuredSummary;
 
   List<Map<String, String>> _messages = [];
   List<Map<String, String>> get messages => _messages;
@@ -75,15 +77,24 @@ class ChatProvider extends ChangeNotifier {
             data['result'] is Map<String, dynamic> &&
             data['result'].containsKey('externalProducts')) {
           _externalProducts = data['result']['externalProducts'];
-          _messages.removeWhere((m) => m['role'] == 'agent' && m['content'] == 'Finding items for you...');
-
-          _messages.add({
-            'role': 'agent',
-            'content': 'Here are the results. Let me know if you want more suggestions or refinements.',
-          });
+          
+          // Extract structured summary if available
+          if (data['result'].containsKey('structuredSummary')) {
+            _structuredSummary = data['result']['structuredSummary'];
+            // Clear messages when summary is available, keep only the summary
+            _messages.clear();
+          } else {
+            // Only show agent message if no summary
+            _messages.removeWhere((m) => m['role'] == 'agent' && m['content'] == 'Finding items for you...');
+            _messages.add({
+              'role': 'agent',
+              'content': 'Here are the results. Let me know if you want more suggestions or refinements.',
+            });
+          }
 
         } else {
           _externalProducts = [];
+          _structuredSummary = null;
         }
         print(_externalProducts);
         _conversationId = data['conversationId'];
