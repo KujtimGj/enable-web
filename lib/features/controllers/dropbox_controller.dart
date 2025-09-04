@@ -12,7 +12,6 @@ class DropboxController {
     try {
       final response = await _apiClient.get(ApiEndpoints.dropboxAuthUrl);
       if (response.statusCode == 200) {
-        print(response.data);
         return Right(response.data['authUrl']);
       } else {
         return Left(ServerFailure(

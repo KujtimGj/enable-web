@@ -32,19 +32,15 @@ class UserProvider extends ChangeNotifier {
 
   Future<void> _initializeAuth() async {
     try {
-      print('UserProvider: Starting _initializeAuth');
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
       final userJson = prefs.getString('user');
       
-      print('UserProvider: Token found: ${token != null}');
-      print('UserProvider: User JSON found: ${userJson != null}');
-      
+
       if (token != null && userJson != null) {
         _token = token;
         _user = UserModel.fromJson(jsonDecode(userJson));
         _isAuthenticated = true;
-        print('UserProvider: User authenticated: ${_user?.email}');
       } else {
         _isAuthenticated = false;
         print('UserProvider: No token or user data found');
@@ -55,7 +51,6 @@ class UserProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       _isInitialized = true;
-      print('UserProvider: Initialization complete - isAuthenticated: $_isAuthenticated, isLoading: $_isLoading, isInitialized: $_isInitialized');
       notifyListeners();
     }
   }

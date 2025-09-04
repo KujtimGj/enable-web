@@ -666,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                             itemBuilder: (context, index) {
                               final product = dbProducts[index];
-                              final images = product.mediaPhotos;
+                              final images = product.images;
 
                               return Container(
                                 padding: EdgeInsets.zero,
@@ -681,30 +681,38 @@ class _HomeScreenState extends State<HomeScreen> {
                                   children: [
                                     Expanded(
                                       flex: 1,
-                                      child:
-                                          images != null && images.isNotEmpty
-                                              ? ClipRRect(
+                                      child: Container(
+                                        height: double.infinity,
+                                        child: images != null && images.isNotEmpty
+                                            ? ClipRRect(
                                                 borderRadius:
                                                     BorderRadius.circular(10),
                                                 child: Image.network(
-                                                  images[0].imageUrl ?? images[0].signedUrl ?? '',
-                                                  fit: BoxFit.cover,
+                                                  images[1].imageUrl ?? images[0].signedUrl ?? '',
+                                                  fit: BoxFit.cover, 
+                                                  height: double.infinity,
+                                                  width: double.infinity,
                                                   errorBuilder: (context, error, stackTrace) {
                                                     return Container(
-                                                      height: getHeight(context),
+                                                      height: double.infinity,
+                                                      width: double.infinity,
                                                       decoration: BoxDecoration(
+                                                        color: Colors.grey[800],
                                                         borderRadius:
                                                             BorderRadius.circular(10),
                                                       ),
                                                       child: Icon(
                                                         Icons.image,
                                                         color: Colors.white,
+                                                        size: 48,
                                                       ),
                                                     );
                                                   },
                                                 ),
                                               )
-                                              : Container(
+                                            : Container(
+                                                height: double.infinity,
+                                                width: double.infinity,
                                                 decoration: BoxDecoration(
                                                   color: Colors.grey[800],
                                                   borderRadius:
@@ -713,8 +721,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 child: Icon(
                                                   Icons.image,
                                                   color: Colors.white,
+                                                  size: 48,
                                                 ),
                                               ),
+                                      ),
                                     ),
                                     Expanded(
                                       flex: 1,

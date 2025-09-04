@@ -179,9 +179,7 @@ GoRouteName agencyLogin = GoRouteName(
 GoRouteName chatsRoute = GoRouteName(name: 'chats', path: '/chats',authenticated: true);
 GoRouteName routeWelcome = GoRouteName(name: "welcome", path: "/welcome");
 GoRouter createGoRouter({String? initialLocation}) {
-  print('[Router] ====== CREATING NEW ROUTER INSTANCE ======');
-  print('[Router] Creating GoRouter with initialLocation: $initialLocation');
-  
+
   final routes = [
     // ---------------------------------
     // Root
@@ -355,7 +353,6 @@ GoRouter createGoRouter({String? initialLocation}) {
       path: routeItinerary.path,
       name: routeItinerary.name,
       pageBuilder: (context, state) {
-        print('[Router] Building itinerary page');
         return MaterialPage(child: Itinerary());
       },
     ),
@@ -378,9 +375,7 @@ GoRouter createGoRouter({String? initialLocation}) {
     ),
   ];
   
-  print('[Router] Routes array created with ${routes.length} routes');
-  print('[Router] Route paths: ${routes.map((r) => r.path).toList()}');
-  
+
   final router = GoRouter(
     initialLocation: initialLocation ?? '/home',
     redirect: (context, state) {
@@ -403,59 +398,42 @@ GoRouter createGoRouter({String? initialLocation}) {
           listen: false,
         );
 
-        print('[Router] Redirect check for route: ${state.matchedLocation}');
-        print('[Router] UserProvider - isAuthenticated: ${userProvider.isAuthenticated}, isInitialized: ${userProvider.isInitialized}, isLoading: ${userProvider.isLoading}');
-        print('[Router] AgencyProvider - isAuthenticated: ${agencyProvider.isAuthenticated}, isInitialized: ${agencyProvider.isInitialized}, isLoading: ${agencyProvider.isLoading}');
 
         // Check if either provider is still loading or not initialized
         if (userProvider.isLoading ||
             !userProvider.isInitialized ||
             agencyProvider.isLoading ||
             !agencyProvider.isInitialized) {
-          print('[Router] Providers not ready, allowing route');
           return null;
         }
 
         // Use the dynamic authentication function
         if (!AuthUtils.isAnyUserAuthenticated(context)) {
-          print('[Router] User not authenticated, redirecting to welcome');
           return routeWelcome.path;
         }
 
         String? userType = AuthUtils.getCurrentUserType(context);
-        print(
-          '[Router] User type: $userType, current route: ${state.matchedLocation}',
-        );
+
 
         if (userType == 'agency') {
           // Allow agency routes
           if (state.matchedLocation.startsWith('/agency')) {
             return null;
           }
-          // Redirect agency users to agency view for other routes
           return '/agency';
         }
 
-        // If regular user tries to access agency routes, redirect to home
         if (userType == 'user') {
-          print(
-            '[Router] User is regular user, allowing access to: ${state.matchedLocation}',
-          );
-          // Allow users to access all routes including knowledge base and document screens
           return null;
         }
 
         return null;
       } catch (e) {
-        print('[Router] Error in redirect: $e');
         return routeSignIn.path;
       }
     },
     routes: routes,
   );
-  
-  print('[Router] GoRouter created with ${router.routerDelegate.currentConfiguration.routes.length} routes');
-  print('[Router] Available routes: ${router.routerDelegate.currentConfiguration.routes.map((r) => (r as GoRoute).path).toList()}');
   
   return router;
 }

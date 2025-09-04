@@ -24,11 +24,6 @@ class ApiClient {
             options.headers['Authorization'] = 'Bearer $token';
           }
           
-          print("🔍 Debug: Request headers: ${options.headers}");
-          print("🔍 Debug: Request method: ${options.method}");
-          print("🔍 Debug: Request URL: ${options.uri}");
-          print("🔍 Debug: Request data: ${options.data}");
-          
           return handler.next(options);
         },
         onError: (DioException e, handler) {
@@ -53,7 +48,6 @@ class ApiClient {
       await prefs.remove('agency');
       await prefs.remove('token');
       await prefs.setBool('isAuthenticated', false);
-      print('Token expired, cleared authentication data');
     } catch (e) {
       print('Error handling token expiration: $e');
     }

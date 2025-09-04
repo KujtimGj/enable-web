@@ -85,19 +85,15 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<void> _initializeAuth() async {
     try {
-      print('AgencyProvider: Starting _initializeAuth');
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
       final agencyJson = prefs.getString('agency');
       
-      print('AgencyProvider: Token found: ${token != null}');
-      print('AgencyProvider: Agency JSON found: ${agencyJson != null}');
-      
+
       if (token != null && agencyJson != null) {
         _token = token;
         _agency = AgencyModel.fromJson(jsonDecode(agencyJson));
         _isAuthenticated = true;
-        print('AgencyProvider: Agency authenticated: ${_agency?.name}');
       } else {
         _isAuthenticated = false;
         print('AgencyProvider: No token or agency data found');
@@ -107,7 +103,6 @@ class AgencyProvider extends ChangeNotifier {
       _isAuthenticated = false;
     } finally {
       _isInitialized = true;
-      print('AgencyProvider: Initialization complete - isAuthenticated: $_isAuthenticated, isLoading: $_isLoading, isInitialized: $_isInitialized');
       notifyListeners();
     }
   }
@@ -271,25 +266,20 @@ class AgencyProvider extends ChangeNotifier {
   }
 
   Future<void> fetchExperiences(String agencyId) async {
-    print('AgencyProvider: Starting fetchExperiences for agency: $agencyId');
     _isLoadingData = true;
     _errorMessage = null;
     notifyListeners();
 
                   try {
-      print('AgencyProvider: Making API call to getExperiencesByAgencyId');
       final result = await _agencyController.getExperiencesByAgencyId(agencyId);
-      print('AgencyProvider: API call result: $result');
-      
+
       result.fold(
         (failure) {
           print('AgencyProvider: API call failed with failure: $failure');
           _errorMessage = (failure as ServerFailure).message;
         },
         (experiences) {
-          print('AgencyProvider: API call successful, experiences count: ${experiences.length}');
           _experiences = experiences.map((json) => ExperienceModel.fromJson(json)).toList();
-          print('AgencyProvider: Parsed experiences count: ${_experiences.length}');
         },
       );
     } catch (e, stackTrace) {
@@ -299,8 +289,6 @@ class AgencyProvider extends ChangeNotifier {
     }
 
     _isLoadingData = false;
-    print('AgencyProvider: fetchExperiences completed, final count: ${_experiences.length}');
-    print('AgencyProvider: isLoadingData set to false');
     notifyListeners();
   }
 

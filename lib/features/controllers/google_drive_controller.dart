@@ -65,10 +65,10 @@ class GoogleDriveController {
     }
   }
 
-  Future<Either<Failure, FolderContents>> getFolderContents(String folderId) async {
+  Future<Either<Failure, FolderContents>> getFolderContents(String folderId, {int page = 1, int pageSize = 50}) async {
     try {
       final endpoint = ApiEndpoints.googleDriveFolderContents.replaceAll('{folderId}', folderId);
-      final response = await _apiClient.get(endpoint);
+      final response = await _apiClient.get('$endpoint?page=$page&pageSize=$pageSize');
       
       if (response.statusCode == 200) {
         final folderContents = FolderContents.fromJson(response.data);
@@ -161,11 +161,7 @@ class GoogleDriveController {
 
   Future<Either<Failure, bool>> associateGoogleDriveTokens(String accessToken, String refreshToken, String? expiryDate) async {
     try {
-      print('[Controller] Associating tokens with backend...');
-      print('[Controller] Access token length: ${accessToken.length}');
-      print('[Controller] Refresh token length: ${refreshToken.length}');
-      print('[Controller] Expiry date: $expiryDate');
-      
+
       final response = await _apiClient.post(
         ApiEndpoints.googleDriveAssociateTokens,
         data: {
@@ -174,13 +170,9 @@ class GoogleDriveController {
           'expiryDate': expiryDate,
         }
       );
-      
-      print('[Controller] Response status: ${response.statusCode}');
-      print('[Controller] Response data: ${response.data}');
-      
+
       if (response.statusCode == 200) {
         final isConnected = response.data['isConnected'] ?? false;
-        print('[Controller] Is connected: $isConnected');
         return Right(isConnected);
       } else {
         print('[Controller] Error response: ${response.data}');

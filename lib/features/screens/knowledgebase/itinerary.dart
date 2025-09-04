@@ -217,7 +217,20 @@ class _ItineraryState extends State<Itinerary> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   color: _getStatusColor(experience.status),
+                                  image: (experience.images != null && 
+                                          experience.images!.isNotEmpty && 
+                                          experience.images![0].signedUrl != null)
+                                      ? DecorationImage(
+                                          image: NetworkImage(experience.images![0].signedUrl!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
+                                child: (experience.images == null || 
+                                        experience.images!.isEmpty || 
+                                        experience.images![0].signedUrl == null)
+                                    ? Icon(Icons.image_outlined, color: Colors.grey[600], size: 24)
+                                    : null,
                               ),
                             ),
                             Expanded(
@@ -226,7 +239,20 @@ class _ItineraryState extends State<Itinerary> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   color: _getStatusColor(experience.status),
+                                  image: (experience.images != null && 
+                                          experience.images!.length > 1 && 
+                                          experience.images![1].signedUrl != null)
+                                      ? DecorationImage(
+                                          image: NetworkImage(experience.images![1].signedUrl!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
+                                child: (experience.images == null || 
+                                        experience.images!.length <= 1 || 
+                                        experience.images![1].signedUrl == null)
+                                    ? Icon(Icons.image_outlined, color: Colors.grey[600], size: 24)
+                                    : null,
                               ),
                             ),
                           ],
@@ -241,7 +267,20 @@ class _ItineraryState extends State<Itinerary> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   color: _getStatusColor(experience.status),
+                                  image: (experience.images != null && 
+                                          experience.images!.length > 2 && 
+                                          experience.images![2].signedUrl != null)
+                                      ? DecorationImage(
+                                          image: NetworkImage(experience.images![2].signedUrl!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
+                                child: (experience.images == null || 
+                                        experience.images!.length <= 2 || 
+                                        experience.images![2].signedUrl == null)
+                                    ? Icon(Icons.image_outlined, color: Colors.grey[600], size: 24)
+                                    : null,
                               ),
                             ),
                             Expanded(
@@ -250,7 +289,20 @@ class _ItineraryState extends State<Itinerary> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   color: _getStatusColor(experience.status),
+                                  image: (experience.images != null && 
+                                          experience.images!.length > 3 && 
+                                          experience.images![3].signedUrl != null)
+                                      ? DecorationImage(
+                                          image: NetworkImage(experience.images![3].signedUrl!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
+                                child: (experience.images == null || 
+                                        experience.images!.length <= 3 || 
+                                        experience.images![3].signedUrl == null)
+                                    ? Icon(Icons.image_outlined, color: Colors.grey[600], size: 24)
+                                    : null,
                               ),
                             ),
                           ],

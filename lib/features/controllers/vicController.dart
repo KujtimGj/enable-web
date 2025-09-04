@@ -1,5 +1,4 @@
 import 'package:dartz/dartz.dart';
-import 'package:enable_web/core/api.dart';
 import 'package:enable_web/core/dio_api.dart';
 import 'package:enable_web/features/entities/vicModel.dart';
 import '../../core/failure.dart';

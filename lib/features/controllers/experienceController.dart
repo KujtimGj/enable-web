@@ -10,18 +10,12 @@ class ExperienceController {
   Future<Either<Failure, List<ExperienceModel>>> getExperiencesByAgencyId(String agencyId) async {
     try {
       final endpoint = ApiEndpoints.getExperiences.replaceFirst('{agencyId}', agencyId);
-      print('Calling API endpoint: $endpoint');
-      print('Full URL: ${ApiEndpoints.baseUrl}$endpoint');
-      
+
       final response = await _apiClient.get(endpoint);
-      print('API Response status: ${response.statusCode}');
-      print('API Response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
-        print('Parsed data length: ${data.length}');
         final experiences = data.map((json) => ExperienceModel.fromJson(json)).toList();
-        print('Created experience models: ${experiences.length}');
         return Right(experiences);
       } else {
         print('API Error: ${response.statusCode} - ${response.data}');

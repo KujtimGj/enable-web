@@ -38,6 +38,7 @@ class ApiEndpoints {
   static const String batchIngestionEnqueue = '/batch-ingestion/enqueue';
   static const String batchIngestionStatus = '/batch-ingestion/status';
   static const String batchIngestionProgress = '/batch-ingestion/progress';
+  static const String batchIngestionCheckFiles = '/batch-ingestion/check-files';
 
   static const String getAgencyFiles = '/upload/agency/{agencyId}';
   static const String deleteAgencyFile = '/upload/agency/{agencyId}/{fileId}';

@@ -30,12 +30,9 @@ class AuthController{
           // Save token
           prefs.setString('token', loginResponse.token);
           
-          // Save authentication state
           prefs.setBool('isAuthenticated', true);
           
-          print("Response from login: $decodedData");
-          print("Token saved: ${loginResponse.token}");
-          
+
           return Right(loginResponse);
         } else {
           return Left(ServerFailure(message: response.data['message'] ?? 'Unknown login error'));

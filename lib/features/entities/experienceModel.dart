@@ -1,4 +1,38 @@
 
+class ImageModel {
+  final String? imageUrl;
+  final String? signedUrl;
+
+  ImageModel({
+    this.imageUrl,
+    this.signedUrl,
+  });
+
+  ImageModel copyWith({
+    String? imageUrl,
+    String? signedUrl,
+  }) {
+    return ImageModel(
+      imageUrl: imageUrl ?? this.imageUrl,
+      signedUrl: signedUrl ?? this.signedUrl,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'imageUrl': imageUrl,
+      'signedUrl': signedUrl,
+    };
+  }
+
+  factory ImageModel.fromJson(Map<String, dynamic> json) {
+    return ImageModel(
+      imageUrl: json['imageUrl'],
+      signedUrl: json['signedUrl'],
+    );
+  }
+}
+
 class ItineraryItemModel {
   final int? day;
   final int? order;
@@ -128,6 +162,7 @@ class ExperienceModel {
   final int? rating;
   final double? totalSpent;
   final List<double>? embedding;
+  final List<ImageModel>? images;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -150,6 +185,7 @@ class ExperienceModel {
     this.rating,
     this.totalSpent,
     this.embedding,
+    this.images,
     this.createdAt,
     this.updatedAt,
   });
@@ -173,6 +209,7 @@ class ExperienceModel {
     int? rating,
     double? totalSpent,
     List<double>? embedding,
+    List<ImageModel>? images,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -195,6 +232,7 @@ class ExperienceModel {
       rating: rating ?? this.rating,
       totalSpent: totalSpent ?? this.totalSpent,
       embedding: embedding ?? this.embedding,
+      images: images ?? this.images,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -220,6 +258,7 @@ class ExperienceModel {
       'rating': rating,
       'totalSpent': totalSpent,
       'embedding': embedding,
+      'images': images?.map((image) => image.toJson()).toList(),
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -258,6 +297,11 @@ class ExperienceModel {
         totalSpent: json['totalSpent'] != null ? json['totalSpent'].toDouble() : null,
         embedding: json['embedding'] != null 
             ? (json['embedding'] as List).map((item) => item?.toDouble()).whereType<double>().toList()
+            : null,
+        images: json['images'] != null 
+            ? (json['images'] as List)
+                .map((item) => ImageModel.fromJson(item))
+                .toList()
             : null,
         createdAt: json['createdAt'] != null 
             ? DateTime.parse(json['createdAt']) 

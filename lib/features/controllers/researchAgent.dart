@@ -18,15 +18,6 @@ Future<Either<Failure, Map<String, dynamic>>> sendChatToAgent({required String u
     final jsonBody = jsonEncode(body);
     print("🔍 Debug: JSON body: $jsonBody");
     final String endpoint = '${ApiEndpoints.chatWithAgentUrl}/$userId/$agencyId';
-    
-    print("🔍 Debug: Making request to endpoint: $endpoint");
-    print("🔍 Debug: Request body: $body");
-    print("🔍 Debug: Full URL: ${ApiEndpoints.baseUrl}$endpoint");
-    
-    // Try alternative endpoint format
-    print("🔍 Debug: Alternative endpoint: /agent/chat");
-
-    // Try sending with explicit content type and retry logic
     Response? response;
     int retryCount = 0;
     const maxRetries = 3;

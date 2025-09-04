@@ -132,6 +132,32 @@ class Breadcrumb {
   }
 }
 
+class PaginationInfo {
+  final int currentPage;
+  final int pageSize;
+  final int totalPages;
+  final bool hasMore;
+  final int totalItems;
+
+  PaginationInfo({
+    required this.currentPage,
+    required this.pageSize,
+    required this.totalPages,
+    required this.hasMore,
+    required this.totalItems,
+  });
+
+  factory PaginationInfo.fromJson(Map<String, dynamic> json) {
+    return PaginationInfo(
+      currentPage: json['currentPage'] ?? 1,
+      pageSize: json['pageSize'] ?? 50,
+      totalPages: json['totalPages'] ?? 1,
+      hasMore: json['hasMore'] ?? false,
+      totalItems: json['totalItems'] ?? 0,
+    );
+  }
+}
+
 class FolderContents {
   final GoogleDriveFolder folder;
   final List<Breadcrumb> breadcrumbs;
@@ -139,6 +165,7 @@ class FolderContents {
   final int totalItems;
   final int totalFolders;
   final int totalFiles;
+  final PaginationInfo? pagination;
 
   FolderContents({
     required this.folder,
@@ -147,6 +174,7 @@ class FolderContents {
     required this.totalItems,
     required this.totalFolders,
     required this.totalFiles,
+    this.pagination,
   });
 
   factory FolderContents.fromJson(Map<String, dynamic> json) {
@@ -161,6 +189,9 @@ class FolderContents {
       totalItems: json['totalItems'] ?? 0,
       totalFolders: json['totalFolders'] ?? 0,
       totalFiles: json['totalFiles'] ?? 0,
+      pagination: json['pagination'] != null 
+          ? PaginationInfo.fromJson(json['pagination']) 
+          : null,
     );
   }
 }

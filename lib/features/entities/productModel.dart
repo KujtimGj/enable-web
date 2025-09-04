@@ -12,7 +12,7 @@ class ProductModel {
   final String? providerName;
   final String? providerWebsite;
   final String? providerContact;
-  final List<MediaPhoto>? mediaPhotos;
+  final List<MediaPhoto>? images;
   final double? rating;
   final String? availability;
   final double? priceMin;
@@ -37,7 +37,7 @@ class ProductModel {
     this.providerName,
     this.providerWebsite,
     this.providerContact,
-    this.mediaPhotos,
+    this.images,
     this.rating,
     this.availability,
     this.priceMin,
@@ -64,7 +64,7 @@ class ProductModel {
       providerName: json['providerName']?.toString(),
       providerWebsite: json['providerWebsite']?.toString(),
       providerContact: json['providerContact']?.toString(),
-      mediaPhotos: _parseMediaPhotos(json['mediaPhotos']),
+      images: _parseMediaPhotos(json['images']),
       rating: _parseDouble(json['rating']),
       availability: json['availability']?.toString(),
       priceMin: _parseDouble(json['priceMin']),
@@ -104,10 +104,10 @@ class ProductModel {
   }
 
   // Helper method to safely parse media photos
-  static List<MediaPhoto>? _parseMediaPhotos(dynamic mediaPhotos) {
-    if (mediaPhotos == null) return null;
-    if (mediaPhotos is List) {
-      return mediaPhotos
+  static List<MediaPhoto>? _parseMediaPhotos(dynamic images) {
+    if (images == null) return null;
+    if (images is List) {
+      return images
           .where((item) => item is Map<String, dynamic>)
           .map((item) => MediaPhoto.fromJson(item as Map<String, dynamic>))
           .toList();
@@ -158,7 +158,7 @@ class ProductModel {
       'providerName': providerName,
       'providerWebsite': providerWebsite,
       'providerContact': providerContact,
-      'mediaPhotos': mediaPhotos?.map((photo) => photo.toJson()).toList(),
+      'images': images?.map((photo) => photo.toJson()).toList(),
       'rating': rating,
       'availability': availability,
       'priceMin': priceMin,

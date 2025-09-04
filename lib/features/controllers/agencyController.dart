@@ -271,18 +271,12 @@ class AgencyController {
 
   Future<Either<Failure, List<Map<String, dynamic>>>> getExperiencesByAgencyId(String agencyId) async {
     try {
-                      print('AgencyController: Starting getExperiencesByAgencyId for agencyId: $agencyId');
       final endpoint = ApiEndpoints.getExperiences.replaceFirst('{agencyId}', agencyId);
-      print('AgencyController: Endpoint: $endpoint');
-      print('AgencyController: Full URL: ${ApiEndpoints.baseUrl}$endpoint');
-      
+
       final response = await _apiClient.get(endpoint);
-      print('AgencyController: Response status: ${response.statusCode}');
-      print('AgencyController: Response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
-        print('AgencyController: Data length: ${data.length}');
         return Right(data.cast<Map<String, dynamic>>());
       } else {
         print('AgencyController: Error response: ${response.data}');
