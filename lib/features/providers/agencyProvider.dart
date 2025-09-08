@@ -96,10 +96,8 @@ class AgencyProvider extends ChangeNotifier {
         _isAuthenticated = true;
       } else {
         _isAuthenticated = false;
-        print('AgencyProvider: No token or agency data found');
       }
     } catch (e) {
-      print('AgencyProvider: Error initializing agency auth: $e');
       _isAuthenticated = false;
     } finally {
       _isInitialized = true;

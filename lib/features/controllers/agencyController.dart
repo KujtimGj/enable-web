@@ -91,13 +91,8 @@ class AgencyController {
         return Left(ServerFailure(message: "❌ Failure: ${response.data}"));
       }
     } on DioException catch (e) {
-      print('❌ DioException');
-      print('↪ status: ${e.response?.statusCode}');
-      print('↪ data: ${e.response?.data}');
-      print('↪ headers: ${e.response?.headers}');
       return Left(ServerFailure(message: "Dio error: ${e.response?.data ?? e.message}"));
     } catch (e) {
-      print('❌ Unknown error: $e');
       return Left(ServerFailure(message: e.toString()));
     }
   }

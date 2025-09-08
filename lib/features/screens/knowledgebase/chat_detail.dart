@@ -1,0 +1,373 @@
+import 'package:enable_web/core/dimensions.dart';
+import 'package:enable_web/features/components/responsive_scaffold.dart';
+import 'package:enable_web/features/providers/agentProvider.dart';
+import 'package:enable_web/features/providers/userProvider.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
+
+import '../../components/widgets.dart';
+
+class ChatDetailScreen extends StatefulWidget {
+  final String conversationId;
+  final String conversationName;
+
+  const ChatDetailScreen({
+    super.key, 
+    required this.conversationId,
+    required this.conversationName,
+  });
+
+  @override
+  State<ChatDetailScreen> createState() => _ChatDetailScreenState();
+}
+
+class _ChatDetailScreenState extends State<ChatDetailScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadConversationMessages();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _loadConversationMessages() async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    
+    // Ensure conversations are loaded first
+    if (userProvider.user?.agencyId != null) {
+      await chatProvider.fetchConversations(userProvider.user!.agencyId);
+    }
+    
+    // Then load the specific conversation messages
+    chatProvider.loadConversationMessages(widget.conversationId);
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ChatProvider>(
+      builder: (context, chatProvider, child) {
+        return ResponsiveScaffold(
+          appBar: AppBar(
+            toolbarHeight: 65,
+            automaticallyImplyLeading: false,
+            leadingWidth: 200,
+            centerTitle: true,
+            title: Text(
+              widget.conversationName,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            leading: GestureDetector(
+              onTap: () => context.go('/knowledgebase/chats'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.arrow_back, size: 20),
+                  SizedBox(width: 4),
+                  Text("Back to chats", style: TextStyle(fontSize: 14)),
+                ],
+              ),
+            ),
+            actions: [customButton(() => context.go("/"))],
+          ),
+          body: Column(
+            children: [
+              Expanded(
+                child: _buildMessagesList(chatProvider),
+              ),
+              if (chatProvider.isLoading) _buildLoadingIndicator(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMessagesList(ChatProvider chatProvider) {
+    if (chatProvider.isLoadingMessages) {
+      return _buildLoadingMessages();
+    }
+
+    if (chatProvider.error != null) {
+      return _buildErrorState(chatProvider);
+    }
+
+    if (chatProvider.messages.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    // Auto-scroll to bottom when messages load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.all(16),
+      itemCount: chatProvider.messages.length,
+      itemBuilder: (context, index) {
+        final message = chatProvider.messages[index];
+        final isUser = message['role'] == 'user';
+
+        return _buildMessageBubble(message, isUser);
+      },
+    );
+  }
+
+  Widget _buildMessageBubble(Map<String, dynamic> message, bool isUser) {
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: getWidth(context) * 0.7,
+        ),
+        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isUser ? Color(0xff1A1818) : Color(0xff1A1818),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isUser ? Color(0xff292525) : Color(0xff292525),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isUser ? Icons.person : Icons.smart_toy,
+                  size: 16,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  isUser ? 'You' : 'Assistant',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Spacer(),
+                if (message['searchMode'] != null) ...[
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: message['searchMode'] == 'my_knowledge' 
+                          ? Colors.orange.withOpacity(0.2)
+                          : Colors.purple.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: message['searchMode'] == 'my_knowledge'
+                            ? Colors.orange
+                            : Colors.purple,
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Text(
+                      message['searchMode'] == 'my_knowledge' ? 'Knowledge' : 'Search',
+                      style: TextStyle(
+                        color: message['searchMode'] == 'my_knowledge'
+                            ? Colors.orange
+                            : Colors.purple,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            SizedBox(height: 8),
+            SelectableText(
+              message['content'] ?? '',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingMessages() {
+    return ListView.builder(
+      padding: EdgeInsets.all(16),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        final isUser = index % 2 == 0;
+        return Align(
+          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: getWidth(context) * 0.5,
+            ),
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isUser ? Color(0xff2D5A87) : Color(0xff1A1818),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isUser ? Color(0xff3A6B9A) : Color(0xff292525),
+                width: 1,
+              ),
+            ),
+            child: Shimmer.fromColors(
+              baseColor: isUser ? Color(0xff3A6B9A) : Color(0xff292525),
+              highlightColor: isUser ? Color(0xff4A7BAA) : Color(0xff3A3A3A),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 16,
+                    width: 60,
+                    color: Colors.white,
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    height: 14,
+                    width: double.infinity,
+                    color: Colors.white,
+                  ),
+                  SizedBox(height: 4),
+                  Container(
+                    height: 14,
+                    width: getWidth(context) * 0.4,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState(ChatProvider chatProvider) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Colors.red,
+            size: 48,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Failed to load messages',
+            style: TextStyle(
+              color: Colors.red,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          SelectableText(
+            chatProvider.error!,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => _loadConversationMessages(),
+            child: Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.chat_bubble_outline,
+            color: Colors.grey[400],
+            size: 48,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'No messages in this conversation',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'This conversation appears to be empty',
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+            ),
+          ),
+          SizedBox(width: 12),
+          Text(
+            'Loading messages...',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

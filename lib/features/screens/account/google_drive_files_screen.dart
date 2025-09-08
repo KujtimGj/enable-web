@@ -905,12 +905,15 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         agencyId: currentUser.agencyId,
       );
 
+      print('🔍 [enqueueSelectedFiles] Response data: $data');
+
       final queuedCount = data['queued'] ?? 0;
       final skippedCount = data['skipped'] ?? 0;
       final errorCount = data['errors'] ?? 0;
 
       // Initialize progress tracking for queued files
-      final results = data['results'] as List? ?? [];
+      final results = data['results'] as List<dynamic>? ?? [];
+      print('🔍 [enqueueSelectedFiles] Results array: $results');
       
       final progressMap = IngestionService.initializeProgressFromResults(
         results,

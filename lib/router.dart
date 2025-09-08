@@ -1,6 +1,8 @@
 import 'package:enable_web/features/screens/account/account_file_upload.dart';
 import 'package:enable_web/features/screens/agency/agency.dart';
+import 'package:enable_web/features/screens/knowledgebase/bookmarks.dart';
 import 'package:enable_web/features/screens/knowledgebase/chats.dart';
+import 'package:enable_web/features/screens/knowledgebase/chat_detail.dart';
 import 'package:enable_web/features/screens/knowledgebase/itinerary.dart';
 import 'package:enable_web/features/screens/knowledgebase/products.dart';
 import 'package:enable_web/features/screens/welcome/login_screen.dart';
@@ -171,13 +173,28 @@ GoRouteName agencyRoute = GoRouteName(
   name: "agencyRoute",
   path: "/agencyroute",
 );
+
 GoRouteName agencyLogin = GoRouteName(
   name: "agencylogin",
   path: "/agencylogin",
 );
 
-GoRouteName chatsRoute = GoRouteName(name: 'chats', path: '/chats',authenticated: true);
-GoRouteName routeWelcome = GoRouteName(name: "welcome", path: "/welcome");
+GoRouteName chatsRoute = GoRouteName(
+    name: 'chats',
+    path: '/chats',
+    authenticated: true
+);
+
+GoRouteName chatDetailRoute = GoRouteName(name: 'chat-detail',
+    path: '/knowledgebase/chats/:conversationId',
+    authenticated: true
+);
+
+GoRouteName routeWelcome = GoRouteName(
+    name: "welcome",
+    path: "/welcome"
+);
+
 GoRouter createGoRouter({String? initialLocation}) {
 
   final routes = [
@@ -366,6 +383,26 @@ GoRouter createGoRouter({String? initialLocation}) {
         return MaterialPage(child: ChatsList());
       },
     ),
+    // ---------------------------------
+    // Chat Detail
+    // ---------------------------------
+    GoRoute(
+      path: chatDetailRoute.path,
+      name: chatDetailRoute.name,
+      pageBuilder: (context, state) {
+        final conversationId = state.pathParameters['conversationId']!;
+        final conversationName = state.uri.queryParameters['name'] ?? 'Conversation';
+        return MaterialPage(
+          child: ChatDetailScreen(
+            conversationId: conversationId,
+            conversationName: conversationName,
+          ),
+        );
+      },
+    ),
+    // ---------------------------------
+    // Products
+    // ---------------------------------
     GoRoute(
       path: routeProducts.path,
       name: routeProducts.name,
@@ -373,6 +410,16 @@ GoRouter createGoRouter({String? initialLocation}) {
         return MaterialPage(child: Products());
       },
     ),
+    // ---------------------------------
+    // Bookmarks
+    // ---------------------------------
+    GoRoute(
+      path: routeBookmarks.path,
+      name: routeBookmarks.name,
+      pageBuilder: (context,state){
+        return MaterialPage(child: Bookmarks());
+      }
+    )
   ];
   
 

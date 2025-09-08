@@ -619,7 +619,7 @@ class _ItineraryState extends State<Itinerary> {
         children: [
           Row(
             children: [
-              Icon(Icons.dashboard, size: 20, color: Colors.blue[700]),
+              Icon(Icons.dashboard, size: 20),
               SizedBox(width: 8),
               Text(
                 'Experience Overview',
@@ -666,13 +666,12 @@ class _ItineraryState extends State<Itinerary> {
           if (experience.tags != null && experience.tags!.isNotEmpty) ...[
             Row(
               children: [
-                Icon(Icons.tag, size: 18, color: Colors.blue[600]),
+                Icon(Icons.tag, size: 18, ),
                 SizedBox(width: 8),
                 Text(
                   'Tags:',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: Colors.blue[800],
                     fontSize: 14,
                   ),
                 ),
@@ -686,7 +685,7 @@ class _ItineraryState extends State<Itinerary> {
                         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.blue[300]!),
+                          border: Border.all(color: Colors.grey[400]!),
                         ),
                         child: Text(
                           entry.value.toString(),
@@ -714,10 +713,9 @@ class _ItineraryState extends State<Itinerary> {
         Container(
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.blue[100],
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 16, color: Colors.blue[700]),
+          child: Icon(icon, size: 16,),
         ),
         SizedBox(width: 12),
         Expanded(
@@ -811,23 +809,17 @@ class _ItineraryState extends State<Itinerary> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Colors.orange[100]!, Colors.amber[100]!],
-              ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.orange[300]!),
+              border: Border.all(color: Colors.grey[400]!),
             ),
             child: Row(
               children: [
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange[200],
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.calendar_today, size: 16, color: Colors.orange[800]),
+                  child: Icon(Icons.calendar_today, size: 16, ),
                 ),
                 SizedBox(width: 12),
                 Text(
@@ -835,7 +827,6 @@ class _ItineraryState extends State<Itinerary> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.orange[800],
                   ),
                 ),
                 Spacer(),
@@ -843,7 +834,6 @@ class _ItineraryState extends State<Itinerary> {
                   '${dayItems.length} activities',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.orange[700],
                     fontWeight: FontWeight.w500,
                   ),
                 ),

@@ -50,7 +50,20 @@ class IngestionService {
     print('🔍 [enqueueFilesForIngestion] Response data: ${response.data}');
     
     if (response.statusCode == 202) {
-      return response.data;
+      final data = response.data;
+      
+      // Validate response structure
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Invalid response format: expected Map but got ${data.runtimeType}');
+      }
+      
+      // Ensure results array exists
+      if (!data.containsKey('results')) {
+        print('⚠️ [enqueueFilesForIngestion] Warning: response missing results array');
+        data['results'] = [];
+      }
+      
+      return data;
     } else {
       throw Exception('Failed to enqueue files: ${response.statusCode}');
     }
@@ -113,9 +126,27 @@ class IngestionService {
   ) {
     final progressMap = <String, IngestionProgress>{};
     
+    // Safety check for empty results
+    if (results.isEmpty) {
+      print('⚠️ [initializeProgressFromResults] Results is empty');
+      return progressMap;
+    }
+    
     for (final result in results) {
       try {
         print('🔍 [initializeProgressFromResults] Processing result: $result');
+        
+        // Safety check for result type
+        if (result == null) {
+          print('⚠️ [initializeProgressFromResults] Skipping null result');
+          continue;
+        }
+        
+        if (result is! Map) {
+          print('⚠️ [initializeProgressFromResults] Skipping non-Map result: ${result.runtimeType}');
+          continue;
+        }
+        
         final status = result['status']?.toString();
         final fileId = result['fileId']?.toString();
         

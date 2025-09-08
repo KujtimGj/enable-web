@@ -12,7 +12,7 @@ Widget customForm(BuildContext context) {
     maxWidth: getWidth(context) * 0.3,
     child: TextFormField(
       decoration: InputDecoration(
-        hintText: 'Search products',
+        hintText: 'Search items',
         suffixIcon: Icon(Icons.search),
         border: OutlineInputBorder(
           borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
@@ -235,7 +235,11 @@ Widget bottomLeftBar() {
               child: SvgPicture.asset('assets/icons/asterisk-01.svg'),
             ),
             SizedBox(height: 10),
-            SvgPicture.asset('assets/icons/image-03.svg'),
+            GestureDetector(
+                onTap: (){
+                  context.go("/bookmarks");
+                  },
+                child: SvgPicture.asset('assets/icons/image-03.svg')),
             SizedBox(height: 10),
             GestureDetector(
               onTap: () {

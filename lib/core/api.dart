@@ -33,6 +33,9 @@ class ApiEndpoints {
 
   // File upload endpoints
   static const String uploadFileToAgency = '/upload/agency';
+
+  // Conversation endpoints
+  static const String getConversations = '/conversation/{agencyId}';
   
   // Batch ingestion endpoints
   static const String batchIngestionEnqueue = '/batch-ingestion/enqueue';
@@ -64,4 +67,7 @@ class ApiEndpoints {
 
   // OPENAI
   static const String chatWithAgentUrl="/agent/chat";
+  
+  // Search mode endpoints
+  static const String searchModeUrl="/search-mode";
 }

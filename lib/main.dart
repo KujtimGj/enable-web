@@ -1,5 +1,4 @@
 import 'package:enable_web/core/app_constants.dart';
-import 'package:enable_web/core/auth_utils.dart';
 import 'package:enable_web/features/providers/agencyProvider.dart';
 import 'package:enable_web/features/providers/agentProvider.dart';
 import 'package:enable_web/features/providers/dropbox_provider.dart';
@@ -7,6 +6,7 @@ import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:enable_web/features/providers/google_drive_provider.dart';
 import 'package:enable_web/features/providers/vicProvider.dart';
 import 'package:enable_web/features/providers/productProvider.dart';
+import 'package:enable_web/features/providers/bookmark_provider.dart';
 import 'package:enable_web/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +34,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_)=>ChatProvider()),
         ChangeNotifierProvider(create: (_)=>VICProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => BookmarkProvider()),
       ],
       child: Consumer2<UserProvider, AgencyProvider>(
         builder: (context, userProvider, agencyProvider, child) {
