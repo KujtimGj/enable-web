@@ -158,14 +158,11 @@ class BookmarkProvider extends ChangeNotifier {
       final userId = userData['userId'];
       final agencyId = userData['agencyId'];
       
-      print('BookmarkProvider: User data - userId: $userId, agencyId: $agencyId');
 
       if (userId == null || agencyId == null) {
-        print('BookmarkProvider: User not authenticated');
         throw Exception('User not authenticated');
       }
 
-      print('BookmarkProvider: Calling bookmark service...');
       final response = await _bookmarkService.createBookmark(
         userId: userId,
         agencyId: agencyId,
@@ -185,11 +182,9 @@ class BookmarkProvider extends ChangeNotifier {
         final key = '${itemType}_$itemId';
         _bookmarkStatusCache[key] = true;
         
-        print('BookmarkProvider: Bookmark created successfully');
         notifyListeners();
         return true;
       }
-      print('BookmarkProvider: No bookmark in response');
       return false;
     } catch (e) {
       _setError('Failed to create bookmark: $e');

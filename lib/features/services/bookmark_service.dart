@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BookmarkService {
-  static const String baseUrl = 'http://localhost:3000/api/v1'; // [[memory:4118946]]
+  static const String baseUrl = 'https://enable-be-production.up.railway.app/api/v1'; // [[memory:4118946]]
   
   // Get headers with authentication
   Future<Map<String, String>> _getHeaders() async {

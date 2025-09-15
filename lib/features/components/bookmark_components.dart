@@ -50,8 +50,6 @@ class _BookmarkButtonState extends State<BookmarkButton> {
   Future<void> _toggleBookmark() async {
     if (_isLoading) return;
 
-    print('BookmarkButton: _toggleBookmark called for ${widget.itemType}:${widget.itemId}');
-    
     setState(() {
       _isLoading = true;
     });

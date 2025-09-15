@@ -708,7 +708,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     );
                                   },
                                   controller: _chatController,
-
                                   decoration: InputDecoration(
                                     prefixIcon: Padding(
                                       padding: const EdgeInsets.all(8.0),
@@ -1831,28 +1830,6 @@ class ProductDetailModal extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 16),
-                          
-                          // Action buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    // Download functionality
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.grey[300],
-                                    foregroundColor: Colors.black,
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(5),
-                                    ),
-                                  ),
-                                  child: Text('Download'),
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
