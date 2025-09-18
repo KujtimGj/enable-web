@@ -1,14 +1,16 @@
-import 'package:enable_web/features/components/chat_icon.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/responsive_utils.dart';
+import '../../../core/dimensions.dart';
 import '../../components/responsive_scaffold.dart';
 import '../../components/widgets.dart';
 import '../../providers/vicProvider.dart';
 import '../../providers/agencyProvider.dart';
+import '../../providers/userProvider.dart';
 import '../../entities/vicModel.dart';
 
 class VICs extends StatefulWidget {
@@ -19,15 +21,74 @@ class VICs extends StatefulWidget {
 }
 
 class _VICsState extends State<VICs> {
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
+
+  String? _getAgencyId(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
+    
+    // Try to get agency ID from user first (if user is logged in)
+    if (userProvider.user?.agencyId != null && userProvider.user!.agencyId.isNotEmpty) {
+      return userProvider.user!.agencyId;
+    }
+    // Fallback to agency provider
+    else if (agencyProvider.agency?.id != null) {
+      return agencyProvider.agency!.id;
+    }
+    
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
     // Fetch VICs when the page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final vicProvider = Provider.of<VICProvider>(context, listen: false);
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
       final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
-      if (agencyProvider.agency?.id != null) {
-        vicProvider.fetchVICsByAgencyId(agencyProvider.agency!.id!);
+      
+      final agencyId = _getAgencyId(context);
+      
+      print('VICs Screen: Final agency ID: $agencyId');
+      print('VICs Screen: User: ${userProvider.user?.toJson()}');
+      print('VICs Screen: Agency: ${agencyProvider.agency?.toJson()}');
+      
+      if (agencyId != null) {
+        vicProvider.fetchVICsByAgencyId(agencyId);
+      } else {
+        print('VICs Screen: No agency ID available from either user or agency');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    
+    if (query.trim().isEmpty) {
+      // Clear search immediately
+      final vicProvider = Provider.of<VICProvider>(context, listen: false);
+      vicProvider.clearSearch();
+      return;
+    }
+
+    // Perform local search immediately for partial matches
+    final vicProvider = Provider.of<VICProvider>(context, listen: false);
+    vicProvider.performLocalSearch(query);
+
+    // Set up debounced server search
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      final agencyId = _getAgencyId(context);
+      if (agencyId != null) {
+        vicProvider.searchVICs(query, agencyId);
       }
     });
   }
@@ -52,7 +113,7 @@ class _VICsState extends State<VICs> {
           ),
         ),
         centerTitle: true,
-        title: customForm(context),
+        title: _customVICSearchForm(context),
         actions: [customButton((){context.go("/");})],
       ),
       body: ResponsiveContainer(
@@ -94,9 +155,9 @@ class _VICsState extends State<VICs> {
                               ElevatedButton(
                                 onPressed: () {
                                   final vicProvider = Provider.of<VICProvider>(context, listen: false);
-                                  final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
-                                  if (agencyProvider.agency?.id != null) {
-                                    vicProvider.fetchVICsByAgencyId(agencyProvider.agency!.id!);
+                                  final agencyId = _getAgencyId(context);
+                                  if (agencyId != null) {
+                                    vicProvider.fetchVICsByAgencyId(agencyId);
                                   }
                                 },
                                 child: Text('Retry'),
@@ -106,17 +167,55 @@ class _VICsState extends State<VICs> {
                         );
                       }
 
-                      final vics = vicProvider.vics;
-                      
+                      final vics = vicProvider.filteredVICs;
+                      if(vics.isNotEmpty){
+                        return Container(
+                          padding: EdgeInsets.all(10),
+                          child: RefreshIndicator(
+                            onRefresh: () async {
+                              final vicProvider = Provider.of<VICProvider>(context, listen: false);
+                              final agencyId = _getAgencyId(context);
+                              if (agencyId != null) {
+                                await vicProvider.fetchVICsByAgencyId(agencyId);
+                              }
+                            },
+                            child: GridView.builder(
+                              shrinkWrap: false,
+                              physics: AlwaysScrollableScrollPhysics(),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount:
+                                ResponsiveUtils.isMobile(context)
+                                    ? 1
+                                    : ResponsiveUtils.isTablet(context)
+                                    ? 2
+                                    : 3,
+                                childAspectRatio: 2,
+                                mainAxisSpacing: 20,
+                                crossAxisSpacing: 20,
+                              ),
+                              itemCount: vics.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                final vic = vics[index];
+                                return _buildVICCard(vic, index);
+                              },
+                            ),
+                          ),
+                        );
+                      }
                       if (vics.isEmpty) {
+                        final isSearching = vicProvider.searchQuery.isNotEmpty;
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.person_outline, size: 64, color: Colors.grey),
+                              Icon(
+                                isSearching ? Icons.search_off : Icons.person_outline, 
+                                size: 64, 
+                                color: Colors.grey
+                              ),
                               SizedBox(height: 16),
                               Text(
-                                'No VICs found',
+                                isSearching ? 'No VICs found' : 'No VICs found',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w500,
@@ -125,26 +224,38 @@ class _VICsState extends State<VICs> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'No VICs found for this agency',
+                                isSearching 
+                                  ? 'Try searching with different keywords'
+                                  : 'No VICs found for this agency',
                                 style: TextStyle(
                                   color: Colors.grey[500],
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              SizedBox(height: 16),
+                              if (isSearching) ...[
+                                SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    vicProvider.clearSearch();
+                                  },
+                                  child: Text('Clear Search'),
+                                ),
+                              ],
                             ],
                           ),
                         );
                       }
+
 
                       return Container(
                         padding: EdgeInsets.all(10),
                         child: RefreshIndicator(
                           onRefresh: () async {
                             final vicProvider = Provider.of<VICProvider>(context, listen: false);
-                            final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
-                            if (agencyProvider.agency?.id != null) {
-                              await vicProvider.fetchVICsByAgencyId(agencyProvider.agency!.id!);
+                            final agencyId = _getAgencyId(context);
+                            if (agencyId != null) {
+                              await vicProvider.fetchVICsByAgencyId(agencyId);
                             }
                           },
                           child: GridView.builder(
@@ -175,6 +286,43 @@ class _VICsState extends State<VICs> {
               ),
             ),
           ],
+        ), 
+      ),
+    );
+  }
+
+  Widget _customVICSearchForm(BuildContext context) {
+    return ResponsiveContainer(
+      maxWidth: getWidth(context) * 0.3,
+      child: TextFormField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        decoration: InputDecoration(
+          hintText: 'Search VICs...',
+          suffixIcon: Consumer<VICProvider>(
+            builder: (context, vicProvider, child) {
+              if (vicProvider.isSearching) {
+                return SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[600]!),
+                  ),
+                );
+              }
+              return Icon(Icons.search);
+            },
+          ),
+          border: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
         ),
       ),
     );
@@ -190,17 +338,8 @@ class _VICsState extends State<VICs> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            border: Border.all(width: 1, color: Colors.grey[300]!),
+            border: Border.all(width: 1, color: Colors.grey[500]!),
             borderRadius: BorderRadius.circular(10),
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: Offset(0, 1),
-              ),
-            ],
           ),
           child: Padding(
             padding: EdgeInsets.all(12),

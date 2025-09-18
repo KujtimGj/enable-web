@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import '../entities/agency.dart';
+import '../entities/user.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/foundation.dart';
 
@@ -58,6 +59,11 @@ class AgencyProvider extends ChangeNotifier {
   List<ServiceProviderModel> _serviceProviders = [];
   List<ExperienceModel> _experiences = [];
   bool _isLoadingData = false;
+  
+  // Search state
+  List<ExperienceModel> _filteredExperiences = [];
+  String _searchQuery = '';
+  bool _isSearching = false;
 
   AgencyModel? get agency => _agency;
   List<ProductModel> get products => _products;
@@ -78,6 +84,11 @@ class AgencyProvider extends ChangeNotifier {
   List<ServiceProviderModel> get serviceProviders => _serviceProviders;
   List<ExperienceModel> get experiences => _experiences;
   bool get isLoadingData => _isLoadingData;
+  
+  // Search getters
+  List<ExperienceModel> get filteredExperiences => _filteredExperiences.isEmpty ? _experiences : _filteredExperiences;
+  String get searchQuery => _searchQuery;
+  bool get isSearching => _isSearching;
 
   AgencyProvider() {
     _initializeAuth();
@@ -88,16 +99,42 @@ class AgencyProvider extends ChangeNotifier {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
       final agencyJson = prefs.getString('agency');
+      final userJson = prefs.getString('user');
       
 
-      if (token != null && agencyJson != null) {
+      if (token != null) {
         _token = token;
-        _agency = AgencyModel.fromJson(jsonDecode(agencyJson));
+        
+        // First try to get agency from stored agency data
+        if (agencyJson != null) {
+          _agency = AgencyModel.fromJson(jsonDecode(agencyJson));
+        } 
+        // If no agency data, try to create agency from user's agencyId
+        else if (userJson != null) {
+          final userMap = jsonDecode(userJson);
+          final user = UserModel.fromJson(userMap);
+          
+          if (user.agencyId.isNotEmpty) {
+            // Create a minimal agency object from user's agencyId
+            _agency = AgencyModel(
+              id: user.agencyId,
+              name: 'Agency', // Default name, could be fetched later
+              email: '',
+              password: '',
+              phone: '',
+              logoUrl: '',
+              externalKnowledgeBase: false,
+            );
+            print('AgencyProvider: Created agency from user agencyId: ${user.agencyId}');
+          }
+        }
+        
         _isAuthenticated = true;
       } else {
         _isAuthenticated = false;
       }
     } catch (e) {
+      print('AgencyProvider: Error in _initializeAuth: $e');
       _isAuthenticated = false;
     } finally {
       _isInitialized = true;
@@ -309,6 +346,75 @@ class AgencyProvider extends ChangeNotifier {
     } finally {
       _safeNotify(); // <-- single, safe notification after all updates
     }
+  }
+
+  Future<void> searchExperiences(String query, String agencyId) async {
+    if (query.trim().isEmpty) {
+      _filteredExperiences = [];
+      _searchQuery = '';
+      _isSearching = false;
+      notifyListeners();
+      return;
+    }
+
+    _isSearching = true;
+    _searchQuery = query;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _agencyController.searchExperiences(query, agencyId);
+      
+      result.fold(
+        (failure) {
+          _errorMessage = (failure as ServerFailure).message;
+          _filteredExperiences = [];
+        },
+        (experiencesJson) {
+          _filteredExperiences = experiencesJson.map((json) => ExperienceModel.fromJson(json)).toList();
+        },
+      );
+    } catch (e, stackTrace) {
+      print('AgencyProvider: Exception in searchExperiences: $e');
+      print('AgencyProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred during search: $e';
+      _filteredExperiences = [];
+    }
+
+    _isSearching = false;
+    notifyListeners();
+  }
+
+  void clearSearch() {
+    _filteredExperiences = [];
+    _searchQuery = '';
+    _isSearching = false;
+    notifyListeners();
+  }
+
+  void performLocalSearch(String query) {
+    if (query.trim().isEmpty) {
+      _filteredExperiences = [];
+      _searchQuery = '';
+      notifyListeners();
+      return;
+    }
+
+    _searchQuery = query;
+    
+    // Perform local filtering for partial matches
+    _filteredExperiences = _experiences.where((experience) {
+      final destination = (experience.destination ?? '').toLowerCase();
+      final country = (experience.country ?? '').toLowerCase();
+      final notes = (experience.notes ?? '').toLowerCase();
+      final queryLower = query.toLowerCase();
+      
+      return destination.contains(queryLower) || 
+             country.contains(queryLower) || 
+             notes.contains(queryLower);
+    }).toList();
+    
+    notifyListeners();
   }
 
 }

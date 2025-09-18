@@ -10,12 +10,22 @@ class ProductProvider extends ChangeNotifier {
   ProductModel? _selectedProduct;
   bool _isLoading = false;
   String? _errorMessage;
+  
+  // Search state
+  List<ProductModel> _filteredProducts = [];
+  String _searchQuery = '';
+  bool _isSearching = false;
 
   // Getters
   List<ProductModel> get products => _products;
   ProductModel? get selectedProduct => _selectedProduct;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  
+  // Search getters
+  List<ProductModel> get filteredProducts => _filteredProducts.isEmpty ? _products : _filteredProducts;
+  String get searchQuery => _searchQuery;
+  bool get isSearching => _isSearching;
 
   // Clear error message
   void clearError() {
@@ -179,6 +189,81 @@ class ProductProvider extends ChangeNotifier {
     _products.clear();
     _selectedProduct = null;
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<void> searchProducts(String query, String agencyId) async {
+    if (query.trim().isEmpty) {
+      _filteredProducts = [];
+      _searchQuery = '';
+      _isSearching = false;
+      notifyListeners();
+      return;
+    }
+
+    _isSearching = true;
+    _searchQuery = query;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _productController.searchProducts(query, agencyId);
+      
+      result.fold(
+        (failure) {
+          _errorMessage = (failure as ServerFailure).message;
+          _filteredProducts = [];
+        },
+        (productsJson) {
+          _filteredProducts = productsJson.map((json) => ProductModel.fromJson(json)).toList();
+        },
+      );
+    } catch (e, stackTrace) {
+      print('ProductProvider: Exception in searchProducts: $e');
+      print('ProductProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred during search: $e';
+      _filteredProducts = [];
+    }
+
+    _isSearching = false;
+    notifyListeners();
+  }
+
+  void clearSearch() {
+    _filteredProducts = [];
+    _searchQuery = '';
+    _isSearching = false;
+    notifyListeners();
+  }
+
+  void performLocalSearch(String query) {
+    if (query.trim().isEmpty) {
+      _filteredProducts = [];
+      _searchQuery = '';
+      notifyListeners();
+      return;
+    }
+
+    _searchQuery = query;
+    
+    // Perform local filtering for partial matches
+    _filteredProducts = _products.where((product) {
+      final name = product.name.toLowerCase();
+      final category = product.category.toLowerCase();
+      final description = (product.description ?? '').toLowerCase();
+      final country = (product.country ?? '').toLowerCase();
+      final city = (product.city ?? '').toLowerCase();
+      final providerName = (product.providerName ?? '').toLowerCase();
+      final queryLower = query.toLowerCase();
+      
+      return name.contains(queryLower) || 
+             category.contains(queryLower) || 
+             description.contains(queryLower) ||
+             country.contains(queryLower) ||
+             city.contains(queryLower) ||
+             providerName.contains(queryLower);
+    }).toList();
+    
     notifyListeners();
   }
 }

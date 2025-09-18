@@ -70,4 +70,11 @@ class ApiEndpoints {
   
   // Search mode endpoints
   static const String searchModeUrl="/search-mode";
+  
+  // Search endpoints
+  static const String searchExperiences = '/search/experiences';
+  static const String searchProducts = '/search/products';
+  static const String searchDatabase = '/search/database';
+  static const String searchItineraries = '/search/itineraries';
+  static const String searchVICs = '/search/vics';
 }

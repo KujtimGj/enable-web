@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:enable_web/core/responsive_utils.dart';
+import 'package:enable_web/core/dimensions.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +18,9 @@ class Products extends StatefulWidget {
 }
 
 class _ProductsState extends State<Products> {
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +45,36 @@ class _ProductsState extends State<Products> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    
+    if (query.trim().isEmpty) {
+      // Clear search immediately
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      productProvider.clearSearch();
+      return;
+    }
+
+    // Perform local search immediately for partial matches
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    productProvider.performLocalSearch(query);
+
+    // Set up debounced server search
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      if (userProvider.user?.agencyId != null) {
+        productProvider.searchProducts(query, userProvider.user!.agencyId);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ResponsiveScaffold(
       appBar: AppBar(
@@ -59,7 +94,7 @@ class _ProductsState extends State<Products> {
           ),
         ),
         centerTitle: true,
-        title: customForm(context),
+        title: _customProductSearchForm(context),
         actions: [
           IconButton(
             onPressed: _fetchProducts,
@@ -131,19 +166,22 @@ class _ProductsState extends State<Products> {
                       );
                     }
 
-                    if (productProvider.products.isEmpty) {
+                    final products = productProvider.filteredProducts;
+                    
+                    if (products.isEmpty) {
+                      final isSearching = productProvider.searchQuery.isNotEmpty;
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.inventory_2_outlined,
+                              isSearching ? Icons.search_off : Icons.inventory_2_outlined,
                               size: 64,
                               color: Colors.grey,
                             ),
                             SizedBox(height: 16),
                             Text(
-                              'No products found',
+                              isSearching ? 'No products found' : 'No products found',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -151,10 +189,22 @@ class _ProductsState extends State<Products> {
                             ),
                             SizedBox(height: 8),
                             Text(
-                              'Products will appear here once they are added to your agency.',
+                              isSearching 
+                                ? 'Try searching with different keywords'
+                                : 'Products will appear here once they are added to your agency.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.grey[600]),
                             ),
+                            if (isSearching) ...[
+                              SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  productProvider.clearSearch();
+                                },
+                                child: Text('Clear Search'),
+                              ),
+                            ],
                           ],
                         ),
                       );
@@ -174,9 +224,9 @@ class _ProductsState extends State<Products> {
                         mainAxisSpacing: 20,
                         crossAxisSpacing: 20,
                       ),
-                      itemCount: productProvider.products.length,
+                      itemCount: products.length,
                       itemBuilder: (BuildContext context, int index) {
-                        final product = productProvider.products[index];
+                        final product = products[index];
                         return _buildProductCard(product);
                       },
                     );
@@ -185,6 +235,43 @@ class _ProductsState extends State<Products> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _customProductSearchForm(BuildContext context) {
+    return ResponsiveContainer(
+      maxWidth: getWidth(context) * 0.3,
+      child: TextFormField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        decoration: InputDecoration(
+          hintText: 'Search products...',
+          suffixIcon: Consumer<ProductProvider>(
+            builder: (context, productProvider, child) {
+              if (productProvider.isSearching) {
+                return SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[600]!),
+                  ),
+                );
+              }
+              return Icon(Icons.search);
+            },
+          ),
+          border: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
         ),
       ),
     );

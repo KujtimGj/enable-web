@@ -1,11 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/dimensions.dart';
 import '../../../core/responsive_utils.dart';
 import '../../components/responsive_scaffold.dart';
 import '../../components/widgets.dart';
-import '../../providers/experienceProvider.dart';
 import '../../providers/agencyProvider.dart';
 import '../../providers/userProvider.dart';
 import '../../entities/experienceModel.dart';
@@ -17,6 +18,9 @@ class Itinerary extends StatefulWidget {
 }
 
 class _ItineraryState extends State<Itinerary> {
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +44,36 @@ class _ItineraryState extends State<Itinerary> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    
+    if (query.trim().isEmpty) {
+      // Clear search immediately
+      final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
+      agencyProvider.clearSearch();
+      return;
+    }
+
+    // Perform local search immediately for partial matches
+    final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
+    agencyProvider.performLocalSearch(query);
+
+    // Set up debounced server search
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      if (userProvider.user?.agencyId != null) {
+        agencyProvider.searchExperiences(query, userProvider.user!.agencyId);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ResponsiveScaffold(
       appBar: AppBar(
@@ -49,7 +83,7 @@ class _ItineraryState extends State<Itinerary> {
         leading: GestureDetector(
           onTap: () => context.go('/home'),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min, 
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.arrow_back, size: 20),
@@ -59,7 +93,7 @@ class _ItineraryState extends State<Itinerary> {
           ),
         ),
         centerTitle: true,
-        title: customForm(context),
+        title: customExperienceForm(context),
         actions: [customButton((){context.go("/home");})],
       ),
       body: ResponsiveContainer(
@@ -112,17 +146,22 @@ class _ItineraryState extends State<Itinerary> {
                     );
                   }
 
-                  final experiences = agencyProvider.experiences;
+                  final experiences = agencyProvider.filteredExperiences;
                   
                   if (experiences.isEmpty) {
+                    final isSearching = agencyProvider.searchQuery.isNotEmpty;
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.flight_takeoff, size: 64, color: Colors.grey),
+                          Icon(
+                            isSearching ? Icons.search_off : Icons.flight_takeoff, 
+                            size: 64, 
+                            color: Colors.grey
+                          ),
                           SizedBox(height: 16),
                           Text(
-                            'No itineraries found',
+                            isSearching ? 'No experiences found' : 'No itineraries found',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
@@ -131,12 +170,24 @@ class _ItineraryState extends State<Itinerary> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'Create your first experience to see itineraries here',
+                            isSearching 
+                              ? 'Try searching with different keywords'
+                              : 'Create your first experience to see itineraries here',
                             style: TextStyle(
                               color: Colors.grey[500],
                             ),
                             textAlign: TextAlign.center,
                           ),
+                          if (isSearching) ...[
+                            SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                agencyProvider.clearSearch();
+                              },
+                              child: Text('Clear Search'),
+                            ),
+                          ],
                         ],
                       ),
                     );
@@ -184,6 +235,45 @@ class _ItineraryState extends State<Itinerary> {
     );
   }
 
+  Widget customExperienceForm(BuildContext context) {
+    return ResponsiveContainer(
+      maxWidth: getWidth(context) * 0.3,
+      child: TextFormField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        decoration: InputDecoration(
+          hintText: 'Search experiences...',
+          suffixIcon: Consumer<AgencyProvider>(
+            builder: (context, agencyProvider, child) {
+              if (agencyProvider.isSearching) {
+                return SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[600]!),
+                    ),
+                  ),
+                );
+              }
+              return Icon(Icons.search);
+            },
+          ),
+          border: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(width: 0.5, color: Colors.grey[500]!),
+          ),
+        ),
+      ),
+    );
+  }
   Widget _buildItineraryCard(ExperienceModel experience, int index) {
     final hasItinerary = experience.itinerary != null && experience.itinerary!.isNotEmpty;
     final itineraryCount = hasItinerary ? experience.itinerary!.length : 0;
