@@ -111,6 +111,10 @@ class IngestionService {
           return 'Ingestion failed';
         case 'skipped':
           return 'File already ingested';
+        case 'ingested':
+          return 'Ingestion completed successfully';
+        case 'pending':
+          return 'Queued for processing';
         default:
           return 'Unknown status: $status';
       }
@@ -183,9 +187,13 @@ class IngestionService {
       try {
         final fileId = ingestion['fileId']?.toString();
         if (fileId != null && fileId.isNotEmpty && progressMap.containsKey(fileId)) {
+          // Use progressMessage from backend if available, otherwise fall back to default message
+          final progressMessage = ingestion['progressMessage']?.toString() ?? 
+                                 getStatusMessage(ingestion['status']?.toString());
+          
           progressMap[fileId] = progressMap[fileId]!.copyWith(
             status: ingestion['status']?.toString() ?? 'unknown',
-            message: getStatusMessage(ingestion['status']?.toString()),
+            message: progressMessage,
             startedAt: ingestion['startedAt'] != null ? DateTime.parse(ingestion['startedAt'].toString()) : null,
             finishedAt: ingestion['finishedAt'] != null ? DateTime.parse(ingestion['finishedAt'].toString()) : null,
             error: ingestion['error']?.toString(),
@@ -200,7 +208,10 @@ class IngestionService {
 
   static bool areAllIngestionsComplete(Map<String, IngestionProgress> progressMap) {
     return progressMap.values.every((progress) => 
-      progress.status == 'succeeded' || progress.status == 'failed' || progress.status == 'skipped'
+      progress.status == 'succeeded' || 
+      progress.status == 'failed' || 
+      progress.status == 'skipped' ||
+      progress.status == 'ingested'
     );
   }
 
