@@ -700,7 +700,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                     itemCount: _getCurrentItems().length,
                     itemBuilder: (context, index) {
                       // Sort items to show folders first, then files
-                      final sortedItems = List<GoogleDriveFile>.from(
+                      final sortedItems = List<GoogleDriveFile>.from( 
                         _getCurrentItems(),
                       )..sort((a, b) {
                         // Folders first
@@ -862,6 +862,9 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
           _state.setHasMoreItems(folderContents.pagination?.hasMore ?? false);
           _state.setLoadingMore(false);
           _state.clearSelection(); // Clear selection when changing pages
+          
+          // Check ingestion status for files on this page
+          _checkIngestionStatusForItemsAsync(folderContents.contents);
         },
       );
     } catch (e) {
@@ -959,7 +962,6 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
     }
   }
 
-  // Enqueue selected files for ingestion
   Future<void> _enqueueSelectedFilesForIngestion() async {
     if (_state.selectedItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

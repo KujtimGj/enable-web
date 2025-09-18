@@ -68,39 +68,9 @@ class FileItemWidget extends StatelessWidget {
                   ),
                 ),
               ),
-            // Show ingestion status badge
-            if (ingestionProgress != null) ...[
-              const SizedBox(width: 8),
-              _buildIngestionStatusBadge(ingestionProgress!),
-            ] else if (isIngested) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.green[600],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      size: 12,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Ingested',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            // Always show ingestion status badge for files
+            const SizedBox(width: 8),
+            _buildIngestionStatusBadge(),
           ],
         ),
         subtitle: Column(
@@ -117,33 +87,8 @@ class FileItemWidget extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-            // Show ingestion progress message
-            if (ingestionProgress != null && ingestionProgress!.message != null)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    ingestionProgress!.message!,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: _getStatusColor(ingestionProgress!.status),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  // Show elapsed time for running processes
-                  if (ingestionProgress!.status == 'running' || 
-                      ingestionProgress!.status == 'processing' || 
-                      ingestionProgress!.status == 'uploading')
-                    Text(
-                      _getElapsedTime(ingestionProgress!.startedAt),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                ],
-              ),
+            // Always show ingestion status information
+            _buildIngestionStatusInfo(),
             SelectableText(file.id),
           ],
         ),
@@ -162,47 +107,64 @@ class FileItemWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildIngestionStatusBadge(IngestionProgress progress) {
+  Widget _buildIngestionStatusBadge() {
     Color statusColor;
     IconData statusIcon;
     String statusText;
+    bool showProgressIndicator = false;
     
-    switch (progress.status) {
-      case 'queued':
-        statusColor = Colors.orange[600]!;
-        statusIcon = Icons.schedule;
-        statusText = 'Queued';
-        break;
-      case 'running':
-      case 'processing':
-        statusColor = Colors.blue[600]!;
-        statusIcon = Icons.sync;
-        statusText = 'Processing';
-        break;
-      case 'uploading':
-        statusColor = Colors.purple[600]!;
-        statusIcon = Icons.cloud_upload;
-        statusText = 'Uploading';
-        break;
-      case 'succeeded':
-        statusColor = Colors.green[600]!;
-        statusIcon = Icons.check_circle;
-        statusText = 'Completed';
-        break;
-      case 'failed':
-        statusColor = Colors.red[600]!;
-        statusIcon = Icons.error;
-        statusText = 'Failed';
-        break;
-      case 'skipped':
-        statusColor = Colors.grey[600]!;
-        statusIcon = Icons.skip_next;
-        statusText = 'Skipped';
-        break;
-      default:
-        statusColor = Colors.grey[600]!;
-        statusIcon = Icons.help;
-        statusText = 'Unknown';
+    // Determine status based on ingestion progress and ingested state
+    if (ingestionProgress != null) {
+      // File is currently being processed
+      switch (ingestionProgress!.status) {
+        case 'queued':
+          statusColor = Colors.orange[600]!;
+          statusIcon = Icons.schedule;
+          statusText = 'Queued';
+          break;
+        case 'running':
+        case 'processing':
+          statusColor = Colors.blue[600]!;
+          statusIcon = Icons.sync;
+          statusText = 'Processing';
+          showProgressIndicator = true;
+          break;
+        case 'uploading':
+          statusColor = Colors.purple[600]!;
+          statusIcon = Icons.cloud_upload;
+          statusText = 'Uploading';
+          showProgressIndicator = true;
+          break;
+        case 'succeeded':
+          statusColor = Colors.green[600]!;
+          statusIcon = Icons.check_circle;
+          statusText = 'Completed';
+          break;
+        case 'failed':
+          statusColor = Colors.red[600]!;
+          statusIcon = Icons.error;
+          statusText = 'Failed';
+          break;
+        case 'skipped':
+          statusColor = Colors.grey[600]!;
+          statusIcon = Icons.skip_next;
+          statusText = 'Skipped';
+          break;
+        default:
+          statusColor = Colors.grey[600]!;
+          statusIcon = Icons.help;
+          statusText = 'Unknown';
+      }
+    } else if (isIngested) {
+      // File has been ingested previously
+      statusColor = Colors.green[600]!;
+      statusIcon = Icons.check_circle;
+      statusText = 'Ingested';
+    } else {
+      // File is available for ingestion
+      statusColor = Colors.blue[100]!;
+      statusIcon = Icons.upload_outlined;
+      statusText = 'Available';
     }
 
     return Container(
@@ -214,7 +176,7 @@ class FileItemWidget extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (progress.status == 'running' || progress.status == 'processing' || progress.status == 'uploading')
+          if (showProgressIndicator)
             SizedBox(
               width: 12,
               height: 12,
@@ -275,6 +237,57 @@ class FileItemWidget extends StatelessWidget {
       return '${elapsed.inMinutes}m ${elapsed.inSeconds % 60}s elapsed';
     } else {
       return '${elapsed.inHours}h ${elapsed.inMinutes % 60}m elapsed';
+    }
+  }
+
+  Widget _buildIngestionStatusInfo() {
+    if (ingestionProgress != null && ingestionProgress!.message != null) {
+      // Show active progress information
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            ingestionProgress!.message!,
+            style: TextStyle(
+              fontSize: 11,
+              color: _getStatusColor(ingestionProgress!.status),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          // Show elapsed time for running processes
+          if (ingestionProgress!.status == 'running' || 
+              ingestionProgress!.status == 'processing' || 
+              ingestionProgress!.status == 'uploading')
+            Text(
+              _getElapsedTime(ingestionProgress!.startedAt),
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+        ],
+      );
+    } else if (isIngested) {
+      // Show ingested status
+      return Text(
+        'File has been processed and is available for AI queries',
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.green[700],
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    } else {
+      // Show available for ingestion status
+      return Text(
+        'Click to ingest this file for AI processing',
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.blue[700],
+          fontWeight: FontWeight.w500,
+        ),
+      );
     }
   }
 }

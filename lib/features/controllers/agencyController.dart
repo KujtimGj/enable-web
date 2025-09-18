@@ -284,4 +284,35 @@ class AgencyController {
       return Left(ServerFailure(message: 'Failed to get experiences: $e'));
     }
   }
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchExperiences(String query, String agencyId) async {
+    try {
+      final endpoint = ApiEndpoints.searchExperiences;
+      final body = {
+        'query': query,
+        'agencyId': agencyId,
+      };
+
+      final response = await _apiClient.post(endpoint, data: body);
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> experiences = data['data']['experiences'] ?? [];
+          return Right(experiences.cast<Map<String, dynamic>>());
+        } else {
+          return Left(ServerFailure(
+            message: data['message'] ?? 'Search failed',
+          ));
+        }
+      } else {
+        return Left(ServerFailure(
+          message: response.data['message'] ?? 'Failed to search experiences',
+        ));
+      }
+    } catch (e) {
+      print('AgencyController: Exception in searchExperiences: $e');
+      return Left(ServerFailure(message: 'Failed to search experiences: $e'));
+    }
+  }
 }

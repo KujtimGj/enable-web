@@ -100,4 +100,35 @@ class ProductController {
       return Left(ServerFailure(message: 'Failed to delete product: $e'));
     }
   }
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchProducts(String query, String agencyId) async {
+    try {
+      final endpoint = ApiEndpoints.searchProducts;
+      final body = {
+        'query': query,
+        'agencyId': agencyId,
+      };
+
+      final response = await _apiClient.post(endpoint, data: body);
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> products = data['data']['products'] ?? [];
+          return Right(products.cast<Map<String, dynamic>>());
+        } else {
+          return Left(ServerFailure(
+            message: data['message'] ?? 'Search failed',
+          ));
+        }
+      } else {
+        return Left(ServerFailure(
+          message: response.data['message'] ?? 'Failed to search products',
+        ));
+      }
+    } catch (e) {
+      print('ProductController: Exception in searchProducts: $e');
+      return Left(ServerFailure(message: 'Failed to search products: $e'));
+    }
+  }
 }
