@@ -110,6 +110,15 @@ class ProgressSectionWidget extends StatelessWidget {
                     color: Colors.grey[600],
                   ),
                 ),
+                if (progress.status == 'running' || progress.status == 'processing' || progress.status == 'uploading')
+                  Text(
+                    _getElapsedTime(progress.startedAt),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 if (progress.error != null) ...[
                   const SizedBox(height: 4),
                   Text(
@@ -136,5 +145,20 @@ class ProgressSectionWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getElapsedTime(DateTime? startedAt) {
+    if (startedAt == null) return '';
+    
+    final now = DateTime.now();
+    final elapsed = now.difference(startedAt);
+    
+    if (elapsed.inSeconds < 60) {
+      return '${elapsed.inSeconds}s elapsed';
+    } else if (elapsed.inMinutes < 60) {
+      return '${elapsed.inMinutes}m ${elapsed.inSeconds % 60}s elapsed';
+    } else {
+      return '${elapsed.inHours}h ${elapsed.inMinutes % 60}m elapsed';
+    }
   }
 }

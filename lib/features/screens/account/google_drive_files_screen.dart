@@ -52,7 +52,6 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
     _state.dispose();
     super.dispose();
   }
-
   Future<void> _loadGoogleDriveStructure() async {
     print('🔍 [loadGoogleDriveStructure] Loading Google Drive structure...');
     _state.setLoading(true);
@@ -72,8 +71,44 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         },
         (structure) {
           // Debug logging
+          print('🔍 [loadGoogleDriveStructure] Structure received:');
+          print('  - Total files: ${structure.totalFiles}');
+          print('  - Total folders: ${structure.totalFolders}');
+          print('  - Root folders: ${structure.rootFolders}');
+          print('  - Root files: ${structure.rootFiles}');
+          print('  - Root items count: ${structure.rootItems.length}');
+          print('  - Folder structure count: ${structure.folderStructure.length}');
+          
+          print('🔍 [loadGoogleDriveStructure] Root items:');
           structure.rootItems.forEach((item) {
+            print('  - ${item.name} (${item.isFolder ? 'FOLDER' : 'FILE'}) - ID: ${item.id}');
+            if (item.isFolder) {
+              print('    - Shared: ${item.isShared}');
+              print('    - Owner: ${item.owner}');
+              print('    - Parents: ${item.parents?.join(',') ?? 'none'}');
+            }
           });
+          
+          // Debug: Count shared vs owned items
+          final sharedFolders = structure.rootItems.where((item) => item.isFolder && item.isShared).toList();
+          final ownedFolders = structure.rootItems.where((item) => item.isFolder && !item.isShared).toList();
+          final sharedFiles = structure.rootItems.where((item) => !item.isFolder && item.isShared).toList();
+          final ownedFiles = structure.rootItems.where((item) => !item.isFolder && !item.isShared).toList();
+          
+          print('🔍 [loadGoogleDriveStructure] Breakdown:');
+          print('  - Shared folders: ${sharedFolders.length}');
+          print('  - Owned folders: ${ownedFolders.length}');
+          print('  - Shared files: ${sharedFiles.length}');
+          print('  - Owned files: ${ownedFiles.length}');
+          
+          if (sharedFolders.isNotEmpty) {
+            print('🔍 [loadGoogleDriveStructure] Shared folders found:');
+            sharedFolders.forEach((folder) {
+              print('    - ${folder.name} (owner: ${folder.owner})');
+            });
+          } else {
+            print('⚠️ [loadGoogleDriveStructure] No shared folders found in API response');
+          }
 
           _state.setStructure(structure);
           _state.setCurrentFolder(null);
@@ -93,6 +128,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
   }
 
   Future<void> _openFolder(String folderId, String folderName) async {
+    print('🔍 [openFolder] Opening folder: $folderName (ID: $folderId)');
     _state.setLoading(true);
     _state.setError(null);
     _state.setCurrentPage(1);
@@ -104,6 +140,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
       final result = await _controller.getFolderContents(folderId, page: _state.currentPage, pageSize: _state.pageSize);
       result.fold(
         (failure) {
+          print('❌ [openFolder] Failed to open folder: ${failure.toString()}');
           _state.setError(
             failure is ServerFailure
                 ? failure.message
@@ -112,6 +149,11 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
           _state.setLoading(false);
         },
         (folderContents) async {
+          print('✅ [openFolder] Successfully opened folder: ${folderContents.folder.name}');
+          print('🔍 [openFolder] Contents: ${folderContents.contents.length} items');
+          print('🔍 [openFolder] Total items: ${folderContents.totalItems}');
+          print('🔍 [openFolder] Pagination: ${folderContents.pagination?.currentPage}/${folderContents.pagination?.totalPages}');
+          
           // Set the current folder first so we can show the folder name
           _state.setCurrentFolder(folderContents);
           _state.setCurrentFolderId(folderId);
@@ -119,11 +161,9 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
           _state.setAllItems(List.from(folderContents.contents));
           _state.setHasMoreItems(folderContents.pagination?.hasMore ?? false);
 
-          // If there are more items and we don't have enough folders yet, load more pages
-          // until we have a reasonable number of folders or all items are loaded
-          if (_state.hasMoreItems && _state.allItems.where((item) => item.isFolder).length < 10) {
-            await _loadAllFoldersFirst(folderId);
-          }
+          // Disable automatic folder loading to allow proper pagination
+          // Users can navigate pages manually using pagination controls
+          print('🔍 [openFolder] Pagination enabled - users can navigate pages manually');
 
           _state.setLoading(false);
           // Clear selection when navigating to a new folder
@@ -134,47 +174,12 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         },
       );
     } catch (e) {
+      print('❌ [openFolder] Exception opening folder: $e');
       _state.setError('Failed to open folder: $e');
       _state.setLoading(false);
     }
   }
 
-  Future<void> _loadAllFoldersFirst(String folderId) async {
-    _state.setLoadingFolders(true);
-    
-    // Load additional pages until we have a good number of folders or all items are loaded
-    int maxPagesToLoad = 5; // Limit to prevent infinite loading
-    int pagesLoaded = 1;
-    
-    while (_state.hasMoreItems && pagesLoaded < maxPagesToLoad) {
-      try {
-        _state.setCurrentPage(_state.currentPage + 1);
-        final result = await _controller.getFolderContents(folderId, page: _state.currentPage, pageSize: _state.pageSize);
-        
-        result.fold(
-          (failure) {
-            // Stop loading on failure
-            _state.setHasMoreItems(false);
-          },
-          (folderContents) {
-            _state.addToAllItems(folderContents.contents);
-            _state.setHasMoreItems(folderContents.pagination?.hasMore ?? false);
-            pagesLoaded++;
-          },
-        );
-        
-        // Stop if we have enough folders or no more items
-        if (_state.allItems.where((item) => item.isFolder).length >= 20 || !_state.hasMoreItems) {
-          break;
-        }
-      } catch (e) {
-        print('Error loading additional pages: $e');
-        break;
-      }
-    }
-    
-    _state.setLoadingFolders(false);
-  }
 
   void _goToBreadcrumb(String folderId) {
     if (folderId == 'root') {
@@ -189,10 +194,35 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
 
   List<GoogleDriveFile> _getCurrentItems() {
     if (_state.currentFolder != null) {
-      final items = FileUtils.filterItems(_state.currentFolder!.contents, showSharedOnly: _state.showSharedOnly);
+      // Use the current folder's contents directly (this contains only the current page items)
+      final items = FileUtils.filterItems(_state.currentFolder!.contents, showSharedOnly: false);
+      
+      // Debug: Check for shared folders in current folder
+      final sharedFoldersInFolder = items.where((item) => item.isFolder && item.isShared).toList();
+      if (sharedFoldersInFolder.isNotEmpty) {
+        sharedFoldersInFolder.forEach((folder) {
+          print('    - ${folder.name} (owner: ${folder.owner})');
+        });
+      }
+      
       return items;
     } else if (_state.structure != null) {
-      final items = FileUtils.filterItems(_state.structure!.rootItems, showSharedOnly: _state.showSharedOnly);
+      
+      // Debug: Show what we have before filtering
+      final sharedFoldersBefore = _state.structure!.rootItems.where((item) => item.isFolder && item.isShared).toList();
+      final ownedFoldersBefore = _state.structure!.rootItems.where((item) => item.isFolder && !item.isShared).toList();
+
+      final items = FileUtils.filterItems(_state.structure!.rootItems, showSharedOnly: false);
+      
+      // Debug: Show what we have after filtering
+      final sharedFoldersAfter = items.where((item) => item.isFolder && item.isShared).toList();
+      final ownedFoldersAfter = items.where((item) => item.isFolder && !item.isShared).toList();
+      
+      if (sharedFoldersAfter.isNotEmpty) {
+        sharedFoldersAfter.forEach((folder) {
+          print('    - ${folder.name} (owner: ${folder.owner})');
+        });
+      }
       return items;
     }
     return [];
@@ -295,7 +325,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Showing folders and documents only (PDF, Word, TXT, PPTX)',
+                    'Showing all folders and documents (PDF, Word, TXT, PPTX)',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   if (_state.isLoadingFolders) ...[
@@ -483,6 +513,12 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                             });
 
                             final item = sortedItems[index];
+                            
+                            // Debug logging for shared folders
+                            if (item.isFolder && item.isShared) {
+                              print('🔍 [Folder ListView.builder] Rendering shared folder: ${item.name} (owner: ${item.owner})');
+                            }
+                            
                             if (item.isFolder) {
                               return FolderItemWidget(
                                 folder: item,
@@ -498,6 +534,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                                 onSelectionToggle: () => _state.toggleItemSelection(item.id),
                                 onIngest: () => _readFileContent(item.id),
                                 onOpenInBrowser: item.webViewLink != null ? () => _openFileInBrowser(item.webViewLink!) : null,
+                                ingestionProgress: _state.ingestionProgress[item.id],
                               );
                             }
                           },
@@ -524,8 +561,13 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Showing folders and documents only (PDF, Word, TXT, PPTX)',
+                    'Showing all folders and documents (PDF, Word, TXT, PPTX)',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Debug: Found ${_getCurrentItems().length} items (${_getCurrentItems().where((item) => item.isFolder).length} folders, ${_getCurrentItems().where((item) => !item.isFolder).length} files)',
+                    style: TextStyle(fontSize: 10, color: Colors.blue[600], fontStyle: FontStyle.italic),
                   ),
                 ],
               ),
@@ -627,15 +669,16 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ],
+                      ], 
                     ),
                   ),
                   const SizedBox(width: 16),
-                  IconButton(
+                  ElevatedButton.icon(
                     onPressed: _loadGoogleDriveStructure,
                     icon: const Icon(Icons.refresh),
-                    tooltip: 'Refresh',
+                    label: const Text('Refresh All Folders'),
                   ),
+
                 ],
               ),
             ],
@@ -668,6 +711,12 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                       });
 
                       final item = sortedItems[index];
+                      
+                      // Debug logging for shared folders
+                      if (item.isFolder && item.isShared) {
+                        print('🔍 [ListView.builder] Rendering shared folder: ${item.name} (owner: ${item.owner})');
+                      }
+                      
                       if (item.isFolder) {
                         return FolderItemWidget(
                           folder: item,
@@ -683,6 +732,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                           onSelectionToggle: () => _state.toggleItemSelection(item.id),
                           onIngest: () => _readFileContent(item.id),
                           onOpenInBrowser: item.webViewLink != null ? () => _openFileInBrowser(item.webViewLink!) : null,
+                          ingestionProgress: _state.ingestionProgress[item.id],
                         );
                       }
                     },
@@ -785,19 +835,29 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
   Future<void> _goToPage(int page) async {
     if (_state.currentFolderId == null || page == _state.currentPage) return;
     
+    print('🔍 [goToPage] Navigating to page $page');
     _state.setLoadingMore(true);
-    _state.setCurrentPage(page);
     
     try {
       final result = await _controller.getFolderContents(_state.currentFolderId!, page: page, pageSize: _state.pageSize);
       result.fold(
         (failure) {
+          print('❌ [goToPage] Failed to load page $page: ${failure.toString()}');
           _state.setLoadingMore(false);
-          _state.setCurrentPage(page - 1); // Revert on failure
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to load page $page: ${failure.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
         },
         (folderContents) {
+          print('✅ [goToPage] Successfully loaded page $page with ${folderContents.contents.length} items');
+          print('🔍 [goToPage] Pagination info: ${folderContents.pagination?.currentPage}/${folderContents.pagination?.totalPages}');
+          
           // Update the current folder with the new page data
           _state.setCurrentFolder(folderContents);
+          _state.setCurrentPage(page);
           _state.setAllItems(List.from(folderContents.contents));
           _state.setHasMoreItems(folderContents.pagination?.hasMore ?? false);
           _state.setLoadingMore(false);
@@ -805,8 +865,14 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         },
       );
     } catch (e) {
+      print('❌ [goToPage] Exception loading page $page: $e');
       _state.setLoadingMore(false);
-      _state.setCurrentPage(page - 1); // Revert on failure
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load page $page: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -817,7 +883,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
     try {
       _state.setTrackingProgress(true);
       
-      // Poll for progress every 2 seconds
+      // Poll for progress every 2 seconds for real-time updates (reduced frequency to avoid overwhelming the server)
       _progressTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
         try {
           _fetchIngestionProgress();
@@ -859,11 +925,34 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
       
       final recentIngestions = data['recentIngestions'] as List? ?? [];
       
+      // Update progress from response
       IngestionService.updateProgressFromResponse(_state.ingestionProgress, recentIngestions);
+      
+      // Update ingested files status for completed ingestions
+      for (final progress in _state.ingestionProgress.values) {
+        if (progress.status == 'succeeded' || progress.status == 'skipped') {
+          _state.markFileAsIngested(progress.fileId);
+        }
+      }
       
       // Check if all ingestions are complete
       if (IngestionService.areAllIngestionsComplete(_state.ingestionProgress)) {
         _stopProgressTracking();
+        
+        // Show completion message
+        final completedCount = _state.ingestionProgress.values.where((p) => p.status == 'succeeded').length;
+        final failedCount = _state.ingestionProgress.values.where((p) => p.status == 'failed').length;
+        final skippedCount = _state.ingestionProgress.values.where((p) => p.status == 'skipped').length;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Ingestion completed! $completedCount succeeded, $failedCount failed, $skippedCount skipped',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
     } catch (e) {
       print('Error fetching ingestion progress: $e');
@@ -965,13 +1054,6 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         errorMessage = 'Network error. Please check your connection.';
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$errorMessage: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
     } finally {
       _state.setLoading(false);
     }

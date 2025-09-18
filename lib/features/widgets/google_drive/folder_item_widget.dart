@@ -78,6 +78,11 @@ class FolderItemWidget extends StatelessWidget {
                 '${folder.itemCount} items',
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
+            if (folder.modifiedTime != null)
+              Text(
+                'Modified: ${FileUtils.formatDate(DateTime.parse(folder.modifiedTime!))}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
             if (folder.isShared)
               SelectableText(
                 'Owner: ${folder.owner} ${folder.id}',
@@ -86,11 +91,6 @@ class FolderItemWidget extends StatelessWidget {
                   color: Colors.grey[600],
                   fontWeight: FontWeight.w500,
                 ),
-              ),
-            if (folder.modifiedTime != null)
-              Text(
-                'Modified: ${FileUtils.formatDate(DateTime.parse(folder.modifiedTime!))}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
           ],
         ),

@@ -66,12 +66,20 @@ class FileUtils {
   static List<GoogleDriveFile> filterItems(List<GoogleDriveFile> items, {bool showSharedOnly = false}) {
     try {
       
+      // Count shared vs owned items
+      final sharedItems = items.where((item) => item.isShared).toList();
+      final ownedItems = items.where((item) => !item.isShared).toList();
+      final sharedFolders = items.where((item) => item.isFolder && item.isShared).toList();
+      final ownedFolders = items.where((item) => item.isFolder && !item.isShared).toList();
+      
+      
       final allowedItems = items.where((item) {
-        if (item.isFolder) return true;
+        if (item.isFolder) {
+          return true;
+        }
         
         final mimeType = item.mimeType.toLowerCase();
-        
-        return mimeType.contains('pdf') ||
+        final isAllowed = mimeType.contains('pdf') ||
                mimeType.contains('word') ||
                mimeType.contains('document') ||
                mimeType.contains('text/plain') ||
@@ -80,15 +88,24 @@ class FileUtils {
                mimeType.contains('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
                mimeType.contains('application/vnd.openxmlformats-officedocument.presentationml.presentation') ||
                mimeType.contains('application/pdf');
+        
+        return isAllowed;
       }).toList();
 
 
       if (showSharedOnly) {
         final beforeSharedFilter = allowedItems.length;
         final sharedItems = allowedItems.where((item) => item.isShared).toList();
+        final sharedFoldersInResult = sharedItems.where((item) => item.isFolder).toList();
+        final sharedFilesInResult = sharedItems.where((item) => !item.isFolder).toList();
+        
+        
+        // Log shared folder names for debugging
+        for (final folder in sharedFoldersInResult) {
+        }
+        
         return sharedItems;
       }
-
       return allowedItems;
     } catch (e) {
       return items; // Return original items if filtering fails
