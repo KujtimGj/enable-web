@@ -16,13 +16,9 @@ class VICController {
       print('VICController: Making request to endpoint: $endpoint');
       final response = await _apiClient.get(endpoint);
 
-      print('VICController: Response status: ${response.statusCode}');
-      print('VICController: Response data: ${response.data}');
-
       if (response.statusCode == 200) {
         final data = response.data;
-        print('VICController: Response data type: ${data.runtimeType}');
-        
+
         // Handle the response data properly for web
         List<dynamic> vicsList;
         if (data is List) {
@@ -37,7 +33,6 @@ class VICController {
         for (int i = 0; i < vicsList.length; i++) {
           try {
             final item = vicsList[i];
-            print('VICController: Processing item $i, type: ${item.runtimeType}');
             
             Map<String, dynamic> jsonMap;
             if (item is Map<String, dynamic>) {
@@ -56,7 +51,6 @@ class VICController {
           }
         }
         
-        print('VICController: Successfully parsed ${vics.length} VICs');
         return Right(vics);
       } else {
         print('VICController: Request failed with status ${response.statusCode}');

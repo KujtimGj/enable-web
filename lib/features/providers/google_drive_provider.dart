@@ -17,6 +17,15 @@ class GoogleDriveProvider extends ChangeNotifier {
   DateTime? _lastSync;
   String? _nextPageToken;
   bool _hasMoreFiles = false;
+  
+  // Connection monitoring
+  Timer? _connectionMonitorTimer;
+  bool _isMonitoringConnection = false;
+  DateTime? _lastConnectionCheck;
+  String? _connectionStatusMessage;
+  bool _hasConnectionIssues = false;
+  bool _tokenExpired = false;
+  int _consecutiveFailures = 0;
 
   // Getters
   bool get isLoading => _isLoading;
@@ -25,6 +34,14 @@ class GoogleDriveProvider extends ChangeNotifier {
   String? get error => _error;
   DateTime? get lastSync => _lastSync;
   bool get hasMoreFiles => _hasMoreFiles;
+  
+  // Connection monitoring getters
+  bool get isMonitoringConnection => _isMonitoringConnection;
+  DateTime? get lastConnectionCheck => _lastConnectionCheck;
+  String? get connectionStatusMessage => _connectionStatusMessage;
+  bool get hasConnectionIssues => _hasConnectionIssues;
+  bool get tokenExpired => _tokenExpired;
+  int get consecutiveFailures => _consecutiveFailures;
 
   GoogleDriveProvider() {
     _initializeGoogleDrive();
@@ -32,31 +49,77 @@ class GoogleDriveProvider extends ChangeNotifier {
 
   Future<void> _initializeGoogleDrive() async {
     await checkConnectionStatus();
+    // Start monitoring connection status
+    startConnectionMonitoring();
   }
 
   /// Check Google Drive connection status
-  Future<void> checkConnectionStatus() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  Future<void> checkConnectionStatus({bool isBackgroundCheck = false}) async {
+    if (!isBackgroundCheck) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     final result = await _googleDriveController.getGoogleDriveStatus();
     
     result.fold(
       (failure) {
+        final wasConnected = _isConnected;
+        _consecutiveFailures++;
+        
+        // Check if this is a token expiration error
+        final failureMessage = _getFailureMessage(failure);
+        final isTokenExpired = failureMessage.toLowerCase().contains('token') || 
+                              failureMessage.toLowerCase().contains('expired') ||
+                              failureMessage.toLowerCase().contains('unauthorized') ||
+                              failureMessage.toLowerCase().contains('401');
+        
         setState(() {
           _isConnected = false;
-          _error = _getFailureMessage(failure);
-          _isLoading = false;
+          _hasConnectionIssues = true;
+          _tokenExpired = isTokenExpired;
+          _connectionStatusMessage = isTokenExpired 
+              ? 'Google Drive token expired. Please reconnect.'
+              : failureMessage;
+          _lastConnectionCheck = DateTime.now();
+          if (!isBackgroundCheck) {
+            _error = failureMessage;
+            _isLoading = false;
+          }
         });
+        
+        // Log connection loss
+        if (wasConnected && !_isConnected) {
+          print('[GoogleDriveProvider] Connection lost: $failureMessage');
+          if (isTokenExpired) {
+            print('[GoogleDriveProvider] Token expired - user needs to reconnect');
+          }
+        }
       },
       (status) {
+        final wasConnected = _isConnected;
+        _consecutiveFailures = 0; // Reset failure count on success
+        
         setState(() {
           _isConnected = status.isConnected;
           _lastSync = status.lastSync;
-          _isLoading = false;
+          _lastConnectionCheck = DateTime.now();
+          _hasConnectionIssues = false;
+          _tokenExpired = false;
+          _connectionStatusMessage = status.isConnected 
+              ? 'Connected to Google Drive' 
+              : 'Not connected to Google Drive';
+          if (!isBackgroundCheck) {
+            _isLoading = false;
+          }
         });
+        
+        // Log connection status changes
+        if (wasConnected != _isConnected) {
+          print('[GoogleDriveProvider] Connection status changed: ${_isConnected ? "Connected" : "Disconnected"}');
+        }
       },
     );
   }
@@ -83,13 +146,13 @@ class GoogleDriveProvider extends ChangeNotifier {
           if (kIsWeb) {
             try {
               // Open OAuth URL in a popup window
-              final popup = html.window.open(
-                authUrl,
-                'google_oauth',
-                'width=500,height=600,scrollbars=yes,resizable=yes'
-              );
-              
-              if (popup == null) {
+              try {
+                html.window.open(
+                  authUrl,
+                  'google_oauth',
+                  'width=500,height=600,scrollbars=yes,resizable=yes'
+                );
+              } catch (e) {
                 setState(() {
                   _error = 'Popup blocked! Please allow popups for this site and try again.';
                   _isLoading = false;
@@ -329,7 +392,7 @@ class GoogleDriveProvider extends ChangeNotifier {
     try {
       // For now, we'll use a simple HTTP call to the batch ingestion endpoint
       // This will be implemented properly when we add the full batch ingestion controller
-      final result = await _googleDriveController.readGoogleDriveFile(fileId);
+      await _googleDriveController.readGoogleDriveFile(fileId);
       
       setState(() {
         _isLoading = false;
@@ -396,6 +459,63 @@ class GoogleDriveProvider extends ChangeNotifier {
   void setState(VoidCallback fn) {
     fn();
     notifyListeners();
+  }
+
+  /// Start monitoring connection status periodically
+  void startConnectionMonitoring({Duration interval = const Duration(seconds: 30)}) {
+    if (_isMonitoringConnection) {
+      print('[GoogleDriveProvider] Connection monitoring already active');
+      return;
+    }
+    
+    print('[GoogleDriveProvider] Starting connection monitoring with ${interval.inSeconds}s interval');
+    _isMonitoringConnection = true;
+    
+    _connectionMonitorTimer = Timer.periodic(interval, (timer) async {
+      try {
+        await checkConnectionStatus(isBackgroundCheck: true);
+      } catch (e) {
+        print('[GoogleDriveProvider] Error during background connection check: $e');
+      }
+    });
+  }
+  
+  /// Stop monitoring connection status
+  void stopConnectionMonitoring() {
+    if (!_isMonitoringConnection) {
+      return;
+    }
+    
+    print('[GoogleDriveProvider] Stopping connection monitoring');
+    _connectionMonitorTimer?.cancel();
+    _connectionMonitorTimer = null;
+    _isMonitoringConnection = false;
+  }
+  
+  /// Force a connection status check
+  Future<void> forceConnectionCheck() async {
+    print('[GoogleDriveProvider] Force checking connection status');
+    await checkConnectionStatus(isBackgroundCheck: false);
+  }
+  
+  /// Get connection status summary
+  Map<String, dynamic> getConnectionStatusSummary() {
+    return {
+      'isConnected': _isConnected,
+      'isMonitoring': _isMonitoringConnection,
+      'lastCheck': _lastConnectionCheck?.toIso8601String(),
+      'hasIssues': _hasConnectionIssues,
+      'tokenExpired': _tokenExpired,
+      'consecutiveFailures': _consecutiveFailures,
+      'statusMessage': _connectionStatusMessage,
+      'lastSync': _lastSync?.toIso8601String(),
+    };
+  }
+
+  @override
+  void dispose() {
+    stopConnectionMonitoring();
+    super.dispose();
   }
 
   /// Get failure message

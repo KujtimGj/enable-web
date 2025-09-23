@@ -13,7 +13,6 @@ class AuthUtils {
       
       return userProvider.isAuthenticated || agencyProvider.isAuthenticated;
     } catch (e) {
-      print('Error checking authentication status: $e');
       return false;
     }
   }
@@ -30,7 +29,6 @@ class AuthUtils {
       }
       return null;
     } catch (e) {
-      print('Error getting user type: $e');
       return null;
     }
   }

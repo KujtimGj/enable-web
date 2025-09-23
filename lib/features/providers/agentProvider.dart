@@ -1,10 +1,13 @@
 import 'package:enable_web/features/controllers/searchModeController.dart';
 import 'package:enable_web/features/controllers/conversationController.dart';
+import 'package:enable_web/features/controllers/intelligentAgentController.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class ChatProvider extends ChangeNotifier {
   final SearchModeController _searchModeController = SearchModeController();
   final ConversationController _conversationController = ConversationController();
+  final IntelligentAgentController _intelligentAgentController = IntelligentAgentController();
 
   String? _message;
   List<dynamic> _externalProducts = [];
@@ -64,6 +67,92 @@ class ChatProvider extends ChangeNotifier {
       clientId: clientId,
       existingConversationId: existingConversationId,
     );
+  }
+
+  Future<void> sendIntelligentQuery({
+    required String userId,
+    required String agencyId,
+    required String query,
+    required String searchMode,
+    String? clientId,
+    String? existingConversationId,
+    BuildContext? context,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    print("🧠 Sending intelligent query to backend");
+    print("User ID: $userId");
+    print("Agency ID: $agencyId");
+    print("Query: $query");
+
+    final result = await _intelligentAgentController.sendIntelligentQuery(
+      userId: userId,
+      agencyId: agencyId,
+      query: query,
+      searchMode: searchMode,
+      clientId: clientId,
+      existingConversationId: existingConversationId,
+      context: context,
+    );
+
+    result.fold(
+      (failure) {
+        print("❌ Intelligent agent error: $failure");
+        _error = failure.toString();
+        _message = null;
+        _externalProducts = [];
+        _structuredSummary = null;
+      },
+      (data) {
+        print("✅ Intelligent agent success: ${data['success']}");
+        
+        if (data['success'] == true && data.containsKey('data')) {
+          final responseData = data['data'];
+          _message = responseData['detailedResponse'] ?? 'Results ready!';
+          
+          // Store conversation ID if provided
+          if (responseData.containsKey('conversationId')) {
+            _conversationId = responseData['conversationId'];
+          }
+          
+          // Handle search results
+          if (responseData.containsKey('searchResults')) {
+            final searchResults = responseData['searchResults'];
+            _externalProducts = searchResults['externalProducts'] ?? [];
+            
+            // Include products and experiences if available
+            final products = searchResults['products'] ?? [];
+            final experiences = searchResults['experiences'] ?? [];
+            final clients = searchResults['clients'] ?? [];
+            
+            // Combine all results for display
+            _externalProducts = [..._externalProducts, ...products, ...experiences, ...clients];
+          } else {
+            _externalProducts = [];
+          }
+          
+          // Update messages
+          _messages.removeWhere((m) => m['role'] == 'agent' && m['content'] == 'Finding items for you...');
+          _messages.add({
+            'role': 'agent',
+            'content': responseData['detailedResponse'] ?? 'Here are the results. Let me know if you want more suggestions or refinements.',
+          });
+          
+          _structuredSummary = responseData['detailedResponse'];
+        } else {
+          _message = data['message'] ?? 'No results found';
+          _externalProducts = [];
+          _structuredSummary = null;
+        }
+        
+        print("External products: $_externalProducts");
+      },
+    );
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> sendQueryWithMode({

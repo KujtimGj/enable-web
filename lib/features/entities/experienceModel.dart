@@ -163,6 +163,7 @@ class ExperienceModel {
   final double? totalSpent;
   final List<double>? embedding;
   final List<ImageModel>? images;
+  final String? sourceFileName;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -186,6 +187,7 @@ class ExperienceModel {
     this.totalSpent,
     this.embedding,
     this.images,
+    this.sourceFileName,
     this.createdAt,
     this.updatedAt,
   });
@@ -210,6 +212,7 @@ class ExperienceModel {
     double? totalSpent,
     List<double>? embedding,
     List<ImageModel>? images,
+    String? sourceFileName,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -233,6 +236,7 @@ class ExperienceModel {
       totalSpent: totalSpent ?? this.totalSpent,
       embedding: embedding ?? this.embedding,
       images: images ?? this.images,
+      sourceFileName: sourceFileName ?? this.sourceFileName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -259,6 +263,7 @@ class ExperienceModel {
       'totalSpent': totalSpent,
       'embedding': embedding,
       'images': images?.map((image) => image.toJson()).toList(),
+      'sourceFileName': sourceFileName,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -303,6 +308,7 @@ class ExperienceModel {
                 .map((item) => ImageModel.fromJson(item))
                 .toList()
             : null,
+        sourceFileName: json['sourceFileName'],
         createdAt: json['createdAt'] != null 
             ? DateTime.parse(json['createdAt']) 
             : null,

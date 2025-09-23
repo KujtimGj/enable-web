@@ -20,6 +20,7 @@ class ProductModel {
   final dynamic features; // Changed to dynamic to handle both array and object
   final List<double>? embedding; // Made nullable since it might not always be present
   final String agencyId;
+  final String? sourceFileName;
   final DateTime? createdAt; // Made nullable
   final DateTime? updatedAt; // Made nullable
 
@@ -45,6 +46,7 @@ class ProductModel {
     this.features,
     this.embedding,
     required this.agencyId,
+    this.sourceFileName,
     this.createdAt,
     this.updatedAt,
   });
@@ -72,6 +74,7 @@ class ProductModel {
       features: json['features'], // Keep as dynamic to handle both types
       embedding: _parseEmbedding(json['embedding']),
       agencyId: json['agencyId']?.toString() ?? '',
+      sourceFileName: json['sourceFileName']?.toString(),
       createdAt: _parseDateTime(json['createdAt']),
       updatedAt: _parseDateTime(json['updatedAt']),
     );
@@ -166,6 +169,7 @@ class ProductModel {
       'features': features,
       'embedding': embedding,
       'agencyId': agencyId,
+      'sourceFileName': sourceFileName,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };

@@ -28,10 +28,6 @@ class ApiClient {
         },
         onError: (DioException e, handler) {
           print("Dio Error: ${e.message}");
-          print("Dio Error Status: ${e.response?.statusCode}");
-          print("Dio Error Data: ${e.response?.data}");
-          print("Dio Error Headers: ${e.response?.headers}");
-          
           if (e.response?.statusCode == 401) {
             _handleTokenExpiration();
           }
