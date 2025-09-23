@@ -113,7 +113,7 @@ class VICMentionUtils {
       return null;
     }
   }
-  
+
   /// Formats preferences for display
   static String formatPreferencesForDisplay(List<String> preferences) {
     if (preferences.isEmpty) return '';

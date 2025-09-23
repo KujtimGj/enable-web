@@ -29,6 +29,7 @@ class _VICMentionFieldState extends State<VICMentionField> {
   bool _showVicDropdown = false;
   List<VICModel> _filteredVics = [];
   int _selectedVicIndex = 0;
+  OverlayEntry? _overlayEntry;
 
   @override
   void initState() {
@@ -74,7 +75,128 @@ class _VICMentionFieldState extends State<VICMentionField> {
   @override
   void dispose() {
     widget.controller.removeListener(_onTextChanged);
+    _removeOverlay();
     super.dispose();
+  }
+
+  void _showOverlay() {
+    if (_overlayEntry != null) return;
+    
+    final overlay = Overlay.of(context);
+    final renderBox = context.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+    final offset = renderBox.localToGlobal(Offset.zero);
+    
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: offset.dx,
+        top: offset.dy - 260,
+        width: size.width,
+        child: Material(
+          color: Color(0xff181616),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: 250,
+              minHeight: 50,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[500]!, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: Offset(0, 5),
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: _filteredVics.isEmpty
+                ? Container(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Loading VICs...',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: ClampingScrollPhysics(),
+                    itemCount: _filteredVics.length,
+                    itemBuilder: (context, index) {
+                      final vic = _filteredVics[index];
+                      final isSelected = index == _selectedVicIndex;
+
+                      return InkWell(
+                        onTap: () {
+                          print('VICMentionField: VIC card clicked for: ${vic.fullName}');
+                          _selectVic(vic);
+                        },
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? Color(0xff181616) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xff292525),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      (vic.fullName ?? 'V').substring(0, 1).toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        vic.fullName ?? 'Unknown VIC',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      ),
+    );
+    
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
   }
 
   void _onTextChanged() {
@@ -95,12 +217,14 @@ class _VICMentionFieldState extends State<VICMentionField> {
       });
       
       _filterVics(query);
+      _showOverlay();
     } else {
       print('VICMentionField: No mention found, hiding dropdown');
       setState(() {
         _showVicDropdown = false;
         _selectedVicIndex = 0;
       });
+      _removeOverlay();
     }
   }
 
@@ -180,8 +304,11 @@ class _VICMentionFieldState extends State<VICMentionField> {
   }
 
   void _selectVic(VICModel vic) {
+    print('VICMentionField: _selectVic called for: ${vic.fullName}');
     final text = widget.controller.text;
     final currentCursorPosition = widget.controller.selection.baseOffset;
+    
+    print('VICMentionField: Current text: "$text", cursor at: $currentCursorPosition');
     
     // Try to find mention at different positions if current position doesn't work
     final mentionMatch = _findMentionAtCursor(text, currentCursorPosition);
@@ -201,6 +328,7 @@ class _VICMentionFieldState extends State<VICMentionField> {
         _showVicDropdown = false;
         _selectedVicIndex = 0;
       });
+      _removeOverlay();
       return;
     }
     
@@ -222,10 +350,15 @@ class _VICMentionFieldState extends State<VICMentionField> {
     print('VICMentionField: Replacing "${text.substring(start, end)}" with "$vicMention"');
     print('VICMentionField: New text: "$newText"');
     
+    // Highlight the VIC name by selecting it
+    final vicNameStart = start; // Start of @
+    final vicNameEnd = start + vicMention.length; // End of VIC name
+    
     widget.controller.value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(
-        offset: start + vicMention.length,
+      selection: TextSelection(
+        baseOffset: vicNameStart,
+        extentOffset: vicNameEnd,
       ),
     );
     
@@ -233,6 +366,7 @@ class _VICMentionFieldState extends State<VICMentionField> {
       _showVicDropdown = false;
       _selectedVicIndex = 0;
     });
+    _removeOverlay();
   }
 
   void _handleKeyEvent(RawKeyEvent event) {
@@ -256,6 +390,7 @@ class _VICMentionFieldState extends State<VICMentionField> {
           _showVicDropdown = false;
           _selectedVicIndex = 0;
         });
+        _removeOverlay();
       }
     }
   }
@@ -295,118 +430,6 @@ class _VICMentionFieldState extends State<VICMentionField> {
                 ),
               ),
             ),
-            // VIC dropdown that appears when @ is typed
-            if (_showVicDropdown)
-              Positioned(
-                bottom: 70,
-                left: 0,
-                right: 0,
-                child: Container(
-                  width: double.infinity,
-                  constraints: BoxConstraints(
-                    maxHeight: 250,
-                    minHeight: 50,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[500]!, width: 1),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: Offset(0, 5),
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: _filteredVics.isEmpty
-                        ? Container(
-                            padding: EdgeInsets.all(16),
-                            child: Text(
-                              'Loading VICs...',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            physics: ClampingScrollPhysics(),
-                            itemCount: _filteredVics.length,
-                            itemBuilder: (context, index) {
-                              final vic = _filteredVics[index];
-                              final isSelected = index == _selectedVicIndex;
-
-                              print('VICMentionField: Building VIC item $index: ${vic.fullName}');
-
-                              return GestureDetector(
-                                onTap: () {
-                                  print('VICMentionField: VIC card tapped for: ${vic.fullName}');
-                                  _selectVic(vic);
-                                },
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: InkWell(
-                                    onTap: () {
-                                      print('VICMentionField: VIC card clicked for: ${vic.fullName}');
-                                      _selectVic(vic);
-                                    },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? Color(0xff181616) : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: Color(0xff292525),
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            (vic.fullName ?? 'V').substring(0, 1).toUpperCase(),
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              vic.fullName ?? 'Unknown VIC',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
