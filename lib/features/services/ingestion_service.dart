@@ -249,14 +249,64 @@ class IngestionService {
       if (data['ingestionStatus'] is Map) {
         final statusMap = data['ingestionStatus'] as Map<String, dynamic>;
         statusMap.forEach((fileId, status) {
-          // A file is considered ingested if its status is 'ingested' or 'succeeded'
-          ingestionStatus[fileId] = status == 'ingested' || status == 'succeeded';
+          // A file is considered ingested ONLY if its status is 'ingested' (successfully completed)
+          // Failed files can be retried, so they should return false
+          ingestionStatus[fileId] = status == 'ingested';
         });
       }
       
       return ingestionStatus;
     } else {
       throw Exception('Failed to check ingestion status: ${response.statusCode}');
+    }
+  }
+
+  /// Check detailed file status including failed files that can be retried
+  static Future<Map<String, Map<String, dynamic>>> checkDetailedFileStatus({
+    required BuildContext context,
+    required List<String> fileIds,
+    required String agencyId,
+  }) async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final currentUser = userProvider.user;
+    
+    if (currentUser?.agencyId == null) {
+      throw Exception('Agency ID not found');
+    }
+
+    if (!userProvider.isAuthenticated || userProvider.token == null) {
+      throw Exception('Authentication required. Please log in again.');
+    }
+
+    final apiClient = ApiClient();
+    final response = await apiClient.post(
+      ApiEndpoints.batchIngestionCheckFiles,
+      data: {
+        'fileIds': fileIds,
+        'agencyId': agencyId,
+      },
+    );
+    
+    if (response.statusCode == 200) {
+      final data = response.data;
+      final Map<String, Map<String, dynamic>> detailedStatus = {};
+      
+      // Parse the response to create a detailed map of fileId -> status info
+      if (data['ingestionStatus'] is Map) {
+        final statusMap = data['ingestionStatus'] as Map<String, dynamic>;
+        statusMap.forEach((fileId, status) {
+          detailedStatus[fileId] = {
+            'status': status,
+            'isIngested': status == 'ingested',
+            'canRetry': status == 'failed' || status == 'queued' || status == 'processing',
+            'isFailed': status == 'failed',
+          };
+        });
+      }
+      
+      return detailedStatus;
+    } else {
+      throw Exception('Failed to check detailed file status: ${response.statusCode}');
     }
   }
 }

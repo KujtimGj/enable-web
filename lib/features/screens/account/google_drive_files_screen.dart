@@ -473,13 +473,28 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                         ),
                         const SizedBox(width: 8),
                         Icon(
+                          Icons.error,
+                          size: 14,
+                          color: Colors.red[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_getCurrentItems().where((item) => !item.isFolder && _state.failedFiles.contains(item.id)).length} failed',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.red[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
                           Icons.upload_outlined,
                           size: 14,
                           color: Colors.orange[600],
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${_getCurrentItems().where((item) => !item.isFolder && !_state.ingestedFiles.contains(item.id)).length} available',
+                          '${_getCurrentItems().where((item) => !item.isFolder && !_state.ingestedFiles.contains(item.id) && !_state.failedFiles.contains(item.id)).length} available',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.orange[700],
@@ -556,6 +571,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                                 file: item,
                                 isSelected: _state.selectedItems.contains(item.id),
                                 isIngested: _state.ingestedFiles.contains(item.id),
+                                isFailed: _state.failedFiles.contains(item.id),
                                 onSelectionToggle: () => _state.toggleItemSelection(item.id),
                                 onIngest: () => _readFileContent(item.id),
                                 onOpenInBrowser: item.webViewLink != null ? () => _openFileInBrowser(item.webViewLink!) : null,
@@ -681,13 +697,28 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                         ),
                         const SizedBox(width: 8),
                         Icon(
+                          Icons.error,
+                          size: 14,
+                          color: Colors.red[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_getCurrentItems().where((item) => !item.isFolder && _state.failedFiles.contains(item.id)).length} failed',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.red[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
                           Icons.upload_outlined,
                           size: 14,
                           color: Colors.orange[600],
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${_getCurrentItems().where((item) => !item.isFolder && !_state.ingestedFiles.contains(item.id)).length} available',
+                          '${_getCurrentItems().where((item) => !item.isFolder && !_state.ingestedFiles.contains(item.id) && !_state.failedFiles.contains(item.id)).length} available',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.orange[700],
@@ -749,6 +780,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
                           file: item,
                           isSelected: _state.selectedItems.contains(item.id),
                           isIngested: _state.ingestedFiles.contains(item.id),
+                          isFailed: _state.failedFiles.contains(item.id),
                           onSelectionToggle: () => _state.toggleItemSelection(item.id),
                           onIngest: () => _readFileContent(item.id),
                           onOpenInBrowser: item.webViewLink != null ? () => _openFileInBrowser(item.webViewLink!) : null,
@@ -1045,17 +1077,19 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
       // Start progress tracking
       _startProgressTracking();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Successfully enqueued $queuedCount files for ingestion. '
-            '${skippedCount > 0 ? '$skippedCount skipped (already ingested). ' : ''}'
-            '${errorCount > 0 ? '$errorCount errors occurred.' : ''}'
+      // Only show snackbar if there are queued files or errors
+      if (queuedCount > 0 || errorCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Successfully enqueued $queuedCount files for ingestion. '
+              '${errorCount > 0 ? '$errorCount errors occurred.' : ''}'
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
           ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 5),
-        ),
-      );
+        );
+      }
     } catch (e) {
       print('❌ [enqueueSelectedFiles] Error: $e');
       
@@ -1144,15 +1178,26 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
           final batch = batches[i];
           
           try {
-            // Check ingestion status for this batch
-            final ingestionStatus = await IngestionService.checkFilesIngestionStatus(
+            // Check detailed ingestion status for this batch
+            final detailedStatus = await IngestionService.checkDetailedFileStatus(
               context: context,
               fileIds: batch.map((item) => item.id).toList(),
               agencyId: currentUser!.agencyId,
             );
 
-            // Update state with ingestion status
+            // Update state with ingestion and failed status
+            final ingestionStatus = <String, bool>{};
+            final failedStatus = <String, bool>{};
+            
+            for (final entry in detailedStatus.entries) {
+              final fileId = entry.key;
+              final status = entry.value;
+              ingestionStatus[fileId] = status['isIngested'] ?? false;
+              failedStatus[fileId] = status['isFailed'] ?? false;
+            }
+            
             _state.markFilesAsIngested(ingestionStatus);
+            _state.markFilesAsFailed(failedStatus);
 
 
             // Small delay between batches to avoid overwhelming the server

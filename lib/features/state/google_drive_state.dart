@@ -20,6 +20,7 @@ class GoogleDriveState extends ChangeNotifier {
   Map<String, IngestionProgress> _ingestionProgress = {};
   bool _isTrackingProgress = false;
   Set<String> _ingestedFiles = {};
+  Set<String> _failedFiles = {}; // Track failed files that can be retried
   bool _isCheckingIngestionStatus = false;
   
   // Pagination state
@@ -43,6 +44,7 @@ class GoogleDriveState extends ChangeNotifier {
   Map<String, IngestionProgress> get ingestionProgress => _ingestionProgress;
   bool get isTrackingProgress => _isTrackingProgress;
   Set<String> get ingestedFiles => _ingestedFiles;
+  Set<String> get failedFiles => _failedFiles;
   bool get isCheckingIngestionStatus => _isCheckingIngestionStatus;
   int get currentPage => _currentPage;
   int get pageSize => _pageSize;
@@ -216,6 +218,29 @@ class GoogleDriveState extends ChangeNotifier {
 
   void clearIngestedFiles() {
     _ingestedFiles.clear();
+    notifyListeners();
+  }
+
+  void markFileAsFailed(String fileId) {
+    _failedFiles.add(fileId);
+    // Remove from ingested files if it was there
+    _ingestedFiles.remove(fileId);
+    notifyListeners();
+  }
+
+  void markFilesAsFailed(Map<String, bool> failedStatus) {
+    for (final entry in failedStatus.entries) {
+      if (entry.value) {
+        _failedFiles.add(entry.key);
+        // Remove from ingested files if it was there
+        _ingestedFiles.remove(entry.key);
+      }
+    }
+    notifyListeners();
+  }
+
+  void clearFailedFiles() {
+    _failedFiles.clear();
     notifyListeners();
   }
 

@@ -1131,6 +1131,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<TextSpan> _parseMarkdownText(String text) {
+
+
+    
     if (text.isEmpty) return [];
 
     List<TextSpan> spans = [];
