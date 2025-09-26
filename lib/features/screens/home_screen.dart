@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../providers/agentProvider.dart';
+import '../controllers/agencyController.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1402,7 +1403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 } else {
                   _showProductDetailModal(
-                    context,
+                    context, 
                     product,
                     product['images'] == null || product['images'].isEmpty,
                   );
@@ -1837,7 +1838,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: experiences.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.3,
+        childAspectRatio: 1.5,
         mainAxisSpacing: 15,
         crossAxisSpacing: 15,
       ),
@@ -1845,6 +1846,47 @@ class _HomeScreenState extends State<HomeScreen> {
         final experience = experiences[index];
         final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
         final isSelected = bookmarkProvider.isItemSelected('experience', experienceId);
+
+        // Get images for the experience
+        List<String> images = [];
+        try {
+          print('Experience data keys: ${experience.keys.toList()}');
+          print('Experience has images field: ${experience.containsKey('images')}');
+          if (experience['images'] != null) {
+            print('Images field type: ${experience['images'].runtimeType}');
+            print('Images field value: ${experience['images']}');
+            
+            if (experience['images'] is List) {
+              for (int i = 0; i < experience['images'].length; i++) {
+                var img = experience['images'][i];
+                print('Image $i: $img');
+                if (img is Map) {
+                  print('Image $i keys: ${img.keys.toList()}');
+                  print('Image $i signedUrl: ${img['signedUrl']}');
+                  print('Image $i imageUrl: ${img['imageUrl']}');
+                }
+              }
+            }
+          }
+          
+          if (experience['images'] != null && experience['images'].isNotEmpty) {
+            print('Found ${experience['images'].length} images for experience');
+            for (var img in experience['images']) {
+              if (img is Map && img['signedUrl'] != null && img['signedUrl'].toString().isNotEmpty) {
+                images.add(img['signedUrl'].toString());
+                print('Added image from signedUrl: ${img['signedUrl']}');
+              } else if (img is Map && img['imageUrl'] != null && img['imageUrl'].toString().isNotEmpty) {
+                // Fallback to imageUrl if signedUrl is not available
+                images.add(img['imageUrl'].toString());
+                print('Added image from imageUrl (fallback): ${img['imageUrl']}');
+              }
+            }
+          } else {
+            print('No images found for experience - images field is null or empty');
+          }
+        } catch (e) {
+          print('Error extracting images: $e');
+        }
 
         return Stack(
           children: [
@@ -1857,60 +1899,56 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               },
               child: Container(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.zero,
                 decoration: BoxDecoration(
-                  color: Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Colors.blue : Colors.grey,
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    // Experience Header
-                    Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
+                    // Single image on the left side
+                    Expanded(
+                      flex: 1,
+                      child: images.isNotEmpty
+                          ? _buildRandomImageItem(images, experienceId)
+                          : Container(
+                              width: double.infinity,
+                              height: double.infinity,
                           decoration: BoxDecoration(
-                            color: Color(0xff574435),
-                            borderRadius: BorderRadius.circular(8),
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             Icons.flight_takeoff,
                             color: Colors.white,
-                            size: 20,
+                                size: 40,
                           ),
                         ),
-                        SizedBox(width: 12),
+                    ),
+                    // Experience details on the right side
                         Expanded(
+                      flex: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
                                 _getExperienceDestination(experience),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   color: Colors.white,
                                 ),
-                                maxLines: 1,
+                                    maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                _getExperienceCountry(experience),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[400],
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
                           ),
                         ),
                         // Bookmark button for experiences
@@ -1918,33 +1956,55 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildExperienceBookmarkButton(experience),
                       ],
                     ),
-                    SizedBox(height: 12),
-                    // Experience Details
-                    if (_getExperienceDates(experience).isNotEmpty)
-                      _buildExperienceDetailRow(Icons.calendar_today, _getExperienceDates(experience)),
-                    if (_getExperienceStatus(experience).isNotEmpty)
-                      _buildExperienceDetailRow(Icons.info, _getExperienceStatus(experience)),
-                    if (_getExperienceNotes(experience).isNotEmpty) ...[
-                      SizedBox(height: 8),
+                            SizedBox(height: 4),
                       Text(
-                        'Notes',
+                              _getExperienceCountry(experience),
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[300],
+                                color: Colors.grey[400],
                         ),
                       ),
                       SizedBox(height: 4),
+                            if (_getExperienceDates(experience).isNotEmpty)
                       Text(
-                        _getExperienceNotes(experience),
+                                _getExperienceDates(experience),
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey[400],
+                                  color: Colors.grey[500],
                         ),
-                        maxLines: 2,
+                                maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                              ),
+                            SizedBox(height: 4),
+                            Text(
+                              _getExperienceStatus(experience),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue[400],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Spacer(),
+                            // Show itinerary count if available
+                            if (_getExperienceItineraryCount(experience) > 0)
+                              Row(
+                                children: [
+                                  Icon(Icons.timeline, size: 12, color: Colors.orange[400]),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '${_getExperienceItineraryCount(experience)} items',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.orange[400],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -2371,8 +2431,20 @@ class _HomeScreenState extends State<HomeScreen> {
       final endDate = experience['endDate'];
       
       if (startDate != null && endDate != null) {
-        final start = DateTime.tryParse(startDate.toString());
-        final end = DateTime.tryParse(endDate.toString());
+        DateTime? start, end;
+        
+        // Handle MongoDB date format
+        if (startDate is Map && startDate['\$date'] != null) {
+          start = DateTime.tryParse(startDate['\$date'].toString());
+        } else if (startDate is String) {
+          start = DateTime.tryParse(startDate);
+        }
+        
+        if (endDate is Map && endDate['\$date'] != null) {
+          end = DateTime.tryParse(endDate['\$date'].toString());
+        } else if (endDate is String) {
+          end = DateTime.tryParse(endDate);
+        }
         
         if (start != null && end != null) {
           return '${start.day}/${start.month}/${start.year} - ${end.day}/${end.month}/${end.year}';
@@ -2398,6 +2470,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return experience['notes']?.toString() ?? '';
     } catch (e) {
       return '';
+    }
+  }
+
+  int _getExperienceItineraryCount(dynamic experience) {
+    try {
+      final itinerary = experience['itinerary'];
+      if (itinerary is List) {
+        return itinerary.length;
+      }
+      return 0;
+    } catch (e) {
+      return 0;
     }
   }
 
@@ -2447,14 +2531,106 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showExperienceDetailModal(BuildContext context, dynamic experience) {
+  void _showExperienceDetailModal(BuildContext context, dynamic experience) async {
+    // Show loading dialog first
     showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (BuildContext context) {
-        return ExperienceDetailModal(experience: experience);
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Color(0xff292525),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
+                Text(
+                  'Loading experience details...',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
+
+    try {
+      // Fetch full experience data
+      final fullExperience = await _fetchFullExperienceData(experience['_id']?.toString() ?? experience['id']!.toString());
+      
+      // Close loading dialog 
+      Navigator.of(context).pop();
+      
+      // Show experience modal with full data
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return ExperienceDetailModal(experience: fullExperience ?? experience);
+        },
+      );
+    } catch (e) {
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      // Show error and fallback to original experience data
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load full experience details: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      
+      // Show modal with original data
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return ExperienceDetailModal(experience: experience);
+        },
+      );
+    }
+  }
+
+  Future<dynamic> _fetchFullExperienceData(String experienceId) async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final agencyId = userProvider.user?.agencyId;
+      
+      if (agencyId == null) {
+        throw Exception('No agency ID found');
+      }
+
+      // Use the agency controller to fetch full experience data
+      final agencyController = AgencyController();
+      final result = await agencyController.getExperiencesByAgencyId(agencyId);
+      
+      return result.fold(
+        (failure) {
+          throw Exception('Failed to fetch experiences: ${failure.toString()}');
+        },
+        (experiences) {
+          // Find the specific experience by ID
+          for (var exp in experiences) {
+            if (exp['_id']?.toString() == experienceId || exp['id']?.toString() == experienceId) {
+              print('Found full experience data with ${exp['images']?.length ?? 0} images and ${exp['itinerary']?.length ?? 0} itinerary items');
+              return exp;
+            }
+          }
+          throw Exception('Experience not found');
+        },
+      );
+    } catch (e) {
+      print('Error fetching full experience data: $e');
+      rethrow;
+    }
   }
 
   // DMC helper methods
@@ -2697,9 +2873,9 @@ class ProductDetailModal extends StatelessWidget {
     required this.isExternalProduct,
   }) : super(key: key);
 
-  // Helper methods to safely access product properties
+  // Helper methods to safely access product propertiesv 
   String _getProductName() {
-    if (product == null) return 'Product Detail';
+    if (product == null) return 'Product Detail'; 
 
     try {
       if (isExternalProduct) {
@@ -3425,8 +3601,20 @@ class ExperienceDetailModal extends StatelessWidget {
       final endDate = experience['endDate'];
       
       if (startDate != null && endDate != null) {
-        final start = DateTime.tryParse(startDate.toString());
-        final end = DateTime.tryParse(endDate.toString());
+        DateTime? start, end;
+        
+        // Handle MongoDB date format
+        if (startDate is Map && startDate['\$date'] != null) {
+          start = DateTime.tryParse(startDate['\$date'].toString());
+        } else if (startDate is String) {
+          start = DateTime.tryParse(startDate);
+        }
+        
+        if (endDate is Map && endDate['\$date'] != null) {
+          end = DateTime.tryParse(endDate['\$date'].toString());
+        } else if (endDate is String) {
+          end = DateTime.tryParse(endDate);
+        }
         
         if (start != null && end != null) {
           return '${start.day}/${start.month}/${start.year} - ${end.day}/${end.month}/${end.year}';
@@ -3473,116 +3661,193 @@ class ExperienceDetailModal extends StatelessWidget {
     }
   }
 
+  List<dynamic> _getExperienceItinerary() {
+    try {
+      final itinerary = experience['itinerary'];
+      if (itinerary != null) {
+        print('Found itinerary with ${itinerary.length} items');
+        return List<dynamic>.from(itinerary);
+      } else {
+        print('No itinerary found for experience');
+        return [];
+      }
+    } catch (e) {
+      print('Error getting itinerary: $e');
+      return [];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.6,
-        height: MediaQuery.of(context).size.height * 0.7,
+        width: MediaQuery.of(context).size.width * 0.8,
+        height: MediaQuery.of(context).size.height * 0.85,
         decoration: BoxDecoration(
           color: Color(0xff292525),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
+            // Header
+            Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xff574435),
+                    Color(0xff574435).withOpacity(0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.flight_takeoff, color: Colors.white, size: 28),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getExperienceDestination(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (_getExperienceCountry().isNotEmpty) ...[
+                          SizedBox(height: 6),
+                          Text(
+                            _getExperienceCountry(),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          _getExperienceStatus().toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      if (_getExperienceItinerary().isNotEmpty)
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            '${_getExperienceItinerary().length} itinerary items',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(width: 16),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: Icon(Icons.close, color: Colors.white, size: 24),
                   ),
-                  _buildBookmarkButton(),
                 ],
               ),
             ),
+            
+            // Content
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Experience Header
-                    Row(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Color(0xff574435),
-                            borderRadius: BorderRadius.circular(40),
-                          ),
-                          child: Icon(
-                            Icons.flight_takeoff,
-                            color: Colors.white,
-                            size: 40,
-                          ),
-                        ),
-                        SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _getExperienceDestination(),
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                _getExperienceCountry(),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[300],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 30),
-                    // Experience Details
-                    _buildDetailRow(Icons.calendar_today, 'Dates', _getExperienceDates()),
-                    _buildDetailRow(Icons.info, 'Status', _getExperienceStatus()),
-                    _buildDetailRow(Icons.people, 'Party Size', _getExperienceParty()),
-                    SizedBox(height: 20),
-                    // Notes Section
-                    if (_getExperienceNotes().isNotEmpty) ...[
-                      Text(
-                        'Notes',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF1E1E1E),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _getExperienceNotes(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[300],
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
+                    // Experience Overview
+                    _buildOverviewSection(),
+                    SizedBox(height: 32),
+                    
+                    // Itinerary Timeline
+                    if (_getExperienceItinerary().isNotEmpty) ...[
+                      _buildItineraryTimeline(),
+                    ] else ...[
+                      _buildEmptyItinerary(),
                     ],
                   ],
                 ),
+              ),
+            ),
+            
+            // Actions
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Color(0xff1e1e1e),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                    Row(
+                      children: [
+                      Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                      SizedBox(width: 8),
+                      Text(
+                        'Experience ID: ${experience['_id']?.toString().substring(0, 8) ?? 'N/A'}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      _buildBookmarkButton(),
+                      SizedBox(width: 16),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text('Close'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -3591,33 +3856,506 @@ class ExperienceDetailModal extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 16),
-      child: Row(
+  Widget _buildOverviewSection() {
+    return Container(
+      padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.grey[400], size: 20),
-          SizedBox(width: 12),
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[300],
+          Row(
+            children: [
+              Icon(Icons.dashboard, size: 20, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                'Experience Overview',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildOverviewItem(
+                  Icons.calendar_today,
+                  'Duration',
+                  _getExperienceDates(),
+                ),
+              ),
+              Expanded(
+                child: _buildOverviewItem(
+                  Icons.people,
+                  'Party',
+                  _getExperienceParty(),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          if (_getExperienceNotes().isNotEmpty) ...[
+            _buildOverviewItem(
+              Icons.note,
+              'Notes',
+              _getExperienceNotes(),
+            ),
+            SizedBox(height: 16),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewItem(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: Colors.white),
+        ),
+        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue[300],
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItineraryTimeline() {
+    final itinerary = _getExperienceItinerary();
+    
+    // Group itinerary items by day
+    Map<int, List<dynamic>> groupedByDay = {};
+    for (var item in itinerary) {
+      if (item['day'] != null) {
+        final day = item['day'] as int;
+        groupedByDay.putIfAbsent(day, () => []).add(item);
+      }
+    }
+    
+    // Sort days and items within each day
+    var sortedDays = groupedByDay.keys.toList()..sort();
+    for (var day in sortedDays) {
+      groupedByDay[day]!.sort((a, b) => (a['order'] ?? 0).compareTo(b['order'] ?? 0));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.timeline, size: 24, color: Colors.white),
+            SizedBox(width: 12),
+            Text(
+              'Itinerary Timeline',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+            Spacer(),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white),
+              ),
+              child: Text(
+                '${sortedDays.length} days',
+                                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                                ),
+                              ),
+                            ],
+                          ),
+        SizedBox(height: 24),
+        ...sortedDays.map((day) => _buildDaySection(day, groupedByDay[day]!)),
+      ],
+    );
+  }
+
+  Widget _buildDaySection(int day, List<dynamic> dayItems) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Day Header
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey[400]!),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.calendar_today, size: 16, color: Colors.white),
+                ),
+                SizedBox(width: 12),
+                      Text(
+                  'Day $day',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                Spacer(),
+                Text(
+                  '${dayItems.length} activities',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ),
-          Expanded(
-            child: Text(
+          SizedBox(height: 16),
+          
+          // Timeline items
+          ...dayItems.asMap().entries.map((entry) {
+            int index = entry.key;
+            dynamic item = entry.value;
+            return _buildTimelineItem(item, index, dayItems.length);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem(dynamic item, int index, int totalItems) {
+    bool isLast = index == totalItems - 1;
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Timeline line and dot
+        Column(
+          children: [
+                      Container(
+              width: 16,
+              height: 16,
+                        decoration: BoxDecoration(
+                color: _getItineraryItemColor(item['type']),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: _getItineraryItemColor(item['type']).withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+            if (!isLast)
+              Container(
+                width: 3,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      _getItineraryItemColor(item['type']).withOpacity(0.3),
+                      _getItineraryItemColor(item['type']).withOpacity(0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+          ],
+        ),
+        SizedBox(width: 20),
+        
+        // Item content
+        Expanded(
+          child: Container(
+            margin: EdgeInsets.only(bottom: 20),
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _getItineraryItemColor(item['type']).withOpacity(0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.08),
+                  spreadRadius: 1,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _getItineraryItemColor(item['type']).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _getItineraryItemColor(item['type']).withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        (item['type'] ?? 'UNKNOWN').toString().toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _getItineraryItemColor(item['type']),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(item['status']).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _getStatusColor(item['status']).withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        (item['status'] ?? 'SUGGESTED').toString().toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _getStatusColor(item['status']),
+                        ),
+                      ),
+                    ),
+                    Spacer(),
+                    if (item['order'] != null)
+                      Container(
+                        padding: EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '#${item['order']}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                
+                // Description
+                Text(
+                  item['details']?['description'] ?? 'No description available',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                    height: 1.4,
+                  ),
+                ),
+                SizedBox(height: 16),
+                
+                // Additional details in a grid layout
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    if (item['supplier'] != null && item['supplier']['name'] != null)
+                      _buildDetailChip(Icons.business, 'Supplier', item['supplier']['name']),
+                    if (item['startAt'] != null)
+                      _buildDetailChip(Icons.access_time, 'Start', _formatDateTime(item['startAt'])),
+                    if (item['endAt'] != null)
+                      _buildDetailChip(Icons.access_time, 'End', _formatDateTime(item['endAt'])),
+                    if (item['location'] != null && item['location']['address'] != null)
+                      _buildDetailChip(Icons.location_on, 'Location', item['location']['address']),
+                    if (item['location'] != null && item['location']['city'] != null)
+                      _buildDetailChip(Icons.location_city, 'City', item['location']['city']),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailChip(IconData icon, String label, String value) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.grey[600]),
+          SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+          Text(
+                label,
+            style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                ),
+              ),
+              Text(
               value,
               style: TextStyle(
-                fontSize: 16,
-                color: Colors.white,
+                  fontSize: 12,
+                  color: Colors.grey[800],
+                  fontWeight: FontWeight.w500,
               ),
+            ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyItinerary() {
+    return Container(
+      padding: EdgeInsets.all(40),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.timeline,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+          ),
+          SizedBox(height: 24),
+          Text(
+            'No Itinerary Items',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'This experience doesn\'t have any itinerary items yet.\nAdd activities, flights, accommodations, and more to create a complete travel plan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 16,
+              height: 1.5,
             ),
           ),
         ],
       ),
     );
+  }
+
+  Color _getItineraryItemColor(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'flight':
+        return Colors.blue;
+      case 'stay':
+        return Colors.green;
+      case 'activity':
+        return Colors.orange;
+      case 'transfer':
+        return Colors.purple;
+      case 'reservation':
+        return Colors.teal;
+      case 'info':
+        return Colors.indigo;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'confirmed':
+        return Colors.green;
+      case 'proposed':
+        return Colors.orange;
+      case 'cancelled':
+        return Colors.red;
+      case 'suggested':
+      default:
+        return Colors.blue;
+    }
+  }
+
+  String _formatDateTime(dynamic dateTime) {
+    try {
+      if (dateTime is Map && dateTime['\$date'] != null) {
+        // Handle MongoDB date format
+        final parsed = DateTime.tryParse(dateTime['\$date'].toString());
+        if (parsed != null) {
+          return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+        }
+      } else if (dateTime is String) {
+        final parsed = DateTime.tryParse(dateTime);
+        if (parsed != null) {
+          return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+        }
+      }
+      return dateTime.toString();
+    } catch (e) {
+      return dateTime.toString();
+    }
   }
 
   Widget _buildBookmarkButton() {
