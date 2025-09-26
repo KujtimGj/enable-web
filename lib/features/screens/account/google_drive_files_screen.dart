@@ -1091,7 +1091,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         );
       }
     } catch (e) {
-      print('❌ [enqueueSelectedFiles] Error: $e');
+      // print('❌ [enqueueSelectedFiles] Error: $e');
       
       String errorMessage = 'Failed to enqueue files for ingestion';
       if (e.toString().contains('401')) {
@@ -1104,13 +1104,13 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
         errorMessage = 'Network error. Please check your connection.';
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$errorMessage: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Text('$errorMessage: $e'),
+      //     backgroundColor: Colors.red,
+      //     duration: const Duration(seconds: 5),
+      //   ),
+      // );
     } finally {
       _state.setLoading(false);
     }

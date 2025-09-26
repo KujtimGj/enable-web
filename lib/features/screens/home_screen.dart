@@ -903,6 +903,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         child,
                       ) {
                         final externalProducts = chatProvider.externalProducts;
+                        final vics = chatProvider.vics;
+                        final experiences = chatProvider.experiences;
+                        final dmcs = chatProvider.dmcs;
+                        final serviceProviders = chatProvider.serviceProviders;
                         final dbProducts = productProvider.products;
 
                         // Prepare items for multi-select
@@ -924,6 +928,42 @@ class _HomeScreenState extends State<HomeScreen> {
                             'itemType': 'product',
                             'itemId': productId,
                           });
+                        }
+                        for (final vic in vics) {
+                          final vicId = vic['_id']?.toString() ?? vic['id']?.toString();
+                          if (vicId != null) {
+                            allItems.add({
+                              'itemType': 'vic',
+                              'itemId': vicId,
+                            });
+                          }
+                        }
+                        for (final experience in experiences) {
+                          final experienceId = experience['_id']?.toString() ?? experience['id']?.toString();
+                          if (experienceId != null) {
+                            allItems.add({
+                              'itemType': 'experience',
+                              'itemId': experienceId,
+                            });
+                          }
+                        }
+                        for (final dmc in dmcs) {
+                          final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString();
+                          if (dmcId != null) {
+                            allItems.add({
+                              'itemType': 'dmc',
+                              'itemId': dmcId,
+                            });
+                          }
+                        }
+                        for (final serviceProvider in serviceProviders) {
+                          final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString();
+                          if (serviceProviderId != null) {
+                            allItems.add({
+                              'itemType': 'serviceProvider',
+                              'itemId': serviceProviderId,
+                            });
+                          }
                         }
 
                         return Column(
@@ -963,6 +1003,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 productProvider,
                                 bookmarkProvider,
                                 externalProducts,
+                                vics,
+                                experiences,
+                                dmcs,
+                                serviceProviders,
                                 dbProducts,
                               ),
                             ),
@@ -1268,10 +1312,31 @@ class _HomeScreenState extends State<HomeScreen> {
     ProductProvider productProvider,
     BookmarkProvider bookmarkProvider,
     List<dynamic> externalProducts,
+    List<dynamic> vics,
+    List<dynamic> experiences,
+    List<dynamic> dmcs,
+    List<dynamic> serviceProviders,
     List<dynamic> dbProducts,
   ) {
     if (chatProvider.isLoading) {
       return shimmerGrid();
+    }
+
+    // Prioritize different data types based on what's available
+    if (vics.isNotEmpty) {
+      return _buildVicsGrid(vics, bookmarkProvider);
+    }
+
+    if (experiences.isNotEmpty) {
+      return _buildExperiencesGrid(experiences, bookmarkProvider);
+    }
+
+    if (dmcs.isNotEmpty) {
+      return _buildDMCsGrid(dmcs, bookmarkProvider);
+    }
+
+    if (serviceProviders.isNotEmpty) {
+      return _buildServiceProvidersGrid(serviceProviders, bookmarkProvider);
     }
 
     if (externalProducts.isNotEmpty) {
@@ -1617,6 +1682,897 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
           ],
         );
+      },
+    );
+  }
+
+  Widget _buildVicsGrid(
+    List<dynamic> vics,
+    BookmarkProvider bookmarkProvider,
+  ) {
+    return GridView.builder(
+      itemCount: vics.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.7,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
+      ),
+      itemBuilder: (context, index) {
+        final vic = vics[index];
+        final vicId = vic['_id']?.toString() ?? vic['id']?.toString() ?? '';
+        final isSelected = bookmarkProvider.isItemSelected('vic', vicId);
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                if (bookmarkProvider.isMultiSelectMode) {
+                  bookmarkProvider.toggleItemSelection('vic', vicId);
+                } else {
+                  _showVicDetailModal(context, vic);
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF181616),
+                  border: Border.all(
+                    width: isSelected ? 2 : 0.5,
+                    color: isSelected ? Colors.blue : Colors.grey,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // VIC Avatar and basic info
+                    Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xff574435),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _getVicInitials(vic),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getVicName(vic),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                _getVicEmail(vic),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bookmark button for VICs
+                        if (!bookmarkProvider.isMultiSelectMode)
+                          _buildVicBookmarkButton(vic),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // VIC Details
+                    if (_getVicPhone(vic).isNotEmpty)
+                      _buildVicDetailRow(Icons.phone, _getVicPhone(vic)),
+                    if (_getVicNationality(vic).isNotEmpty)
+                      _buildVicDetailRow(Icons.flag, _getVicNationality(vic)),
+                    if (_getVicSummary(vic).isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        'Summary',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _getVicSummary(vic),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Multi-select checkbox
+            if (bookmarkProvider.isMultiSelectMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MultiSelectBookmarkButton(
+                  itemType: 'vic',
+                  itemId: vicId,
+                  isSelected: isSelected,
+                  onTap: () => bookmarkProvider.toggleItemSelection('vic', vicId),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildExperiencesGrid(
+    List<dynamic> experiences,
+    BookmarkProvider bookmarkProvider,
+  ) {
+    return GridView.builder(
+      itemCount: experiences.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.3,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
+      ),
+      itemBuilder: (context, index) {
+        final experience = experiences[index];
+        final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
+        final isSelected = bookmarkProvider.isItemSelected('experience', experienceId);
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                if (bookmarkProvider.isMultiSelectMode) {
+                  bookmarkProvider.toggleItemSelection('experience', experienceId);
+                } else {
+                  _showExperienceDetailModal(context, experience);
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF181616),
+                  border: Border.all(
+                    width: isSelected ? 2 : 0.5,
+                    color: isSelected ? Colors.blue : Colors.grey,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Experience Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.flight_takeoff,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getExperienceDestination(experience),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                _getExperienceCountry(experience),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bookmark button for experiences
+                        if (!bookmarkProvider.isMultiSelectMode)
+                          _buildExperienceBookmarkButton(experience),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // Experience Details
+                    if (_getExperienceDates(experience).isNotEmpty)
+                      _buildExperienceDetailRow(Icons.calendar_today, _getExperienceDates(experience)),
+                    if (_getExperienceStatus(experience).isNotEmpty)
+                      _buildExperienceDetailRow(Icons.info, _getExperienceStatus(experience)),
+                    if (_getExperienceNotes(experience).isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        'Notes',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _getExperienceNotes(experience),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Multi-select checkbox
+            if (bookmarkProvider.isMultiSelectMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MultiSelectBookmarkButton(
+                  itemType: 'experience',
+                  itemId: experienceId,
+                  isSelected: isSelected,
+                  onTap: () => bookmarkProvider.toggleItemSelection('experience', experienceId),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDMCsGrid(
+    List<dynamic> dmcs,
+    BookmarkProvider bookmarkProvider,
+  ) {
+    return GridView.builder(
+      itemCount: dmcs.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.2,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
+      ),
+      itemBuilder: (context, index) {
+        final dmc = dmcs[index];
+        final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
+        final isSelected = bookmarkProvider.isItemSelected('dmc', dmcId);
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                if (bookmarkProvider.isMultiSelectMode) {
+                  bookmarkProvider.toggleItemSelection('dmc', dmcId);
+                } else {
+                  _showDMCDetailModal(context, dmc);
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF181616),
+                  border: Border.all(
+                    width: isSelected ? 2 : 0.5,
+                    color: isSelected ? Colors.blue : Colors.grey,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // DMC Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.business,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getDMCBusinessName(dmc),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                _getDMCLocation(dmc),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bookmark button for DMCs
+                        if (!bookmarkProvider.isMultiSelectMode)
+                          _buildDMCBookmarkButton(dmc),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // DMC Details
+                    if (_getDMCDescription(dmc).isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        'Description',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _getDMCDescription(dmc),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Multi-select checkbox
+            if (bookmarkProvider.isMultiSelectMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MultiSelectBookmarkButton(
+                  itemType: 'dmc',
+                  itemId: dmcId,
+                  isSelected: isSelected,
+                  onTap: () => bookmarkProvider.toggleItemSelection('dmc', dmcId),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildServiceProvidersGrid(
+    List<dynamic> serviceProviders,
+    BookmarkProvider bookmarkProvider,
+  ) {
+    return GridView.builder(
+      itemCount: serviceProviders.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.2,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
+      ),
+      itemBuilder: (context, index) {
+        final serviceProvider = serviceProviders[index];
+        final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
+        final isSelected = bookmarkProvider.isItemSelected('serviceProvider', serviceProviderId);
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                if (bookmarkProvider.isMultiSelectMode) {
+                  bookmarkProvider.toggleItemSelection('serviceProvider', serviceProviderId);
+                } else {
+                  _showServiceProviderDetailModal(context, serviceProvider);
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF181616),
+                  border: Border.all(
+                    width: isSelected ? 2 : 0.5,
+                    color: isSelected ? Colors.blue : Colors.grey,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Service Provider Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.support_agent,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getServiceProviderCompanyName(serviceProvider),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                _getServiceProviderCountry(serviceProvider),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bookmark button for service providers
+                        if (!bookmarkProvider.isMultiSelectMode)
+                          _buildServiceProviderBookmarkButton(serviceProvider),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // Service Provider Details
+                    if (_getServiceProviderExpertise(serviceProvider).isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        'Expertise',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _getServiceProviderExpertise(serviceProvider),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Multi-select checkbox
+            if (bookmarkProvider.isMultiSelectMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MultiSelectBookmarkButton(
+                  itemType: 'serviceProvider',
+                  itemId: serviceProviderId,
+                  isSelected: isSelected,
+                  onTap: () => bookmarkProvider.toggleItemSelection('serviceProvider', serviceProviderId),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildVicDetailRow(IconData icon, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: Colors.grey[500]),
+          SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[400],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVicBookmarkButton(dynamic vic) {
+    String? vicId;
+    try {
+      vicId = vic['_id']?.toString() ?? vic['id']?.toString();
+    } catch (e) {
+      print('Error getting VIC ID: $e');
+      return SizedBox.shrink();
+    }
+
+    if (vicId == null) {
+      return SizedBox.shrink();
+    }
+
+    return BookmarkButton(
+      itemType: 'vic',
+      itemId: vicId,
+      color: Colors.white70,
+      activeColor: Colors.amber,
+      size: 20,
+    );
+  }
+
+  // Helper methods for VIC data
+  String _getVicName(dynamic vic) {
+    if (vic == null) return 'Unknown Client';
+    try {
+      return vic['fullName']?.toString() ?? 'Unknown Client';
+    } catch (e) {
+      return 'Unknown Client';
+    }
+  }
+
+  String _getVicEmail(dynamic vic) {
+    if (vic == null) return '';
+    try {
+      return vic['email']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicPhone(dynamic vic) {
+    if (vic == null) return '';
+    try {
+      return vic['phone']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicNationality(dynamic vic) {
+    if (vic == null) return '';
+    try {
+      return vic['nationality']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicSummary(dynamic vic) {
+    if (vic == null) return '';
+    try {
+      return vic['summary']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicInitials(dynamic vic) {
+    final name = _getVicName(vic);
+    if (name.isEmpty) return 'U';
+    
+    final nameParts = name.split(' ');
+    if (nameParts.length >= 2) {
+      return '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
+    } else {
+      return name[0].toUpperCase();
+    }
+  }
+
+  void _showVicDetailModal(BuildContext context, dynamic vic) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return VICDetailModal(vic: vic);
+      },
+    );
+  }
+
+  // Experience helper methods
+  String _getExperienceDestination(dynamic experience) {
+    try {
+      return experience['destination']?.toString() ?? 'Unknown Destination';
+    } catch (e) {
+      return 'Unknown Destination';
+    }
+  }
+
+  String _getExperienceCountry(dynamic experience) {
+    try {
+      return experience['country']?.toString() ?? 'Unknown Country';
+    } catch (e) {
+      return 'Unknown Country';
+    }
+  }
+
+  String _getExperienceDates(dynamic experience) {
+    try {
+      final startDate = experience['startDate'];
+      final endDate = experience['endDate'];
+      
+      if (startDate != null && endDate != null) {
+        final start = DateTime.tryParse(startDate.toString());
+        final end = DateTime.tryParse(endDate.toString());
+        
+        if (start != null && end != null) {
+          return '${start.day}/${start.month}/${start.year} - ${end.day}/${end.month}/${end.year}';
+        }
+      }
+      
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getExperienceStatus(dynamic experience) {
+    try {
+      return experience['status']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getExperienceNotes(dynamic experience) {
+    try {
+      return experience['notes']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Widget _buildExperienceDetailRow(IconData icon, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: Colors.grey[500]),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[400],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExperienceBookmarkButton(dynamic experience) {
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
+        final isBookmarked = bookmarkProvider.isItemBookmarked('experience', experienceId);
+        
+        return IconButton(
+          onPressed: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'experience',
+              itemId: experienceId,
+            );
+          },
+          icon: Icon(
+            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: isBookmarked ? Colors.amber : Colors.grey[400],
+            size: 20,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showExperienceDetailModal(BuildContext context, dynamic experience) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return ExperienceDetailModal(experience: experience);
+      },
+    );
+  }
+
+  // DMC helper methods
+  String _getDMCBusinessName(dynamic dmc) {
+    try {
+      return dmc['businessName']?.toString() ?? 'Unknown Business';
+    } catch (e) {
+      return 'Unknown Business';
+    }
+  }
+
+  String _getDMCLocation(dynamic dmc) {
+    try {
+      return dmc['location']?.toString() ?? 'Unknown Location';
+    } catch (e) {
+      return 'Unknown Location';
+    }
+  }
+
+  String _getDMCDescription(dynamic dmc) {
+    try {
+      return dmc['description']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Widget _buildDMCBookmarkButton(dynamic dmc) {
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
+        final isBookmarked = bookmarkProvider.isItemBookmarked('dmc', dmcId);
+        
+        return IconButton(
+          onPressed: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'dmc',
+              itemId: dmcId,
+            );
+          },
+          icon: Icon(
+            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: isBookmarked ? Colors.amber : Colors.grey[400],
+            size: 20,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDMCDetailModal(BuildContext context, dynamic dmc) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return DMCDetailModal(dmc: dmc);
+      },
+    );
+  }
+
+  // Service Provider helper methods
+  String _getServiceProviderCompanyName(dynamic serviceProvider) {
+    try {
+      return serviceProvider['companyName']?.toString() ?? 'Unknown Company';
+    } catch (e) {
+      return 'Unknown Company';
+    }
+  }
+
+  String _getServiceProviderCountry(dynamic serviceProvider) {
+    try {
+      return serviceProvider['countryOfOperation']?.toString() ?? 'Unknown Country';
+    } catch (e) {
+      return 'Unknown Country';
+    }
+  }
+
+  String _getServiceProviderExpertise(dynamic serviceProvider) {
+    try {
+      final expertise = serviceProvider['productExpertise'];
+      if (expertise is List) {
+        return expertise.join(', ');
+      }
+      return expertise?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Widget _buildServiceProviderBookmarkButton(dynamic serviceProvider) {
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
+        final isBookmarked = bookmarkProvider.isItemBookmarked('serviceProvider', serviceProviderId);
+        
+        return IconButton(
+          onPressed: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'serviceProvider',
+              itemId: serviceProviderId,
+            );
+          },
+          icon: Icon(
+            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: isBookmarked ? Colors.amber : Colors.grey[400],
+            size: 20,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showServiceProviderDetailModal(BuildContext context, dynamic serviceProvider) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return ServiceProviderDetailModal(serviceProvider: serviceProvider);
       },
     );
   }
@@ -2133,6 +3089,1003 @@ class ProductDetailModal extends StatelessWidget {
     return BookmarkButton(
       itemType: isExternalProduct ? 'externalProduct' : 'product',
       itemId: productId,
+      color: Colors.white,
+      activeColor: Colors.amber,
+      size: 24,
+    );
+  }
+}
+
+class VICDetailModal extends StatelessWidget {
+  final dynamic vic;
+
+  const VICDetailModal({
+    Key? key,
+    required this.vic,
+  }) : super(key: key);
+
+  // Helper methods to safely access VIC properties
+  String _getVicName() {
+    if (vic == null) return 'Client Detail';
+    try {
+      return vic['fullName']?.toString() ?? 'Client Detail';
+    } catch (e) {
+      return 'Client Detail';
+    }
+  }
+
+  String _getVicEmail() {
+    if (vic == null) return '';
+    try {
+      return vic['email']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicPhone() {
+    if (vic == null) return '';
+    try {
+      return vic['phone']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicNationality() {
+    if (vic == null) return '';
+    try {
+      return vic['nationality']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicSummary() {
+    if (vic == null) return '';
+    try {
+      return vic['summary']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Map<String, dynamic> _getVicPreferences() {
+    if (vic == null) return {};
+    try {
+      return Map<String, dynamic>.from(vic['preferences'] ?? {});
+    } catch (e) {
+      return {};
+    }
+  }
+
+  String _getVicInitials() {
+    final name = _getVicName();
+    if (name.isEmpty) return 'U';
+    
+    final nameParts = name.split(' ');
+    if (nameParts.length >= 2) {
+      return '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
+    } else {
+      return name[0].toUpperCase();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.6,
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Color(0xff292525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                  // Bookmark button
+                  _buildBookmarkButton(),
+                ],
+              ),
+            ),
+            // Main content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Client Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xff574435),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _getVicInitials(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getVicName(),
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              if (_getVicEmail().isNotEmpty)
+                                _buildDetailRow(Icons.email, _getVicEmail()),
+                              if (_getVicPhone().isNotEmpty)
+                                _buildDetailRow(Icons.phone, _getVicPhone()),
+                              if (_getVicNationality().isNotEmpty)
+                                _buildDetailRow(Icons.flag, _getVicNationality()),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 30),
+
+                    // Summary Section
+                    if (_getVicSummary().isNotEmpty) ...[
+                      Text(
+                        'Summary',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Color(0xff3A3A3A),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _getVicSummary(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                    ],
+
+                    // Preferences Section
+                    if (_getVicPreferences().isNotEmpty) ...[
+                      Text(
+                        'Preferences',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Color(0xff3A3A3A),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (String key in _getVicPreferences().keys)
+                                  Padding(
+                                    padding: EdgeInsets.only(bottom: 8),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 120,
+                                          child: Text(
+                                            key.replaceAll('_', ' ').toUpperCase(),
+                                            style: TextStyle(
+                                              color: Colors.grey[300],
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            _getVicPreferences()[key]?.toString() ?? '',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[400]),
+          SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[300],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookmarkButton() {
+    String? vicId;
+    try {
+      vicId = vic['_id']?.toString() ?? vic['id']?.toString();
+    } catch (e) {
+      print('Error getting VIC ID: $e');
+      return SizedBox.shrink();
+    }
+
+    if (vicId == null) {
+      return SizedBox.shrink();
+    }
+
+    return BookmarkButton(
+      itemType: 'vic',
+      itemId: vicId,
+      color: Colors.white,
+      activeColor: Colors.amber,
+      size: 24,
+    );
+  }
+}
+
+// Experience Detail Modal
+class ExperienceDetailModal extends StatelessWidget {
+  final dynamic experience;
+
+  const ExperienceDetailModal({
+    Key? key,
+    required this.experience,
+  }) : super(key: key);
+
+  String _getExperienceDestination() {
+    try {
+      return experience['destination']?.toString() ?? 'Unknown Destination';
+    } catch (e) {
+      return 'Unknown Destination';
+    }
+  }
+
+  String _getExperienceCountry() {
+    try {
+      return experience['country']?.toString() ?? 'Unknown Country';
+    } catch (e) {
+      return 'Unknown Country';
+    }
+  }
+
+  String _getExperienceDates() {
+    try {
+      final startDate = experience['startDate'];
+      final endDate = experience['endDate'];
+      
+      if (startDate != null && endDate != null) {
+        final start = DateTime.tryParse(startDate.toString());
+        final end = DateTime.tryParse(endDate.toString());
+        
+        if (start != null && end != null) {
+          return '${start.day}/${start.month}/${start.year} - ${end.day}/${end.month}/${end.year}';
+        }
+      }
+      
+      return 'Dates not available';
+    } catch (e) {
+      return 'Dates not available';
+    }
+  }
+
+  String _getExperienceStatus() {
+    try {
+      return experience['status']?.toString() ?? 'Unknown Status';
+    } catch (e) {
+      return 'Unknown Status';
+    }
+  }
+
+  String _getExperienceNotes() {
+    try {
+      return experience['notes']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getExperienceParty() {
+    try {
+      final party = experience['party'];
+      if (party != null) {
+        final adults = party['adults'] ?? 0;
+        final children = party['children'] ?? 0;
+        if (children > 0) {
+          return '$adults adults, $children children';
+        } else {
+          return '$adults adults';
+        }
+      }
+      return 'Party size not available';
+    } catch (e) {
+      return 'Party size not available';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.6,
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Color(0xff292525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                  _buildBookmarkButton(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Experience Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: Icon(
+                            Icons.flight_takeoff,
+                            color: Colors.white,
+                            size: 40,
+                          ),
+                        ),
+                        SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getExperienceDestination(),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                _getExperienceCountry(),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[300],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 30),
+                    // Experience Details
+                    _buildDetailRow(Icons.calendar_today, 'Dates', _getExperienceDates()),
+                    _buildDetailRow(Icons.info, 'Status', _getExperienceStatus()),
+                    _buildDetailRow(Icons.people, 'Party Size', _getExperienceParty()),
+                    SizedBox(height: 20),
+                    // Notes Section
+                    if (_getExperienceNotes().isNotEmpty) ...[
+                      Text(
+                        'Notes',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF1E1E1E),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _getExperienceNotes(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[300],
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[400], size: 20),
+          SizedBox(width: 12),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[300],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookmarkButton() {
+    final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
+    
+    return BookmarkButton(
+      itemType: 'experience',
+      itemId: experienceId,
+      color: Colors.white,
+      activeColor: Colors.amber,
+      size: 24,
+    );
+  }
+}
+
+// DMC Detail Modal
+class DMCDetailModal extends StatelessWidget {
+  final dynamic dmc;
+
+  const DMCDetailModal({
+    Key? key,
+    required this.dmc,
+  }) : super(key: key);
+
+  String _getDMCBusinessName() {
+    try {
+      return dmc['businessName']?.toString() ?? 'Unknown Business';
+    } catch (e) {
+      return 'Unknown Business';
+    }
+  }
+
+  String _getDMCLocation() {
+    try {
+      return dmc['location']?.toString() ?? 'Unknown Location';
+    } catch (e) {
+      return 'Unknown Location';
+    }
+  }
+
+  String _getDMCDescription() {
+    try {
+      return dmc['description']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  List<dynamic> _getDMCServiceProviders() {
+    try {
+      return List<dynamic>.from(dmc['serviceProviders'] ?? []);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.6,
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Color(0xff292525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                  _buildBookmarkButton(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // DMC Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: Icon(
+                            Icons.business,
+                            color: Colors.white,
+                            size: 40,
+                          ),
+                        ),
+                        SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getDMCBusinessName(),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                _getDMCLocation(),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[300],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 30),
+                    // DMC Details
+                    if (_getDMCDescription().isNotEmpty) ...[
+                      Text(
+                        'Description',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF1E1E1E),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _getDMCDescription(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[300],
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                    ],
+                    // Service Providers
+                    if (_getDMCServiceProviders().isNotEmpty) ...[
+                      Text(
+                        'Service Providers',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _getDMCServiceProviders().length,
+                          itemBuilder: (context, index) {
+                            final provider = _getDMCServiceProviders()[index];
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF1E1E1E),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    provider['companyName']?.toString() ?? 'Unknown Company',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  if (provider['countryOfOperation'] != null)
+                                    Text(
+                                      provider['countryOfOperation'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookmarkButton() {
+    final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
+    
+    return BookmarkButton(
+      itemType: 'dmc',
+      itemId: dmcId,
+      color: Colors.white,
+      activeColor: Colors.amber,
+      size: 24,
+    );
+  }
+}
+
+// Service Provider Detail Modal
+class ServiceProviderDetailModal extends StatelessWidget {
+  final dynamic serviceProvider;
+
+  const ServiceProviderDetailModal({
+    Key? key,
+    required this.serviceProvider,
+  }) : super(key: key);
+
+  String _getServiceProviderCompanyName() {
+    try {
+      return serviceProvider['companyName']?.toString() ?? 'Unknown Company';
+    } catch (e) {
+      return 'Unknown Company';
+    }
+  }
+
+  String _getServiceProviderCountry() {
+    try {
+      return serviceProvider['countryOfOperation']?.toString() ?? 'Unknown Country';
+    } catch (e) {
+      return 'Unknown Country';
+    }
+  }
+
+  String _getServiceProviderAddress() {
+    try {
+      return serviceProvider['address']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getServiceProviderExpertise() {
+    try {
+      final expertise = serviceProvider['productExpertise'];
+      if (expertise is List) {
+        return expertise.join(', ');
+      }
+      return expertise?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  List<dynamic> _getServiceProviderContacts() {
+    try {
+      return List<dynamic>.from(serviceProvider['pointsOfContact'] ?? []);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.6,
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Color(0xff292525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                  _buildBookmarkButton(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Service Provider Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: Icon(
+                            Icons.support_agent,
+                            color: Colors.white,
+                            size: 40,
+                          ),
+                        ),
+                        SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getServiceProviderCompanyName(),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                _getServiceProviderCountry(),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[300],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 30),
+                    // Service Provider Details
+                    if (_getServiceProviderAddress().isNotEmpty)
+                      _buildDetailRow(Icons.location_on, 'Address', _getServiceProviderAddress()),
+                    if (_getServiceProviderExpertise().isNotEmpty)
+                      _buildDetailRow(Icons.star, 'Expertise', _getServiceProviderExpertise()),
+                    SizedBox(height: 20),
+                    // Contacts
+                    if (_getServiceProviderContacts().isNotEmpty) ...[
+                      Text(
+                        'Contact Information',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _getServiceProviderContacts().length,
+                          itemBuilder: (context, index) {
+                            final contact = _getServiceProviderContacts()[index];
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF1E1E1E),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${contact['name'] ?? ''} ${contact['surname'] ?? ''}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  if (contact['emailAddress'] != null)
+                                    Text(
+                                      contact['emailAddress'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                  if (contact['phoneNumber'] != null)
+                                    Text(
+                                      contact['phoneNumber'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[400], size: 20),
+          SizedBox(width: 12),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[300],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookmarkButton() {
+    final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
+    
+    return BookmarkButton(
+      itemType: 'serviceProvider',
+      itemId: serviceProviderId,
       color: Colors.white,
       activeColor: Colors.amber,
       size: 24,
