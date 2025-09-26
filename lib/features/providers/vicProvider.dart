@@ -54,7 +54,6 @@ class VICProvider extends ChangeNotifier {
           _errorMessage = (failure as ServerFailure).message;
         },
         (vics) {
-          print('VICProvider: Successfully fetched ${vics.length} VICs');
           _vics = vics;
         },
       );

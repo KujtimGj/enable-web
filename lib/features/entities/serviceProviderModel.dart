@@ -12,6 +12,7 @@ class ServiceProviderModel {
   final String? country;
   final String? website;
   final Map<String, dynamic>? extras;
+  final String? sourceFileName;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -28,6 +29,7 @@ class ServiceProviderModel {
     this.country,
     this.website,
     this.extras,
+    this.sourceFileName,
     this.createdAt,
     this.updatedAt,
   });
@@ -45,6 +47,7 @@ class ServiceProviderModel {
     String? country,
     String? website,
     Map<String, dynamic>? extras,
+    String? sourceFileName,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -61,6 +64,7 @@ class ServiceProviderModel {
       country: country ?? this.country,
       website: website ?? this.website,
       extras: extras ?? this.extras,
+      sourceFileName: sourceFileName ?? this.sourceFileName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -80,6 +84,7 @@ class ServiceProviderModel {
       'country': country,
       'website': website,
       'extras': extras,
+      'sourceFileName': sourceFileName,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -99,6 +104,7 @@ class ServiceProviderModel {
       country: json['country'],
       website: json['website'],
       extras: json['extras'],
+      sourceFileName: json['sourceFileName'],
       createdAt: json['createdAt'] != null 
           ? DateTime.parse(json['createdAt']) 
           : null,

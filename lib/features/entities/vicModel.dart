@@ -9,6 +9,7 @@ class VICModel {
   final String? summary;
   final List<double>? embedding;
   final String? agencyId;
+  final String? sourceFileName;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -22,6 +23,7 @@ class VICModel {
     this.summary,
     this.embedding,
     this.agencyId,
+    this.sourceFileName,
     this.createdAt,
     this.updatedAt,
   });
@@ -36,6 +38,7 @@ class VICModel {
     String? summary,
     List<double>? embedding,
     String? agencyId,
+    String? sourceFileName,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -49,6 +52,7 @@ class VICModel {
       summary: summary ?? this.summary,
       embedding: embedding ?? this.embedding,
       agencyId: agencyId ?? this.agencyId,
+      sourceFileName: sourceFileName ?? this.sourceFileName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -65,6 +69,7 @@ class VICModel {
       'summary': summary,
       'embedding': embedding,
       'agencyId': agencyId,
+      'sourceFileName': sourceFileName,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -83,6 +88,7 @@ class VICModel {
           ? List<double>.from(json['embedding'])
           : null,
       agencyId: json['agencyId'],
+      sourceFileName: json['sourceFileName'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,

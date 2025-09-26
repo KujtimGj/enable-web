@@ -1,5 +1,6 @@
 import 'package:enable_web/core/dimensions.dart';
 import 'package:enable_web/features/components/widgets.dart';
+import 'package:enable_web/features/components/vic_mention_field.dart';
 import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:enable_web/features/providers/productProvider.dart';
 import 'package:enable_web/features/components/bookmark_components.dart';
@@ -14,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../providers/agentProvider.dart';
+import '../controllers/agencyController.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +25,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _chatController = TextEditingController();
+  String _selectedSearchType = 'My Knowledge';
+
   void showAccountOverlay(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final user = userProvider.user;
@@ -181,8 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  final TextEditingController _chatController = TextEditingController();
-  String _selectedSearchType = 'Knowledgebase';
+  // final TextEditingController _chatController = TextEditingController();
 
   @override
   void initState() {
@@ -195,7 +199,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _fetchProducts() {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
 
     if (userProvider.user?.agencyId != null) {
       productProvider.fetchProductsByAgencyId(userProvider.user!.agencyId);
@@ -207,26 +214,36 @@ class _HomeScreenState extends State<HomeScreen> {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
     if (userProvider.user?.agencyId != null) {
-      chatProvider.fetchConversations(userProvider.user!.agencyId, limit: 3); // Only show 3 on home screen
+      chatProvider.fetchConversations(
+        userProvider.user!.agencyId,
+        limit: 3,
+      ); // Only show 3 on home screen
     }
   }
 
-  void _showProductDetailModal(BuildContext context, dynamic product, bool isExternalProduct) {
+  void _showProductDetailModal(
+    BuildContext context,
+    dynamic product,
+    bool isExternalProduct,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
-        return ProductDetailModal(product: product, isExternalProduct: isExternalProduct);
+        return ProductDetailModal(
+          product: product,
+          isExternalProduct: isExternalProduct,
+        );
       },
     );
   }
 
   void _startNewConversation(BuildContext context) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    
+
     // Clear the current conversation and start fresh
     chatProvider.startNewConversation();
-    
+
     // Show a brief confirmation message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -237,12 +254,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  bool isHovered=false;
-  
+  bool isHovered = false;
+
   // Helper methods for grid view product cards
   String _getProductName(dynamic product, bool isExternal) {
     if (product == null) return 'No Name';
-    
+
     try {
       if (isExternal) {
         return product['name']?.toString() ?? 'No Name';
@@ -260,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _getProductCategory(dynamic product, bool isExternal) {
     if (product == null) return '';
-    
+
     try {
       if (isExternal) {
         return product['category']?.toString() ?? '';
@@ -269,7 +286,9 @@ class _HomeScreenState extends State<HomeScreen> {
           return product['category']?.toString() ?? '';
         } else {
           String category = product.category?.toString() ?? '';
-          return category.isNotEmpty ? category[0].toUpperCase() + category.substring(1) : '';
+          return category.isNotEmpty
+              ? category[0].toUpperCase() + category.substring(1)
+              : '';
         }
       }
     } catch (e) {
@@ -279,13 +298,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _getProductCountry(dynamic product) {
     if (product == null) return '';
-    
+
     try {
       if (product is Map) {
         return product['country']?.toString() ?? '';
       } else {
         String country = product.country?.toString() ?? '';
-        return country.isNotEmpty ? country[0].toUpperCase() + country.substring(1) : '';
+        return country.isNotEmpty
+            ? country[0].toUpperCase() + country.substring(1)
+            : '';
       }
     } catch (e) {
       return '';
@@ -294,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _getProductCity(dynamic product) {
     if (product == null) return '';
-    
+
     try {
       if (product is Map) {
         return product['city']?.toString() ?? '';
@@ -309,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   double? _getProductPriceMin(dynamic product) {
     if (product == null) return null;
-    
+
     try {
       if (product is Map) {
         return product['priceMin']?.toDouble();
@@ -323,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   double? _getProductPriceMax(dynamic product) {
     if (product == null) return null;
-    
+
     try {
       if (product is Map) {
         return product['priceMax']?.toDouble();
@@ -356,8 +377,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Consumer<ChatProvider>(
             builder: (context, chatProvider, child) {
               // Show button only when there's an active conversation
-              if (chatProvider.conversationId != null || chatProvider.messages.isNotEmpty) {
-                return customButton(()=>_startNewConversation(context));
+              if (chatProvider.conversationId != null ||
+                  chatProvider.messages.isNotEmpty) {
+                return customButton(() => _startNewConversation(context));
               }
               return SizedBox.shrink();
             },
@@ -403,25 +425,37 @@ class _HomeScreenState extends State<HomeScreen> {
                                   builder: (context, provider, _) {
                                     final messages = provider.messages;
                                     final error = provider.error;
-                                    final structuredSummary = provider.structuredSummary;
+                                    final structuredSummary =
+                                        provider.structuredSummary;
 
                                     // Show error message if there's an error
                                     if (error != null) {
                                       return Container(
                                         width: getWidth(context),
                                         padding: EdgeInsets.all(16),
-                                        margin: EdgeInsets.symmetric(vertical: 10),
+                                        margin: EdgeInsets.symmetric(
+                                          vertical: 10,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: Colors.red[50],
-                                          border: Border.all(color: Colors.red[200]!),
-                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: Colors.red[200]!,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Row( 
+                                            Row(
                                               children: [
-                                                Icon(Icons.error_outline, color: Colors.red[600], size: 20),
+                                                Icon(
+                                                  Icons.error_outline,
+                                                  color: Colors.red[600],
+                                                  size: 20,
+                                                ),
                                                 SizedBox(width: 8),
                                                 Text(
                                                   'AI Service Error',
@@ -435,8 +469,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ),
                                             SizedBox(height: 8),
                                             Text(
-                                              error.contains('AI service') 
-                                                  ? error 
+                                              error.contains('AI service')
+                                                  ? error
                                                   : 'There was an issue processing your request. Please try again.',
                                               style: TextStyle(
                                                 color: Colors.red[600],
@@ -450,7 +484,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                               },
                                               child: Text(
                                                 'Try Again',
-                                                style: TextStyle(color: Colors.red[600]),
+                                                style: TextStyle(
+                                                  color: Colors.red[600],
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -459,35 +495,51 @@ class _HomeScreenState extends State<HomeScreen> {
                                     }
 
                                     // Show conversations if no summary and no messages
-                                    if (messages.isEmpty && structuredSummary == null) {
+                                    if (messages.isEmpty &&
+                                        structuredSummary == null) {
                                       // Show loading state
                                       if (provider.isLoadingConversations) {
                                         return ListView.builder(
                                           shrinkWrap: true,
-                                          physics: NeverScrollableScrollPhysics(),
+                                          physics:
+                                              NeverScrollableScrollPhysics(),
                                           itemCount: 3,
                                           itemBuilder: (context, index) {
                                             return Container(
                                               width: getWidth(context),
-                                              padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10,),
-                                              margin: EdgeInsets.symmetric(vertical: 10,),
+                                              padding: EdgeInsets.symmetric(
+                                                vertical: 15,
+                                                horizontal: 10,
+                                              ),
+                                              margin: EdgeInsets.symmetric(
+                                                vertical: 10,
+                                              ),
                                               decoration: BoxDecoration(
-                                                border: Border.all(color: Color(0xff292525),),
-                                                borderRadius: BorderRadius.circular(5,),
-                                                color: Color(0xff1A1818)
+                                                border: Border.all(
+                                                  color: Color(0xff292525),
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                                color: Color(0xff1A1818),
                                               ),
                                               child: Shimmer.fromColors(
                                                 baseColor: Color(0xff292525),
-                                                highlightColor: Color(0xff3a3a3a),
+                                                highlightColor: Color(
+                                                  0xff3a3a3a,
+                                                ),
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Container(
                                                       height: 30,
                                                       width: 30,
                                                       decoration: BoxDecoration(
                                                         color: Colors.white,
-                                                        borderRadius: BorderRadius.circular(5),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              5,
+                                                            ),
                                                       ),
                                                     ),
                                                     SizedBox(height: 10),
@@ -503,35 +555,52 @@ class _HomeScreenState extends State<HomeScreen> {
                                           },
                                         );
                                       }
-                                      
+
                                       // Show real conversations if available
                                       if (provider.conversations.isNotEmpty) {
                                         return ListView.builder(
                                           shrinkWrap: true,
-                                          physics: NeverScrollableScrollPhysics(),
-                                          itemCount: provider.conversations.length,
+                                          physics:
+                                              NeverScrollableScrollPhysics(),
+                                          itemCount:
+                                              provider.conversations.length,
                                           itemBuilder: (context, index) {
-                                            final conversation = provider.conversations[index];
-                                            final conversationName = conversation['name'] ?? 'Conversation ${index + 1}';
-                                            
+                                            final conversation =
+                                                provider.conversations[index];
+                                            final conversationName =
+                                                conversation['name'] ??
+                                                'Conversation ${index + 1}';
+
                                             return Container(
                                               width: getWidth(context),
-                                              padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10,),
-                                              margin: EdgeInsets.symmetric(vertical: 10,),
+                                              padding: EdgeInsets.symmetric(
+                                                vertical: 15,
+                                                horizontal: 10,
+                                              ),
+                                              margin: EdgeInsets.symmetric(
+                                                vertical: 10,
+                                              ),
                                               decoration: BoxDecoration(
-                                                border: Border.all(color: Color(0xff292525),),
-                                                borderRadius: BorderRadius.circular(5,),
-                                                color: Color(0xff1A1818)
+                                                border: Border.all(
+                                                  color: Color(0xff292525),
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                                color: Color(0xff1A1818),
                                               ),
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Container(
                                                     padding: EdgeInsets.all(10),
                                                     width: 30,
                                                     decoration: BoxDecoration(
                                                       color: Color(0xff292525),
-                                                      borderRadius: BorderRadius.circular(5),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            5,
+                                                          ),
                                                     ),
                                                     child: Center(
                                                       child: SvgPicture.asset(
@@ -544,7 +613,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     conversationName,
                                                     style: TextStyle(
                                                       color: Colors.white,
-                                                      fontWeight: FontWeight.w500,
+                                                      fontWeight:
+                                                          FontWeight.w500,
                                                       fontSize: 14,
                                                     ),
                                                   ),
@@ -554,7 +624,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           },
                                         );
                                       }
-                                      
+
                                       // Fallback to static chat suggestions if no conversations
                                       return ListView.builder(
                                         shrinkWrap: true,
@@ -563,22 +633,34 @@ class _HomeScreenState extends State<HomeScreen> {
                                         itemBuilder: (context, index) {
                                           return Container(
                                             width: getWidth(context),
-                                            padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10,),
-                                            margin: EdgeInsets.symmetric(vertical: 10,),
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: 15,
+                                              horizontal: 10,
+                                            ),
+                                            margin: EdgeInsets.symmetric(
+                                              vertical: 10,
+                                            ),
                                             decoration: BoxDecoration(
-                                              border: Border.all(color: Color(0xff292525),),
-                                              borderRadius: BorderRadius.circular(5,),
-                                              color: Color(0xff1A1818)
+                                              border: Border.all(
+                                                color: Color(0xff292525),
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(5),
+                                              color: Color(0xff1A1818),
                                             ),
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Container(
                                                   padding: EdgeInsets.all(10),
                                                   width: 30,
                                                   decoration: BoxDecoration(
                                                     color: Color(0xff292525),
-                                                    borderRadius: BorderRadius.circular(5),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          5,
+                                                        ),
                                                   ),
                                                   child: Center(
                                                     child: SvgPicture.asset(
@@ -618,22 +700,28 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     : Alignment.centerLeft,
                                             child: Container(
                                               constraints: BoxConstraints(
-                                                maxWidth: getWidth(context) * 0.8,
+                                                maxWidth:
+                                                    getWidth(context) * 0.8,
                                               ),
                                               margin: EdgeInsets.symmetric(
                                                 vertical: 6,
                                               ),
                                               padding: EdgeInsets.all(12),
                                               decoration: BoxDecoration(
-                                                color: isUser
-                                                    ? Color(0xff292525)
-                                                    : Colors.transparent, // Transparent background for AI responses
-                                                border: isUser
-                                                    ? null
-                                                    : Border.all(
-                                                        color: Color(0xff292525),
-                                                        width: 1,
-                                                      ), // Border only for AI responses
+                                                color:
+                                                    isUser
+                                                        ? Color(0xff292525)
+                                                        : Colors
+                                                            .transparent, // Transparent background for AI responses
+                                                border:
+                                                    isUser
+                                                        ? null
+                                                        : Border.all(
+                                                          color: Color(
+                                                            0xff292525,
+                                                          ),
+                                                          width: 1,
+                                                        ), // Border only for AI responses
                                                 borderRadius: BorderRadius.only(
                                                   topLeft: Radius.circular(10),
                                                   topRight: Radius.circular(10),
@@ -653,7 +741,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     color: Colors.white,
                                                     fontSize: 14,
                                                   ),
-                                                  children: _parseMarkdownText(msg['content'] ?? ''),
+                                                  children: _parseMarkdownText(
+                                                    msg['content'] ?? '',
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -678,19 +768,23 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
-                                child: TextFormField(
-                                  onFieldSubmitted: (value) async {
-                                    final userProvider = Provider.of<UserProvider>(
-                                      context,
-                                      listen: false,
-                                    );
-                                    final chatProvider = Provider.of<ChatProvider>(
-                                      context,
-                                      listen: false,
-                                    );
-
+                                child: VICMentionField(
+                                  controller: _chatController,
+                                  onSubmitted: (value) async {
+                                    final userProvider =
+                                        Provider.of<UserProvider>(
+                                          context,
+                                          listen: false,
+                                        );
+                                    final chatProvider =
+                                        Provider.of<ChatProvider>(
+                                          context,
+                                          listen: false,
+                                        );
+ 
                                     final userId = userProvider.user!.id;
-                                    final agencyId = userProvider.user!.agencyId;
+                                    final agencyId =
+                                        userProvider.user!.agencyId;
 
                                     if (value.trim().isEmpty) return;
 
@@ -699,41 +793,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                     _chatController.clear();
 
-                                    await chatProvider.sendQueryWithMode(
+                                    // Determine search mode based on user selection
+                                    final searchMode =
+                                        _selectedSearchType == 'My Knowledge'
+                                            ? 'my_knowledge'
+                                            : 'external_search';
+
+                                    await chatProvider.sendIntelligentQuery(
                                       userId: userId,
                                       agencyId: agencyId,
                                       query: value.trim(),
-                                      searchMode: _selectedSearchType,
-                                      existingConversationId: chatProvider.conversationId,
+                                      searchMode: searchMode,
+                                      existingConversationId:
+                                      chatProvider.conversationId,
+                                      context: context,
                                     );
                                   },
-                                  controller: _chatController,
-                                  decoration: InputDecoration(
-                                    prefixIcon: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: SvgPicture.asset(
-                                        'assets/icons/star-05.svg',
-                                      ),
-                                    ),
-                                    hintText: 'Ask Enable',
-                                    hintStyle: TextStyle(color: Colors.white),
-                                    border: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Colors.white,
-                                        width: 2,
-                                      ),
+                                  hintText: 'Ask Enable',
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: SvgPicture.asset(
+                                      'assets/icons/star-05.svg',
                                     ),
                                   ),
                                 ),
                               ),
                               Container(
-                                decoration: BoxDecoration(
-                                  color: Color(0xff383232),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                padding: EdgeInsets.all(5),
                                 width: 160,
-                                height: 30,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Color(0xff3a3132),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey[700]!),
+                                ),
                                 child: MenuAnchor(
                                   builder: (context, controller, child) {
                                     return InkWell(
@@ -745,42 +840,48 @@ class _HomeScreenState extends State<HomeScreen> {
                                         }
                                       },
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             _selectedSearchType,
-                                            style: TextStyle(color: Colors.white),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                            ),
                                           ),
-                                          Icon(Icons.arrow_drop_down, color: Colors.white),
+                                          const Icon(
+                                            Icons.keyboard_arrow_down,
+                                            color: Colors.white,
+                                          ),
                                         ],
                                       ),
                                     );
                                   },
                                   menuChildren: [
-                                    'External Search',
-                                    'My knowledge'
-                                  ].map<Widget>((String value) {
-                                    return InkWell(
-                                      onTap: () {
+                                    MenuItemButton(
+                                      onPressed: () {
                                         setState(() {
-                                          _selectedSearchType = value;
+                                          _selectedSearchType = 'My Knowledge';
                                         });
                                       },
-                                      child: Container(
-                                        width: double.infinity,
-                                        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                                        child: Text(
-                                          value,
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                      child: const Text('My Knowledge'),
+                                    ),
+                                    MenuItemButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedSearchType =
+                                              'External Search';
+                                        });
+                                      },
+                                      child: const Text('External Search'),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -790,15 +891,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   flex: 2,
                   child: SizedBox(
                     height: getHeight(context),
-                    child: Consumer3<ChatProvider, ProductProvider, BookmarkProvider>(
-                      builder: (context, chatProvider, productProvider, bookmarkProvider, child) {
+                    child: Consumer3<
+                      ChatProvider,
+                      ProductProvider,
+                      BookmarkProvider
+                    >(
+                      builder: (
+                        context,
+                        chatProvider,
+                        productProvider,
+                        bookmarkProvider,
+                        child,
+                      ) {
                         final externalProducts = chatProvider.externalProducts;
+                        final vics = chatProvider.vics;
+                        final experiences = chatProvider.experiences;
+                        final dmcs = chatProvider.dmcs;
+                        final serviceProviders = chatProvider.serviceProviders;
                         final dbProducts = productProvider.products;
 
                         // Prepare items for multi-select
                         final allItems = <Map<String, String>>[];
                         for (final product in externalProducts) {
-                          final productId = product['_id']?.toString() ?? product['id']?.toString();
+                          final productId =
+                              product['_id']?.toString() ??
+                              product['id']?.toString();
                           if (productId != null) {
                             allItems.add({
                               'itemType': 'externalProduct',
@@ -813,29 +930,85 @@ class _HomeScreenState extends State<HomeScreen> {
                             'itemId': productId,
                           });
                         }
+                        for (final vic in vics) {
+                          final vicId = vic['_id']?.toString() ?? vic['id']?.toString();
+                          if (vicId != null) {
+                            allItems.add({
+                              'itemType': 'vic',
+                              'itemId': vicId,
+                            });
+                          }
+                        }
+                        for (final experience in experiences) {
+                          final experienceId = experience['_id']?.toString() ?? experience['id']?.toString();
+                          if (experienceId != null) {
+                            allItems.add({
+                              'itemType': 'experience',
+                              'itemId': experienceId,
+                            });
+                          }
+                        }
+                        for (final dmc in dmcs) {
+                          final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString();
+                          if (dmcId != null) {
+                            allItems.add({
+                              'itemType': 'dmc',
+                              'itemId': dmcId,
+                            });
+                          }
+                        }
+                        for (final serviceProvider in serviceProviders) {
+                          final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString();
+                          if (serviceProviderId != null) {
+                            allItems.add({
+                              'itemType': 'serviceProvider',
+                              'itemId': serviceProviderId,
+                            });
+                          }
+                        }
 
                         return Column(
                           children: [
                             // Multi-select toolbar
                             MultiSelectToolbar(
                               selectedCount: bookmarkProvider.selectedCount,
-                              isMultiSelectMode: bookmarkProvider.isMultiSelectMode,
-                              onToggleMultiSelect: () => bookmarkProvider.toggleMultiSelectMode(),
-                              onSelectAll: () => bookmarkProvider.selectAllItems(allItems),
-                              onClearSelection: () => bookmarkProvider.clearSelection(),
-                              onBulkBookmark: () => _showBulkBookmarkDialog(context, bookmarkProvider),
-                              onBulkDelete: () => _handleBulkDelete(context, bookmarkProvider),
-                              hasBookmarks: _hasSelectedBookmarks(bookmarkProvider),
+                              isMultiSelectMode:
+                                  bookmarkProvider.isMultiSelectMode,
+                              onToggleMultiSelect:
+                                  () =>
+                                      bookmarkProvider.toggleMultiSelectMode(),
+                              onSelectAll:
+                                  () =>
+                                      bookmarkProvider.selectAllItems(allItems),
+                              onClearSelection:
+                                  () => bookmarkProvider.clearSelection(),
+                              onBulkBookmark:
+                                  () => _showBulkBookmarkDialog(
+                                    context,
+                                    bookmarkProvider,
+                                  ),
+                              onBulkDelete:
+                                  () => _handleBulkDelete(
+                                    context,
+                                    bookmarkProvider,
+                                  ),
+                              hasBookmarks: _hasSelectedBookmarks(
+                                bookmarkProvider,
+                              ),
                             ),
-                            
+
                             // Grid content
                             Expanded(
                               child: _buildGridContent(
-                                chatProvider, 
-                                productProvider, 
+                                chatProvider,
+                                productProvider,
                                 bookmarkProvider,
-                                externalProducts, 
-                                dbProducts
+                                externalProducts,
+                                vics,
+                                experiences,
+                                dmcs,
+                                serviceProviders,
+                                dbProducts,
                               ),
                             ),
                           ],
@@ -922,93 +1095,90 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildImageItem(List<dynamic> images, int index) {
-     if (index >= images.length) {
-       return Container(
-         width: double.infinity,
-         height: double.infinity,
-         decoration: BoxDecoration(
-           color: Colors.grey[800],
-           borderRadius: BorderRadius.circular(8),
-         ),
-         child: Icon(
-           Icons.image,
-           color: Colors.white,
-           size: 20,
-         ),
-       );
-     }
-     
-     return ClipRRect(
-       borderRadius: BorderRadius.circular(8),
-       child: Image.network(
-         images[index],
-         width: double.infinity,
-         height: double.infinity,
-         fit: BoxFit.cover,
-         errorBuilder: (context, error, stackTrace) {
-           return Container(
-             width: double.infinity,
-             height: double.infinity,
-             decoration: BoxDecoration(
-               color: Colors.grey[800],
-               borderRadius: BorderRadius.circular(8),
-             ),
-             child: Icon(
-               Icons.image,
-               color: Colors.white,
-               size: 20,
-             ),
-           );
-         },
-       ),
-     );
-   }
 
-   Widget _buildDatabaseImageItem(List<dynamic> images, int index) {
-     if (index >= images.length) {
-       return Container(
-         width: double.infinity,
-         height: double.infinity,
-         decoration: BoxDecoration(
-           color: Colors.grey[800],
-           borderRadius: BorderRadius.circular(8),
-         ),
-         child: Icon(
-           Icons.image,
-           color: Colors.white,
-           size: 20,
-         ),
-       );
-     }
-     
-     return ClipRRect(
-       borderRadius: BorderRadius.circular(8),
-       child: Image.network(
-          images[index].signedUrl,
-         width: double.infinity,
-         height: double.infinity,
-         fit: BoxFit.cover,
-         errorBuilder: (context, error, stackTrace) {
-           return Container(
-             width: double.infinity,
-             height: double.infinity,
-             decoration: BoxDecoration(
-               color: Colors.grey[800],
-               borderRadius: BorderRadius.circular(8),
-             ),
-             child: Icon(
-               Icons.image,
-               color: Colors.white,
-               size: 20,
-             ),
-           );
-         },
-       ),
-     );
-   }
+  Widget _buildRandomImageItem(List<dynamic> images, String productId) {
+    if (images.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(Icons.image, color: Colors.white, size: 20),
+      );
+    }
+
+    // Use productId hash to generate a stable "random" index
+    final hash = productId.hashCode;
+    final stableIndex = hash.abs() % images.length;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        images[stableIndex],
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.image, color: Colors.white, size: 20),
+          );
+        },
+      ),
+    );
+  }
+
+
+  Widget _buildRandomDatabaseImageItem(List<dynamic> images, String productId) {
+    if (images.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(Icons.image, color: Colors.white, size: 20),
+      );
+    }
+
+    // Use productId hash to generate a stable "random" index
+    final hash = productId.hashCode;
+    final stableIndex = hash.abs() % images.length;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        images[stableIndex].signedUrl,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.image, color: Colors.white, size: 20),
+          );
+        },
+      ),
+    );
+  }
 
   List<TextSpan> _parseMarkdownText(String text) {
+
+
+    
     if (text.isEmpty) return [];
 
     List<TextSpan> spans = [];
@@ -1021,17 +1191,20 @@ class _HomeScreenState extends State<HomeScreen> {
         if (endIndex == -1) endIndex = remainingText.length;
 
         String headerText = remainingText.substring(3, endIndex).trim();
-        spans.add(TextSpan(
-          text: headerText,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,        // larger
-            fontWeight: FontWeight.w900, // extra bold
-            height: 1.6,
+        spans.add(
+          TextSpan(
+            text: headerText,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24, // larger
+              fontWeight: FontWeight.w900, // extra bold
+              height: 1.6,
+            ),
           ),
-        ));
+        );
 
-        if (endIndex < remainingText.length && remainingText[endIndex] == '\n') {
+        if (endIndex < remainingText.length &&
+            remainingText[endIndex] == '\n') {
           spans.add(const TextSpan(text: '\n'));
           remainingText = remainingText.substring(endIndex + 1);
         } else {
@@ -1044,52 +1217,60 @@ class _HomeScreenState extends State<HomeScreen> {
       int boldStart = remainingText.indexOf('**');
       if (boldStart != -1) {
         if (boldStart > 0) {
-          spans.add(TextSpan(
-            text: remainingText.substring(0, boldStart),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              height: 1.4,
+          spans.add(
+            TextSpan(
+              text: remainingText.substring(0, boldStart),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                height: 1.4,
+              ),
             ),
-          ));
+          );
         }
 
         int boldEnd = remainingText.indexOf('**', boldStart + 2);
         if (boldEnd != -1) {
           String boldText = remainingText.substring(boldStart + 2, boldEnd);
-          spans.add(TextSpan(
-            text: boldText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              height: 1.4,
+          spans.add(
+            TextSpan(
+              text: boldText,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                height: 1.4,
+              ),
             ),
-          ));
+          );
           remainingText = remainingText.substring(boldEnd + 2);
         } else {
-          spans.add(TextSpan(
-            text: remainingText.substring(boldStart, boldStart + 2),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              height: 1.4,
+          spans.add(
+            TextSpan(
+              text: remainingText.substring(boldStart, boldStart + 2),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                height: 1.4,
+              ),
             ),
-          ));
+          );
           remainingText = remainingText.substring(boldStart + 2);
         }
         continue;
       }
 
       // plain text
-      spans.add(TextSpan(
-        text: remainingText,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 13,
-          height: 1.4,
+      spans.add(
+        TextSpan(
+          text: remainingText,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            height: 1.4,
+          ),
         ),
-      ));
+      );
       break;
     }
     return spans;
@@ -1127,9 +1308,36 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGridContent(ChatProvider chatProvider, ProductProvider productProvider, BookmarkProvider bookmarkProvider, List<dynamic> externalProducts, List<dynamic> dbProducts,) {
+  Widget _buildGridContent(
+    ChatProvider chatProvider,
+    ProductProvider productProvider,
+    BookmarkProvider bookmarkProvider,
+    List<dynamic> externalProducts,
+    List<dynamic> vics,
+    List<dynamic> experiences,
+    List<dynamic> dmcs,
+    List<dynamic> serviceProviders,
+    List<dynamic> dbProducts,
+  ) {
     if (chatProvider.isLoading) {
       return shimmerGrid();
+    }
+
+    // Prioritize different data types based on what's available
+    if (vics.isNotEmpty) {
+      return _buildVicsGrid(vics, bookmarkProvider);
+    }
+
+    if (experiences.isNotEmpty) {
+      return _buildExperiencesGrid(experiences, bookmarkProvider);
+    }
+
+    if (dmcs.isNotEmpty) {
+      return _buildDMCsGrid(dmcs, bookmarkProvider);
+    }
+
+    if (serviceProviders.isNotEmpty) {
+      return _buildServiceProvidersGrid(serviceProviders, bookmarkProvider);
     }
 
     if (externalProducts.isNotEmpty) {
@@ -1143,7 +1351,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return shimmerGrid();
   }
 
-  Widget _buildExternalProductsGrid(List<dynamic> externalProducts, BookmarkProvider bookmarkProvider) {
+  Widget _buildExternalProductsGrid(
+    List<dynamic> externalProducts,
+    BookmarkProvider bookmarkProvider,
+  ) {
     return GridView.builder(
       itemCount: externalProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1154,9 +1365,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       itemBuilder: (context, index) {
         final product = externalProducts[index];
-        final productId = product['_id']?.toString() ?? product['id']?.toString();
-        final isSelected = bookmarkProvider.isItemSelected('externalProduct', productId ?? '');
-        
+        final productId =
+            product['_id']?.toString() ?? product['id']?.toString();
+        final isSelected = bookmarkProvider.isItemSelected(
+          'externalProduct',
+          productId ?? '',
+        );
+
         // Check if this is a database product (has images field) or external product (has rawData.imageUrls)
         List<String> images = [];
         if (product['images'] != null && product['images'].isNotEmpty) {
@@ -1170,7 +1385,11 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         } else {
           // External product - use imageUrls from rawData
-          images = (product['rawData']?['imageUrls'] ?? []).map((url) => url.toString()).toList().cast<String>();
+          images =
+              (product['rawData']?['imageUrls'] ?? [])
+                  .map((url) => url.toString())
+                  .toList()
+                  .cast<String>();
         }
 
         return Stack(
@@ -1178,9 +1397,16 @@ class _HomeScreenState extends State<HomeScreen> {
             InkWell(
               onTap: () {
                 if (bookmarkProvider.isMultiSelectMode) {
-                  bookmarkProvider.toggleItemSelection('externalProduct', productId ?? '');
+                  bookmarkProvider.toggleItemSelection(
+                    'externalProduct',
+                    productId ?? '',
+                  );
                 } else {
-                  _showProductDetailModal(context, product, product['images'] == null || product['images'].isEmpty);
+                  _showProductDetailModal(
+                    context, 
+                    product,
+                    product['images'] == null || product['images'].isEmpty,
+                  );
                 }
               },
               child: Container(
@@ -1194,54 +1420,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Row(
                   children: [
-                    // 4 images grid on the left side
+                    // Single random image on the left side
                     Expanded(
                       flex: 1,
                       child: images.isNotEmpty
-                          ? Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: _buildImageItem(images, 0),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Expanded(
-                                        child: _buildImageItem(images, 2),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(width: 4),
-                                Expanded(
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: _buildImageItem(images, 1),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Expanded(
-                                        child: _buildImageItem(images, 3),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                        : Container(
-                            width: double.infinity,
-                            height: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[800],
-                              borderRadius: BorderRadius.circular(10),
+                          ? _buildRandomImageItem(images, productId ?? '')
+                          : Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.image,
+                                color: Colors.white,
+                                size: 40,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.image,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
                     ),
                     // Product details on the right side
                     Expanded(
@@ -1296,7 +1492,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemType: 'externalProduct',
                   itemId: productId ?? '',
                   isSelected: isSelected,
-                  onTap: () => bookmarkProvider.toggleItemSelection('externalProduct', productId ?? ''),
+                  onTap:
+                      () => bookmarkProvider.toggleItemSelection(
+                        'externalProduct',
+                        productId ?? '',
+                      ),
                 ),
               ),
           ],
@@ -1305,7 +1505,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDatabaseProductsGrid(List<dynamic> dbProducts, BookmarkProvider bookmarkProvider) {
+  Widget _buildDatabaseProductsGrid(
+    List<dynamic> dbProducts,
+    BookmarkProvider bookmarkProvider,
+  ) {
     return GridView.builder(
       itemCount: dbProducts.length > 50 ? 35 : dbProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1318,7 +1521,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final product = dbProducts[index];
         final images = product.images;
         final productId = product.id.toString();
-        final isSelected = bookmarkProvider.isItemSelected('product', productId);
+        final isSelected = bookmarkProvider.isItemSelected(
+          'product',
+          productId,
+        );
 
         return Stack(
           children: [
@@ -1343,66 +1549,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isSelected ? Colors.blue : Colors.grey,
                     ),
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: isHovered
-                        ? [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.3),
-                              spreadRadius: 2,
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
-                            ),
-                          ]
-                        : [],
                   ),
                   child: Row(
                     children: [
                       Expanded(
                         flex: 1,
                         child: images != null && images.isNotEmpty
-                            ? Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Expanded(
-                                          child: _buildDatabaseImageItem(images, 0),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Expanded(
-                                          child: _buildDatabaseImageItem(images, 2),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(width: 4),
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Expanded(
-                                          child: _buildDatabaseImageItem(images, 1),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Expanded(
-                                          child: _buildDatabaseImageItem(images, 3),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              )
-                          : Container(
-                              width: double.infinity,
-                              height: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[800],
-                                borderRadius: BorderRadius.circular(10),
+                            ? _buildRandomDatabaseImageItem(images, productId)
+                            : Container(
+                                width: double.infinity,
+                                height: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[800],
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.image,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.image,
-                                color: Colors.white,
-                                size: 40,
-                              ),
-                            ),
                       ),
                       // Product details on the right side
                       Expanded(
@@ -1413,7 +1579,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Container(
                                     padding: EdgeInsets.all(10),
@@ -1452,9 +1619,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Colors.grey[400],
                                 ),
                               ),
-                              if (_getProductPriceMin(product) != null || _getProductPriceMax(product) != null)
+                              if (_getProductPriceMin(product) != null ||
+                                  _getProductPriceMax(product) != null)
                                 SizedBox(height: 2),
-                              if (_getProductPriceMin(product) != null && _getProductPriceMax(product) != null)
+                              if (_getProductPriceMin(product) != null &&
+                                  _getProductPriceMax(product) != null)
                                 Text(
                                   '\$${_getProductPriceMin(product)!.toStringAsFixed(2)} - \$${_getProductPriceMax(product)!.toStringAsFixed(2)}',
                                   style: TextStyle(
@@ -1473,8 +1642,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                               SizedBox(height: 10),
-                              Text("Country: ${_getProductCountry(product)}", style: TextStyle(fontSize: 12, color: Colors.grey[400])),
-                              Text("City: ${_getProductCity(product)}", style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                              Text(
+                                "Country: ${_getProductCountry(product)}",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                              Text(
+                                "City: ${_getProductCity(product)}",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1493,7 +1674,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemType: 'product',
                   itemId: productId,
                   isSelected: isSelected,
-                  onTap: () => bookmarkProvider.toggleItemSelection('product', productId),
+                  onTap:
+                      () => bookmarkProvider.toggleItemSelection(
+                        'product',
+                        productId,
+                      ),
                 ),
               ),
           ],
@@ -1502,7 +1687,1076 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showBulkBookmarkDialog(BuildContext context, BookmarkProvider bookmarkProvider) {
+  Widget _buildVicsGrid(
+    List<dynamic> vics,
+    BookmarkProvider bookmarkProvider,
+  ) {
+    return GridView.builder(
+      itemCount: vics.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.7,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
+      ),
+      itemBuilder: (context, index) {
+        final vic = vics[index];
+        final vicId = vic['_id']?.toString() ?? vic['id']?.toString() ?? '';
+        final isSelected = bookmarkProvider.isItemSelected('vic', vicId);
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                if (bookmarkProvider.isMultiSelectMode) {
+                  bookmarkProvider.toggleItemSelection('vic', vicId);
+                } else {
+                  _showVicDetailModal(context, vic);
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF181616),
+                  border: Border.all(
+                    width: isSelected ? 2 : 0.5,
+                    color: isSelected ? Colors.blue : Colors.grey,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // VIC Avatar and basic info
+                    Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xff574435),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _getVicInitials(vic),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getVicName(vic),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                _getVicEmail(vic),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bookmark button for VICs
+                        if (!bookmarkProvider.isMultiSelectMode)
+                          _buildVicBookmarkButton(vic),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // VIC Details
+                    if (_getVicPhone(vic).isNotEmpty)
+                      _buildVicDetailRow(Icons.phone, _getVicPhone(vic)),
+                    if (_getVicNationality(vic).isNotEmpty)
+                      _buildVicDetailRow(Icons.flag, _getVicNationality(vic)),
+                    if (_getVicSummary(vic).isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        'Summary',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _getVicSummary(vic),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Multi-select checkbox
+            if (bookmarkProvider.isMultiSelectMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MultiSelectBookmarkButton(
+                  itemType: 'vic',
+                  itemId: vicId,
+                  isSelected: isSelected,
+                  onTap: () => bookmarkProvider.toggleItemSelection('vic', vicId),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildExperiencesGrid(
+    List<dynamic> experiences,
+    BookmarkProvider bookmarkProvider,
+  ) {
+    return GridView.builder(
+      itemCount: experiences.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.5,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
+      ),
+      itemBuilder: (context, index) {
+        final experience = experiences[index];
+        final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
+        final isSelected = bookmarkProvider.isItemSelected('experience', experienceId);
+
+        // Get images for the experience
+        List<String> images = [];
+        try {
+          print('Experience data keys: ${experience.keys.toList()}');
+          print('Experience has images field: ${experience.containsKey('images')}');
+          if (experience['images'] != null) {
+            print('Images field type: ${experience['images'].runtimeType}');
+            print('Images field value: ${experience['images']}');
+            
+            if (experience['images'] is List) {
+              for (int i = 0; i < experience['images'].length; i++) {
+                var img = experience['images'][i];
+                print('Image $i: $img');
+                if (img is Map) {
+                  print('Image $i keys: ${img.keys.toList()}');
+                  print('Image $i signedUrl: ${img['signedUrl']}');
+                  print('Image $i imageUrl: ${img['imageUrl']}');
+                }
+              }
+            }
+          }
+          
+          if (experience['images'] != null && experience['images'].isNotEmpty) {
+            print('Found ${experience['images'].length} images for experience');
+            for (var img in experience['images']) {
+              if (img is Map && img['signedUrl'] != null && img['signedUrl'].toString().isNotEmpty) {
+                images.add(img['signedUrl'].toString());
+                print('Added image from signedUrl: ${img['signedUrl']}');
+              } else if (img is Map && img['imageUrl'] != null && img['imageUrl'].toString().isNotEmpty) {
+                // Fallback to imageUrl if signedUrl is not available
+                images.add(img['imageUrl'].toString());
+                print('Added image from imageUrl (fallback): ${img['imageUrl']}');
+              }
+            }
+          } else {
+            print('No images found for experience - images field is null or empty');
+          }
+        } catch (e) {
+          print('Error extracting images: $e');
+        }
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                if (bookmarkProvider.isMultiSelectMode) {
+                  bookmarkProvider.toggleItemSelection('experience', experienceId);
+                } else {
+                  _showExperienceDetailModal(context, experience);
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.zero,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    width: isSelected ? 2 : 0.5,
+                    color: isSelected ? Colors.blue : Colors.grey,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    // Single image on the left side
+                    Expanded(
+                      flex: 1,
+                      child: images.isNotEmpty
+                          ? _buildRandomImageItem(images, experienceId)
+                          : Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                          decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.flight_takeoff,
+                            color: Colors.white,
+                                size: 40,
+                          ),
+                        ),
+                    ),
+                    // Experience details on the right side
+                        Expanded(
+                      flex: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                _getExperienceDestination(experience),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                                    maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Bookmark button for experiences
+                        if (!bookmarkProvider.isMultiSelectMode)
+                          _buildExperienceBookmarkButton(experience),
+                      ],
+                    ),
+                            SizedBox(height: 4),
+                      Text(
+                              _getExperienceCountry(experience),
+                        style: TextStyle(
+                          fontSize: 12,
+                                color: Colors.grey[400],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                            if (_getExperienceDates(experience).isNotEmpty)
+                      Text(
+                                _getExperienceDates(experience),
+                        style: TextStyle(
+                          fontSize: 11,
+                                  color: Colors.grey[500],
+                        ),
+                                maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                              ),
+                            SizedBox(height: 4),
+                            Text(
+                              _getExperienceStatus(experience),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue[400],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Spacer(),
+                            // Show itinerary count if available
+                            if (_getExperienceItineraryCount(experience) > 0)
+                              Row(
+                                children: [
+                                  Icon(Icons.timeline, size: 12, color: Colors.orange[400]),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '${_getExperienceItineraryCount(experience)} items',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.orange[400],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Multi-select checkbox
+            if (bookmarkProvider.isMultiSelectMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MultiSelectBookmarkButton(
+                  itemType: 'experience',
+                  itemId: experienceId,
+                  isSelected: isSelected,
+                  onTap: () => bookmarkProvider.toggleItemSelection('experience', experienceId),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDMCsGrid(
+    List<dynamic> dmcs,
+    BookmarkProvider bookmarkProvider,
+  ) {
+    return GridView.builder(
+      itemCount: dmcs.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.2,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
+      ),
+      itemBuilder: (context, index) {
+        final dmc = dmcs[index];
+        final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
+        final isSelected = bookmarkProvider.isItemSelected('dmc', dmcId);
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                if (bookmarkProvider.isMultiSelectMode) {
+                  bookmarkProvider.toggleItemSelection('dmc', dmcId);
+                } else {
+                  _showDMCDetailModal(context, dmc);
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF181616),
+                  border: Border.all(
+                    width: isSelected ? 2 : 0.5,
+                    color: isSelected ? Colors.blue : Colors.grey,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // DMC Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.business,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getDMCBusinessName(dmc),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                _getDMCLocation(dmc),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bookmark button for DMCs
+                        if (!bookmarkProvider.isMultiSelectMode)
+                          _buildDMCBookmarkButton(dmc),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // DMC Details
+                    if (_getDMCDescription(dmc).isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        'Description',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _getDMCDescription(dmc),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Multi-select checkbox
+            if (bookmarkProvider.isMultiSelectMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MultiSelectBookmarkButton(
+                  itemType: 'dmc',
+                  itemId: dmcId,
+                  isSelected: isSelected,
+                  onTap: () => bookmarkProvider.toggleItemSelection('dmc', dmcId),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildServiceProvidersGrid(
+    List<dynamic> serviceProviders,
+    BookmarkProvider bookmarkProvider,
+  ) {
+    return GridView.builder(
+      itemCount: serviceProviders.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.2,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
+      ),
+      itemBuilder: (context, index) {
+        final serviceProvider = serviceProviders[index];
+        final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
+        final isSelected = bookmarkProvider.isItemSelected('serviceProvider', serviceProviderId);
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                if (bookmarkProvider.isMultiSelectMode) {
+                  bookmarkProvider.toggleItemSelection('serviceProvider', serviceProviderId);
+                } else {
+                  _showServiceProviderDetailModal(context, serviceProvider);
+                }
+              },
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF181616),
+                  border: Border.all(
+                    width: isSelected ? 2 : 0.5,
+                    color: isSelected ? Colors.blue : Colors.grey,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Service Provider Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.support_agent,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getServiceProviderCompanyName(serviceProvider),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                _getServiceProviderCountry(serviceProvider),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bookmark button for service providers
+                        if (!bookmarkProvider.isMultiSelectMode)
+                          _buildServiceProviderBookmarkButton(serviceProvider),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // Service Provider Details
+                    if (_getServiceProviderExpertise(serviceProvider).isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        'Expertise',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _getServiceProviderExpertise(serviceProvider),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Multi-select checkbox
+            if (bookmarkProvider.isMultiSelectMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MultiSelectBookmarkButton(
+                  itemType: 'serviceProvider',
+                  itemId: serviceProviderId,
+                  isSelected: isSelected,
+                  onTap: () => bookmarkProvider.toggleItemSelection('serviceProvider', serviceProviderId),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildVicDetailRow(IconData icon, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: Colors.grey[500]),
+          SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[400],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVicBookmarkButton(dynamic vic) {
+    String? vicId;
+    try {
+      vicId = vic['_id']?.toString() ?? vic['id']?.toString();
+    } catch (e) {
+      print('Error getting VIC ID: $e');
+      return SizedBox.shrink();
+    }
+
+    if (vicId == null) {
+      return SizedBox.shrink();
+    }
+
+    return BookmarkButton(
+      itemType: 'vic',
+      itemId: vicId,
+      color: Colors.white70,
+      activeColor: Colors.amber,
+      size: 20,
+    );
+  }
+
+  // Helper methods for VIC data
+  String _getVicName(dynamic vic) {
+    if (vic == null) return 'Unknown Client';
+    try {
+      return vic['fullName']?.toString() ?? 'Unknown Client';
+    } catch (e) {
+      return 'Unknown Client';
+    }
+  }
+
+  String _getVicEmail(dynamic vic) {
+    if (vic == null) return '';
+    try {
+      return vic['email']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicPhone(dynamic vic) {
+    if (vic == null) return '';
+    try {
+      return vic['phone']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicNationality(dynamic vic) {
+    if (vic == null) return '';
+    try {
+      return vic['nationality']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicSummary(dynamic vic) {
+    if (vic == null) return '';
+    try {
+      return vic['summary']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicInitials(dynamic vic) {
+    final name = _getVicName(vic);
+    if (name.isEmpty) return 'U';
+    
+    final nameParts = name.split(' ');
+    if (nameParts.length >= 2) {
+      return '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
+    } else {
+      return name[0].toUpperCase();
+    }
+  }
+
+  void _showVicDetailModal(BuildContext context, dynamic vic) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return VICDetailModal(vic: vic);
+      },
+    );
+  }
+
+  // Experience helper methods
+  String _getExperienceDestination(dynamic experience) {
+    try {
+      return experience['destination']?.toString() ?? 'Unknown Destination';
+    } catch (e) {
+      return 'Unknown Destination';
+    }
+  }
+
+  String _getExperienceCountry(dynamic experience) {
+    try {
+      return experience['country']?.toString() ?? 'Unknown Country';
+    } catch (e) {
+      return 'Unknown Country';
+    }
+  }
+
+  String _getExperienceDates(dynamic experience) {
+    try {
+      final startDate = experience['startDate'];
+      final endDate = experience['endDate'];
+      
+      if (startDate != null && endDate != null) {
+        DateTime? start, end;
+        
+        // Handle MongoDB date format
+        if (startDate is Map && startDate['\$date'] != null) {
+          start = DateTime.tryParse(startDate['\$date'].toString());
+        } else if (startDate is String) {
+          start = DateTime.tryParse(startDate);
+        }
+        
+        if (endDate is Map && endDate['\$date'] != null) {
+          end = DateTime.tryParse(endDate['\$date'].toString());
+        } else if (endDate is String) {
+          end = DateTime.tryParse(endDate);
+        }
+        
+        if (start != null && end != null) {
+          return '${start.day}/${start.month}/${start.year} - ${end.day}/${end.month}/${end.year}';
+        }
+      }
+      
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getExperienceStatus(dynamic experience) {
+    try {
+      return experience['status']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getExperienceNotes(dynamic experience) {
+    try {
+      return experience['notes']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  int _getExperienceItineraryCount(dynamic experience) {
+    try {
+      final itinerary = experience['itinerary'];
+      if (itinerary is List) {
+        return itinerary.length;
+      }
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  Widget _buildExperienceDetailRow(IconData icon, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: Colors.grey[500]),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[400],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExperienceBookmarkButton(dynamic experience) {
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
+        final isBookmarked = bookmarkProvider.isItemBookmarked('experience', experienceId);
+        
+        return IconButton(
+          onPressed: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'experience',
+              itemId: experienceId,
+            );
+          },
+          icon: Icon(
+            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: isBookmarked ? Colors.amber : Colors.grey[400],
+            size: 20,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showExperienceDetailModal(BuildContext context, dynamic experience) async {
+    // Show loading dialog first
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Color(0xff292525),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
+                Text(
+                  'Loading experience details...',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Fetch full experience data
+      final fullExperience = await _fetchFullExperienceData(experience['_id']?.toString() ?? experience['id']!.toString());
+      
+      // Close loading dialog 
+      Navigator.of(context).pop();
+      
+      // Show experience modal with full data
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return ExperienceDetailModal(experience: fullExperience ?? experience);
+        },
+      );
+    } catch (e) {
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      // Show error and fallback to original experience data
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load full experience details: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      
+      // Show modal with original data
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return ExperienceDetailModal(experience: experience);
+        },
+      );
+    }
+  }
+
+  Future<dynamic> _fetchFullExperienceData(String experienceId) async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final agencyId = userProvider.user?.agencyId;
+      
+      if (agencyId == null) {
+        throw Exception('No agency ID found');
+      }
+
+      // Use the agency controller to fetch full experience data
+      final agencyController = AgencyController();
+      final result = await agencyController.getExperiencesByAgencyId(agencyId);
+      
+      return result.fold(
+        (failure) {
+          throw Exception('Failed to fetch experiences: ${failure.toString()}');
+        },
+        (experiences) {
+          // Find the specific experience by ID
+          for (var exp in experiences) {
+            if (exp['_id']?.toString() == experienceId || exp['id']?.toString() == experienceId) {
+              print('Found full experience data with ${exp['images']?.length ?? 0} images and ${exp['itinerary']?.length ?? 0} itinerary items');
+              return exp;
+            }
+          }
+          throw Exception('Experience not found');
+        },
+      );
+    } catch (e) {
+      print('Error fetching full experience data: $e');
+      rethrow;
+    }
+  }
+
+  // DMC helper methods
+  String _getDMCBusinessName(dynamic dmc) {
+    try {
+      return dmc['businessName']?.toString() ?? 'Unknown Business';
+    } catch (e) {
+      return 'Unknown Business';
+    }
+  }
+
+  String _getDMCLocation(dynamic dmc) {
+    try {
+      return dmc['location']?.toString() ?? 'Unknown Location';
+    } catch (e) {
+      return 'Unknown Location';
+    }
+  }
+
+  String _getDMCDescription(dynamic dmc) {
+    try {
+      return dmc['description']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Widget _buildDMCBookmarkButton(dynamic dmc) {
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
+        final isBookmarked = bookmarkProvider.isItemBookmarked('dmc', dmcId);
+        
+        return IconButton(
+          onPressed: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'dmc',
+              itemId: dmcId,
+            );
+          },
+          icon: Icon(
+            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: isBookmarked ? Colors.amber : Colors.grey[400],
+            size: 20,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDMCDetailModal(BuildContext context, dynamic dmc) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return DMCDetailModal(dmc: dmc);
+      },
+    );
+  }
+
+  // Service Provider helper methods
+  String _getServiceProviderCompanyName(dynamic serviceProvider) {
+    try {
+      return serviceProvider['companyName']?.toString() ?? 'Unknown Company';
+    } catch (e) {
+      return 'Unknown Company';
+    }
+  }
+
+  String _getServiceProviderCountry(dynamic serviceProvider) {
+    try {
+      return serviceProvider['countryOfOperation']?.toString() ?? 'Unknown Country';
+    } catch (e) {
+      return 'Unknown Country';
+    }
+  }
+
+  String _getServiceProviderExpertise(dynamic serviceProvider) {
+    try {
+      final expertise = serviceProvider['productExpertise'];
+      if (expertise is List) {
+        return expertise.join(', ');
+      }
+      return expertise?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Widget _buildServiceProviderBookmarkButton(dynamic serviceProvider) {
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
+        final isBookmarked = bookmarkProvider.isItemBookmarked('serviceProvider', serviceProviderId);
+        
+        return IconButton(
+          onPressed: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'serviceProvider',
+              itemId: serviceProviderId,
+            );
+          },
+          icon: Icon(
+            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: isBookmarked ? Colors.amber : Colors.grey[400],
+            size: 20,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showServiceProviderDetailModal(BuildContext context, dynamic serviceProvider) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return ServiceProviderDetailModal(serviceProvider: serviceProvider);
+      },
+    );
+  }
+
+  void _showBulkBookmarkDialog(
+    BuildContext context,
+    BookmarkProvider bookmarkProvider,
+  ) {
     final selectedItems = bookmarkProvider.getSelectedItemsData();
     if (selectedItems.isEmpty) return;
 
@@ -1516,18 +2770,22 @@ class _HomeScreenState extends State<HomeScreen> {
               vicId: vicId,
               notes: notes,
             );
-            
+
             if (success) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${selectedItems.length} items bookmarked successfully'),
+                  content: Text(
+                    '${selectedItems.length} items bookmarked successfully',
+                  ),
                   backgroundColor: Colors.green,
                 ),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Failed to bookmark items: ${bookmarkProvider.error}'),
+                  content: Text(
+                    'Failed to bookmark items: ${bookmarkProvider.error}',
+                  ),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -1538,7 +2796,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleBulkDelete(BuildContext context, BookmarkProvider bookmarkProvider) {
+  void _handleBulkDelete(
+    BuildContext context,
+    BookmarkProvider bookmarkProvider,
+  ) {
     final selectedItems = bookmarkProvider.getSelectedItemsData();
     if (selectedItems.isEmpty) return;
 
@@ -1558,36 +2819,34 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey),
-              ),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
                 final success = await bookmarkProvider.bulkDeleteBookmarks();
-                
+
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('${selectedItems.length} bookmarks removed successfully'),
+                      content: Text(
+                        '${selectedItems.length} bookmarks removed successfully',
+                      ),
                       backgroundColor: Colors.orange,
                     ),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to remove bookmarks: ${bookmarkProvider.error}'),
+                      content: Text(
+                        'Failed to remove bookmarks: ${bookmarkProvider.error}',
+                      ),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               },
-              child: Text(
-                'Remove',
-                style: TextStyle(color: Colors.red),
-              ),
+              child: Text('Remove', style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -1597,11 +2856,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _hasSelectedBookmarks(BookmarkProvider bookmarkProvider) {
     final selectedItems = bookmarkProvider.getSelectedItemsData();
-    return selectedItems.any((item) => 
-      bookmarkProvider.isItemBookmarked(item['itemType']!, item['itemId']!)
+    return selectedItems.any(
+      (item) =>
+          bookmarkProvider.isItemBookmarked(item['itemType']!, item['itemId']!),
     );
   }
-
 }
 
 class ProductDetailModal extends StatelessWidget {
@@ -1614,10 +2873,10 @@ class ProductDetailModal extends StatelessWidget {
     required this.isExternalProduct,
   }) : super(key: key);
 
-  // Helper methods to safely access product properties
+  // Helper methods to safely access product propertiesv 
   String _getProductName() {
-    if (product == null) return 'Product Detail';
-    
+    if (product == null) return 'Product Detail'; 
+
     try {
       if (isExternalProduct) {
         return product['name']?.toString() ?? 'Product Detail';
@@ -1636,14 +2895,15 @@ class ProductDetailModal extends StatelessWidget {
 
   String _getProductDescription() {
     if (product == null) return 'No description available';
-    
+
     try {
       if (isExternalProduct) {
         return product['description']?.toString() ?? 'No description available';
       } else {
         // Try both Map and ProductModel access patterns
         if (product is Map) {
-          return product['description']?.toString() ?? 'No description available';
+          return product['description']?.toString() ??
+              'No description available';
         } else {
           return product.description?.toString() ?? 'No description available';
         }
@@ -1655,7 +2915,7 @@ class ProductDetailModal extends StatelessWidget {
 
   Map<String, dynamic> _getProductTags() {
     if (product == null) return {};
-    
+
     try {
       if (isExternalProduct) {
         return Map<String, dynamic>.from(product['tags'] ?? {});
@@ -1674,7 +2934,7 @@ class ProductDetailModal extends StatelessWidget {
 
   List<dynamic> _getProductImages() {
     if (product == null) return [];
-    
+
     try {
       if (isExternalProduct) {
         return List<dynamic>.from(product['rawData']?['imageUrls'] ?? []);
@@ -1740,10 +3000,13 @@ class ProductDetailModal extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 16),
-                          
+
                           // Folder name button
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: Color(0xff3A3A3A),
                               borderRadius: BorderRadius.circular(5),
@@ -1751,17 +3014,24 @@ class ProductDetailModal extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.folder, color: Colors.white, size: 16),
+                                Icon(
+                                  Icons.folder,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                                 SizedBox(width: 8),
                                 Text(
                                   'Folder name',
-                                  style: TextStyle(color: Colors.white, fontSize: 14),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                           SizedBox(height: 20),
-                          
+
                           // Description
                           Text(
                             _getProductDescription(),
@@ -1772,7 +3042,7 @@ class ProductDetailModal extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 20),
-                          
+
                           // Tags section
                           Text(
                             'Tags',
@@ -1789,15 +3059,23 @@ class ProductDetailModal extends StatelessWidget {
                             children: [
                               for (String key in _getProductTags().keys)
                                 Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Color(0xff3A3A3A),
-                                    border: Border.all(color: Colors.grey[600]!),
+                                    border: Border.all(
+                                      color: Colors.grey[600]!,
+                                    ),
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: Text(
                                     _getProductTags()[key]?.toString() ?? '',
-                                    style: TextStyle(color: Colors.white, fontSize: 12),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -1806,7 +3084,7 @@ class ProductDetailModal extends StatelessWidget {
                       ),
                     ),
                   ),
-                    // Right panel (2/3 width)
+                  // Right panel (2/3 width)
                   Expanded(
                     flex: 2,
                     child: Padding(
@@ -1823,9 +3101,10 @@ class ProductDetailModal extends StatelessWidget {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: isExternalProduct
-                                    ? _buildExternalProductImages()
-                                    : _buildDatabaseProductImages(),
+                                child:
+                                    isExternalProduct
+                                        ? _buildExternalProductImages()
+                                        : _buildDatabaseProductImages(),
                               ),
                             ),
                           ),
@@ -1992,4 +3271,1562 @@ class ProductDetailModal extends StatelessWidget {
     );
   }
 }
-  
+
+class VICDetailModal extends StatelessWidget {
+  final dynamic vic;
+
+  const VICDetailModal({
+    Key? key,
+    required this.vic,
+  }) : super(key: key);
+
+  // Helper methods to safely access VIC properties
+  String _getVicName() {
+    if (vic == null) return 'Client Detail';
+    try {
+      return vic['fullName']?.toString() ?? 'Client Detail';
+    } catch (e) {
+      return 'Client Detail';
+    }
+  }
+
+  String _getVicEmail() {
+    if (vic == null) return '';
+    try {
+      return vic['email']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicPhone() {
+    if (vic == null) return '';
+    try {
+      return vic['phone']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicNationality() {
+    if (vic == null) return '';
+    try {
+      return vic['nationality']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getVicSummary() {
+    if (vic == null) return '';
+    try {
+      return vic['summary']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Map<String, dynamic> _getVicPreferences() {
+    if (vic == null) return {};
+    try {
+      return Map<String, dynamic>.from(vic['preferences'] ?? {});
+    } catch (e) {
+      return {};
+    }
+  }
+
+  String _getVicInitials() {
+    final name = _getVicName();
+    if (name.isEmpty) return 'U';
+    
+    final nameParts = name.split(' ');
+    if (nameParts.length >= 2) {
+      return '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
+    } else {
+      return name[0].toUpperCase();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.6,
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Color(0xff292525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                  // Bookmark button
+                  _buildBookmarkButton(),
+                ],
+              ),
+            ),
+            // Main content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Client Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xff574435),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _getVicInitials(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getVicName(),
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              if (_getVicEmail().isNotEmpty)
+                                _buildDetailRow(Icons.email, _getVicEmail()),
+                              if (_getVicPhone().isNotEmpty)
+                                _buildDetailRow(Icons.phone, _getVicPhone()),
+                              if (_getVicNationality().isNotEmpty)
+                                _buildDetailRow(Icons.flag, _getVicNationality()),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 30),
+
+                    // Summary Section
+                    if (_getVicSummary().isNotEmpty) ...[
+                      Text(
+                        'Summary',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Color(0xff3A3A3A),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _getVicSummary(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                    ],
+
+                    // Preferences Section
+                    if (_getVicPreferences().isNotEmpty) ...[
+                      Text(
+                        'Preferences',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Color(0xff3A3A3A),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (String key in _getVicPreferences().keys)
+                                  Padding(
+                                    padding: EdgeInsets.only(bottom: 8),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 120,
+                                          child: Text(
+                                            key.replaceAll('_', ' ').toUpperCase(),
+                                            style: TextStyle(
+                                              color: Colors.grey[300],
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            _getVicPreferences()[key]?.toString() ?? '',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[400]),
+          SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[300],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookmarkButton() {
+    String? vicId;
+    try {
+      vicId = vic['_id']?.toString() ?? vic['id']?.toString();
+    } catch (e) {
+      print('Error getting VIC ID: $e');
+      return SizedBox.shrink();
+    }
+
+    if (vicId == null) {
+      return SizedBox.shrink();
+    }
+
+    return BookmarkButton(
+      itemType: 'vic',
+      itemId: vicId,
+      color: Colors.white,
+      activeColor: Colors.amber,
+      size: 24,
+    );
+  }
+}
+
+// Experience Detail Modal
+class ExperienceDetailModal extends StatelessWidget {
+  final dynamic experience;
+
+  const ExperienceDetailModal({
+    Key? key,
+    required this.experience,
+  }) : super(key: key);
+
+  String _getExperienceDestination() {
+    try {
+      return experience['destination']?.toString() ?? 'Unknown Destination';
+    } catch (e) {
+      return 'Unknown Destination';
+    }
+  }
+
+  String _getExperienceCountry() {
+    try {
+      return experience['country']?.toString() ?? 'Unknown Country';
+    } catch (e) {
+      return 'Unknown Country';
+    }
+  }
+
+  String _getExperienceDates() {
+    try {
+      final startDate = experience['startDate'];
+      final endDate = experience['endDate'];
+      
+      if (startDate != null && endDate != null) {
+        DateTime? start, end;
+        
+        // Handle MongoDB date format
+        if (startDate is Map && startDate['\$date'] != null) {
+          start = DateTime.tryParse(startDate['\$date'].toString());
+        } else if (startDate is String) {
+          start = DateTime.tryParse(startDate);
+        }
+        
+        if (endDate is Map && endDate['\$date'] != null) {
+          end = DateTime.tryParse(endDate['\$date'].toString());
+        } else if (endDate is String) {
+          end = DateTime.tryParse(endDate);
+        }
+        
+        if (start != null && end != null) {
+          return '${start.day}/${start.month}/${start.year} - ${end.day}/${end.month}/${end.year}';
+        }
+      }
+      
+      return 'Dates not available';
+    } catch (e) {
+      return 'Dates not available';
+    }
+  }
+
+  String _getExperienceStatus() {
+    try {
+      return experience['status']?.toString() ?? 'Unknown Status';
+    } catch (e) {
+      return 'Unknown Status';
+    }
+  }
+
+  String _getExperienceNotes() {
+    try {
+      return experience['notes']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getExperienceParty() {
+    try {
+      final party = experience['party'];
+      if (party != null) {
+        final adults = party['adults'] ?? 0;
+        final children = party['children'] ?? 0;
+        if (children > 0) {
+          return '$adults adults, $children children';
+        } else {
+          return '$adults adults';
+        }
+      }
+      return 'Party size not available';
+    } catch (e) {
+      return 'Party size not available';
+    }
+  }
+
+  List<dynamic> _getExperienceItinerary() {
+    try {
+      final itinerary = experience['itinerary'];
+      if (itinerary != null) {
+        print('Found itinerary with ${itinerary.length} items');
+        return List<dynamic>.from(itinerary);
+      } else {
+        print('No itinerary found for experience');
+        return [];
+      }
+    } catch (e) {
+      print('Error getting itinerary: $e');
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.8,
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: Color(0xff292525),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xff574435),
+                    Color(0xff574435).withOpacity(0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.flight_takeoff, color: Colors.white, size: 28),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getExperienceDestination(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (_getExperienceCountry().isNotEmpty) ...[
+                          SizedBox(height: 6),
+                          Text(
+                            _getExperienceCountry(),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          _getExperienceStatus().toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      if (_getExperienceItinerary().isNotEmpty)
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            '${_getExperienceItinerary().length} itinerary items',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(width: 16),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Experience Overview
+                    _buildOverviewSection(),
+                    SizedBox(height: 32),
+                    
+                    // Itinerary Timeline
+                    if (_getExperienceItinerary().isNotEmpty) ...[
+                      _buildItineraryTimeline(),
+                    ] else ...[
+                      _buildEmptyItinerary(),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            
+            // Actions
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Color(0xff1e1e1e),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                    Row(
+                      children: [
+                      Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                      SizedBox(width: 8),
+                      Text(
+                        'Experience ID: ${experience['_id']?.toString().substring(0, 8) ?? 'N/A'}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      _buildBookmarkButton(),
+                      SizedBox(width: 16),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text('Close'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverviewSection() {
+    return Container(
+      padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.dashboard, size: 20, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                'Experience Overview',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildOverviewItem(
+                  Icons.calendar_today,
+                  'Duration',
+                  _getExperienceDates(),
+                ),
+              ),
+              Expanded(
+                child: _buildOverviewItem(
+                  Icons.people,
+                  'Party',
+                  _getExperienceParty(),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          if (_getExperienceNotes().isNotEmpty) ...[
+            _buildOverviewItem(
+              Icons.note,
+              'Notes',
+              _getExperienceNotes(),
+            ),
+            SizedBox(height: 16),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewItem(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: Colors.white),
+        ),
+        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue[300],
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItineraryTimeline() {
+    final itinerary = _getExperienceItinerary();
+    
+    // Group itinerary items by day
+    Map<int, List<dynamic>> groupedByDay = {};
+    for (var item in itinerary) {
+      if (item['day'] != null) {
+        final day = item['day'] as int;
+        groupedByDay.putIfAbsent(day, () => []).add(item);
+      }
+    }
+    
+    // Sort days and items within each day
+    var sortedDays = groupedByDay.keys.toList()..sort();
+    for (var day in sortedDays) {
+      groupedByDay[day]!.sort((a, b) => (a['order'] ?? 0).compareTo(b['order'] ?? 0));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.timeline, size: 24, color: Colors.white),
+            SizedBox(width: 12),
+            Text(
+              'Itinerary Timeline',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+            Spacer(),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white),
+              ),
+              child: Text(
+                '${sortedDays.length} days',
+                                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                                ),
+                              ),
+                            ],
+                          ),
+        SizedBox(height: 24),
+        ...sortedDays.map((day) => _buildDaySection(day, groupedByDay[day]!)),
+      ],
+    );
+  }
+
+  Widget _buildDaySection(int day, List<dynamic> dayItems) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Day Header
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey[400]!),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.calendar_today, size: 16, color: Colors.white),
+                ),
+                SizedBox(width: 12),
+                      Text(
+                  'Day $day',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                Spacer(),
+                Text(
+                  '${dayItems.length} activities',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Timeline items
+          ...dayItems.asMap().entries.map((entry) {
+            int index = entry.key;
+            dynamic item = entry.value;
+            return _buildTimelineItem(item, index, dayItems.length);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem(dynamic item, int index, int totalItems) {
+    bool isLast = index == totalItems - 1;
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Timeline line and dot
+        Column(
+          children: [
+                      Container(
+              width: 16,
+              height: 16,
+                        decoration: BoxDecoration(
+                color: _getItineraryItemColor(item['type']),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: _getItineraryItemColor(item['type']).withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+            if (!isLast)
+              Container(
+                width: 3,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      _getItineraryItemColor(item['type']).withOpacity(0.3),
+                      _getItineraryItemColor(item['type']).withOpacity(0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+          ],
+        ),
+        SizedBox(width: 20),
+        
+        // Item content
+        Expanded(
+          child: Container(
+            margin: EdgeInsets.only(bottom: 20),
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _getItineraryItemColor(item['type']).withOpacity(0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.08),
+                  spreadRadius: 1,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _getItineraryItemColor(item['type']).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _getItineraryItemColor(item['type']).withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        (item['type'] ?? 'UNKNOWN').toString().toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _getItineraryItemColor(item['type']),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(item['status']).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _getStatusColor(item['status']).withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        (item['status'] ?? 'SUGGESTED').toString().toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _getStatusColor(item['status']),
+                        ),
+                      ),
+                    ),
+                    Spacer(),
+                    if (item['order'] != null)
+                      Container(
+                        padding: EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '#${item['order']}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                
+                // Description
+                Text(
+                  item['details']?['description'] ?? 'No description available',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                    height: 1.4,
+                  ),
+                ),
+                SizedBox(height: 16),
+                
+                // Additional details in a grid layout
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    if (item['supplier'] != null && item['supplier']['name'] != null)
+                      _buildDetailChip(Icons.business, 'Supplier', item['supplier']['name']),
+                    if (item['startAt'] != null)
+                      _buildDetailChip(Icons.access_time, 'Start', _formatDateTime(item['startAt'])),
+                    if (item['endAt'] != null)
+                      _buildDetailChip(Icons.access_time, 'End', _formatDateTime(item['endAt'])),
+                    if (item['location'] != null && item['location']['address'] != null)
+                      _buildDetailChip(Icons.location_on, 'Location', item['location']['address']),
+                    if (item['location'] != null && item['location']['city'] != null)
+                      _buildDetailChip(Icons.location_city, 'City', item['location']['city']),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailChip(IconData icon, String label, String value) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.grey[600]),
+          SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+          Text(
+                label,
+            style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                ),
+              ),
+              Text(
+              value,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[800],
+                  fontWeight: FontWeight.w500,
+              ),
+            ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyItinerary() {
+    return Container(
+      padding: EdgeInsets.all(40),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.timeline,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+          ),
+          SizedBox(height: 24),
+          Text(
+            'No Itinerary Items',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'This experience doesn\'t have any itinerary items yet.\nAdd activities, flights, accommodations, and more to create a complete travel plan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getItineraryItemColor(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'flight':
+        return Colors.blue;
+      case 'stay':
+        return Colors.green;
+      case 'activity':
+        return Colors.orange;
+      case 'transfer':
+        return Colors.purple;
+      case 'reservation':
+        return Colors.teal;
+      case 'info':
+        return Colors.indigo;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'confirmed':
+        return Colors.green;
+      case 'proposed':
+        return Colors.orange;
+      case 'cancelled':
+        return Colors.red;
+      case 'suggested':
+      default:
+        return Colors.blue;
+    }
+  }
+
+  String _formatDateTime(dynamic dateTime) {
+    try {
+      if (dateTime is Map && dateTime['\$date'] != null) {
+        // Handle MongoDB date format
+        final parsed = DateTime.tryParse(dateTime['\$date'].toString());
+        if (parsed != null) {
+          return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+        }
+      } else if (dateTime is String) {
+        final parsed = DateTime.tryParse(dateTime);
+        if (parsed != null) {
+          return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+        }
+      }
+      return dateTime.toString();
+    } catch (e) {
+      return dateTime.toString();
+    }
+  }
+
+  Widget _buildBookmarkButton() {
+    final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
+    
+    return BookmarkButton(
+      itemType: 'experience',
+      itemId: experienceId,
+      color: Colors.white,
+      activeColor: Colors.amber,
+      size: 24,
+    );
+  }
+}
+
+// DMC Detail Modal
+class DMCDetailModal extends StatelessWidget {
+  final dynamic dmc;
+
+  const DMCDetailModal({
+    Key? key,
+    required this.dmc,
+  }) : super(key: key);
+
+  String _getDMCBusinessName() {
+    try {
+      return dmc['businessName']?.toString() ?? 'Unknown Business';
+    } catch (e) {
+      return 'Unknown Business';
+    }
+  }
+
+  String _getDMCLocation() {
+    try {
+      return dmc['location']?.toString() ?? 'Unknown Location';
+    } catch (e) {
+      return 'Unknown Location';
+    }
+  }
+
+  String _getDMCDescription() {
+    try {
+      return dmc['description']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  List<dynamic> _getDMCServiceProviders() {
+    try {
+      return List<dynamic>.from(dmc['serviceProviders'] ?? []);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.6,
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Color(0xff292525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                  _buildBookmarkButton(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // DMC Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: Icon(
+                            Icons.business,
+                            color: Colors.white,
+                            size: 40,
+                          ),
+                        ),
+                        SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getDMCBusinessName(),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                _getDMCLocation(),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[300],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 30),
+                    // DMC Details
+                    if (_getDMCDescription().isNotEmpty) ...[
+                      Text(
+                        'Description',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF1E1E1E),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _getDMCDescription(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[300],
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                    ],
+                    // Service Providers
+                    if (_getDMCServiceProviders().isNotEmpty) ...[
+                      Text(
+                        'Service Providers',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _getDMCServiceProviders().length,
+                          itemBuilder: (context, index) {
+                            final provider = _getDMCServiceProviders()[index];
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF1E1E1E),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    provider['companyName']?.toString() ?? 'Unknown Company',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  if (provider['countryOfOperation'] != null)
+                                    Text(
+                                      provider['countryOfOperation'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookmarkButton() {
+    final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
+    
+    return BookmarkButton(
+      itemType: 'dmc',
+      itemId: dmcId,
+      color: Colors.white,
+      activeColor: Colors.amber,
+      size: 24,
+    );
+  }
+}
+
+// Service Provider Detail Modal
+class ServiceProviderDetailModal extends StatelessWidget {
+  final dynamic serviceProvider;
+
+  const ServiceProviderDetailModal({
+    Key? key,
+    required this.serviceProvider,
+  }) : super(key: key);
+
+  String _getServiceProviderCompanyName() {
+    try {
+      return serviceProvider['companyName']?.toString() ?? 'Unknown Company';
+    } catch (e) {
+      return 'Unknown Company';
+    }
+  }
+
+  String _getServiceProviderCountry() {
+    try {
+      return serviceProvider['countryOfOperation']?.toString() ?? 'Unknown Country';
+    } catch (e) {
+      return 'Unknown Country';
+    }
+  }
+
+  String _getServiceProviderAddress() {
+    try {
+      return serviceProvider['address']?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getServiceProviderExpertise() {
+    try {
+      final expertise = serviceProvider['productExpertise'];
+      if (expertise is List) {
+        return expertise.join(', ');
+      }
+      return expertise?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  List<dynamic> _getServiceProviderContacts() {
+    try {
+      return List<dynamic>.from(serviceProvider['pointsOfContact'] ?? []);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.6,
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Color(0xff292525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                  _buildBookmarkButton(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Service Provider Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Color(0xff574435),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: Icon(
+                            Icons.support_agent,
+                            color: Colors.white,
+                            size: 40,
+                          ),
+                        ),
+                        SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getServiceProviderCompanyName(),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                _getServiceProviderCountry(),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[300],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 30),
+                    // Service Provider Details
+                    if (_getServiceProviderAddress().isNotEmpty)
+                      _buildDetailRow(Icons.location_on, 'Address', _getServiceProviderAddress()),
+                    if (_getServiceProviderExpertise().isNotEmpty)
+                      _buildDetailRow(Icons.star, 'Expertise', _getServiceProviderExpertise()),
+                    SizedBox(height: 20),
+                    // Contacts
+                    if (_getServiceProviderContacts().isNotEmpty) ...[
+                      Text(
+                        'Contact Information',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _getServiceProviderContacts().length,
+                          itemBuilder: (context, index) {
+                            final contact = _getServiceProviderContacts()[index];
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF1E1E1E),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${contact['name'] ?? ''} ${contact['surname'] ?? ''}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  if (contact['emailAddress'] != null)
+                                    Text(
+                                      contact['emailAddress'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                  if (contact['phoneNumber'] != null)
+                                    Text(
+                                      contact['phoneNumber'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[400], size: 20),
+          SizedBox(width: 12),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[300],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookmarkButton() {
+    final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
+    
+    return BookmarkButton(
+      itemType: 'serviceProvider',
+      itemId: serviceProviderId,
+      color: Colors.white,
+      activeColor: Colors.amber,
+      size: 24,
+    );
+  }
+}

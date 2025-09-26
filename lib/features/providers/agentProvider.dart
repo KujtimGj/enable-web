@@ -1,13 +1,20 @@
 import 'package:enable_web/features/controllers/searchModeController.dart';
 import 'package:enable_web/features/controllers/conversationController.dart';
+import 'package:enable_web/features/controllers/intelligentAgentController.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class ChatProvider extends ChangeNotifier {
   final SearchModeController _searchModeController = SearchModeController();
   final ConversationController _conversationController = ConversationController();
+  final IntelligentAgentController _intelligentAgentController = IntelligentAgentController();
 
   String? _message;
   List<dynamic> _externalProducts = [];
+  List<dynamic> _vics = [];
+  List<dynamic> _experiences = [];
+  List<dynamic> _dmcs = [];
+  List<dynamic> _serviceProviders = [];
   bool _isLoading = false;
   String? _error;
   String? _conversationId;
@@ -20,6 +27,10 @@ class ChatProvider extends ChangeNotifier {
   // Getters
   String? get message => _message;
   List<dynamic> get externalProducts => _externalProducts;
+  List<dynamic> get vics => _vics;
+  List<dynamic> get experiences => _experiences;
+  List<dynamic> get dmcs => _dmcs;
+  List<dynamic> get serviceProviders => _serviceProviders;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get conversationId => _conversationId;
@@ -47,74 +58,44 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-
-  Future<void> sendQuery({
-    required String userId,
-    required String agencyId,
-    required String query,
-    String? clientId,
-    String? existingConversationId,
-  }) async {
-    // For backward compatibility, use the old method
-    await sendQueryWithMode(
-      userId: userId,
-      agencyId: agencyId,
-      query: query,
-      searchMode: 'external_search', // Default to external search for backward compatibility
-      clientId: clientId,
-      existingConversationId: existingConversationId,
-    );
-  }
-
-  Future<void> sendQueryWithMode({
+  Future<void> sendIntelligentQuery({
     required String userId,
     required String agencyId,
     required String query,
     required String searchMode,
     String? clientId,
     String? existingConversationId,
+    BuildContext? context,
   }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
-    print("⏳ Sending query to backend with search mode: $searchMode");
+    print("🧠 Sending intelligent query to backend");
     print("User ID: $userId");
     print("Agency ID: $agencyId");
     print("Query: $query");
 
-    // Convert search mode to backend format
-    String backendSearchMode;
-    switch (searchMode) {
-      case 'My knowledge':
-        backendSearchMode = 'my_knowledge';
-        break;
-      case 'External Search':
-        backendSearchMode = 'external_search';
-        break;
-      default:
-        backendSearchMode = 'my_knowledge';
-    }
-
-    final result = await _searchModeController.sendSearchWithMode(
+    final result = await _intelligentAgentController.sendIntelligentQuery(
       userId: userId,
       agencyId: agencyId,
       query: query,
-      searchMode: backendSearchMode,
+      searchMode: searchMode,
       clientId: clientId,
-      conversationId: existingConversationId,
+      existingConversationId: existingConversationId,
+      context: context,
     );
 
     result.fold(
-          (failure) {
-        print("❌ Backend error: $failure");
+      (failure) {
+        print("❌ Intelligent agent error: $failure");
         _error = failure.toString();
         _message = null;
         _externalProducts = [];
         _structuredSummary = null;
       },
-          (data) {
-        print("✅ Backend success: ${data['success']}");
+      (data) {
+        print("✅ Intelligent agent success: ${data['success']}");
         
         if (data['success'] == true && data.containsKey('data')) {
           final responseData = data['data'];
@@ -125,23 +106,35 @@ class ChatProvider extends ChangeNotifier {
             _conversationId = responseData['conversationId'];
           }
           
-          // Handle search results based on search mode
+          // Handle search results
           if (responseData.containsKey('searchResults')) {
             final searchResults = responseData['searchResults'];
             _externalProducts = searchResults['externalProducts'] ?? [];
             
-            // For My Knowledge search, also include products and experiences
-            if (responseData['searchMode'] == 'my_knowledge') {
-              final products = searchResults['products'] ?? [];
-              final experiences = searchResults['experiences'] ?? [];
-              // Combine all results for display
-              _externalProducts = [..._externalProducts, ...products, ...experiences];
-            }
+            // Include products and experiences if available
+            final products = searchResults['products'] ?? [];
+            final experiences = searchResults['experiences'] ?? [];
+            final clients = searchResults['clients'] ?? [];
+            final dmcs = searchResults['dmcs'] ?? [];
+            final serviceProviders = searchResults['serviceProviders'] ?? [];
+            
+            // Store different data types separately for grid display
+            _vics = clients;
+            _experiences = experiences;
+            _dmcs = dmcs;
+            _serviceProviders = serviceProviders;
+            
+            // Combine all results for display (excluding clients, experiences, dmcs, serviceProviders since they're handled separately)
+            _externalProducts = [..._externalProducts, ...products];
           } else {
             _externalProducts = [];
+            _vics = [];
+            _experiences = [];
+            _dmcs = [];
+            _serviceProviders = [];
           }
           
-          // Update messages based on search mode
+          // Update messages
           _messages.removeWhere((m) => m['role'] == 'agent' && m['content'] == 'Finding items for you...');
           _messages.add({
             'role': 'agent',
@@ -164,9 +157,14 @@ class ChatProvider extends ChangeNotifier {
   }
 
 
+
   void clearChat() {
     _message = null;
     _externalProducts = [];
+    _vics = [];
+    _experiences = [];
+    _dmcs = [];
+    _serviceProviders = [];
     _conversationId = null;
     _error = null;
     _messages.clear();

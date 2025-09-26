@@ -6,6 +6,7 @@ class DMC {
   final String? pointOfContact;
   final String? serviceProviders;
   final String agencyId;
+  final String? sourceFileName;
 
   DMC({
     required this.id,
@@ -15,6 +16,7 @@ class DMC {
     this.pointOfContact,
     this.serviceProviders,
     required this.agencyId,
+    this.sourceFileName,
   });
 
   factory DMC.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class DMC {
       pointOfContact: json['pointOfContact'],
       serviceProviders: json['serviceProviders'],
       agencyId: json['agencyId'],
+      sourceFileName: json['sourceFileName'],
     );
   }
 
@@ -38,6 +41,7 @@ class DMC {
       'pointOfContact': pointOfContact,
       'serviceProviders': serviceProviders,
       'agencyId': agencyId,
+      'sourceFileName': sourceFileName,
     };
   }
 }

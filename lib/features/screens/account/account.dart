@@ -7,14 +7,13 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:html' as html;
-import 'package:enable_web/features/controllers/agencyController.dart';
 import 'package:provider/provider.dart';
 import '../../../core/responsive_utils.dart';
 import '../../entities/user.dart';
 import '../../providers/google_drive_provider.dart';
 import '../../providers/dropbox_provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-
+ 
 class Account extends StatefulWidget {
   const Account({super.key});
 
@@ -33,7 +32,6 @@ class _AccountState extends State<Account> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _logoController = TextEditingController();
 
-  final AgencyController _agencyController = AgencyController();
   final bool _isLoading = false;
 
   getUser() async {
@@ -259,14 +257,6 @@ class _AccountState extends State<Account> {
 
 
 
-  Future<String?> _getAuthToken() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('token');
-    } catch (e) {
-      return null;
-    }
-  }
 
   // Future<void> _handleOAuthCallback(String code) async {
   //   try {
@@ -658,6 +648,9 @@ class _AccountState extends State<Account> {
                                                   ),
                                             ),
                                           ),
+                                          SizedBox(width: 8),
+                                          // Live connection status indicator
+                                          _buildConnectionStatusIndicator(googleDriveProvider),
                                         ],
                                       ),
                                       GestureDetector(
@@ -758,49 +751,136 @@ class _AccountState extends State<Account> {
                                         ),
                                       ),
                                     ),
-                                  if (googleDriveProvider.isConnected)
-                                    Padding(
-                                      padding: EdgeInsets.only(top: 10),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          if (googleDriveProvider.lastSync !=
-                                              null)
-                                            Text(
-                                              'Last sync: ${_formatDate(googleDriveProvider.lastSync!)}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey[600],
+                                  // Connection status details
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 10),
+                                    child: Column(
+                                      children: [
+                                        // Connection status message
+                                        if (googleDriveProvider.connectionStatusMessage != null)
+                                          Container(
+                                            width: double.infinity,
+                                            padding: EdgeInsets.all(8),
+                                            margin: EdgeInsets.only(bottom: 8),
+                                            decoration: BoxDecoration(
+                                              color: googleDriveProvider.isConnected 
+                                                  ? Colors.green.shade50
+                                                  : googleDriveProvider.tokenExpired
+                                                      ? Colors.red.shade50
+                                                      : googleDriveProvider.hasConnectionIssues
+                                                          ? Colors.red.shade50
+                                                          : Colors.orange.shade50,
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: googleDriveProvider.isConnected 
+                                                    ? Colors.green.shade200
+                                                    : googleDriveProvider.tokenExpired
+                                                        ? Colors.red.shade200
+                                                        : googleDriveProvider.hasConnectionIssues
+                                                            ? Colors.red.shade200
+                                                            : Colors.orange.shade200,
                                               ),
                                             ),
-                                          GestureDetector(
-                                            onTap:
-                                                () => context.go(
-                                                  '/google-drive-files',
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  googleDriveProvider.isConnected 
+                                                      ? Icons.check_circle
+                                                      : googleDriveProvider.tokenExpired
+                                                          ? Icons.refresh
+                                                          : googleDriveProvider.hasConnectionIssues
+                                                              ? Icons.error
+                                                              : Icons.warning,
+                                                  size: 16,
+                                                  color: googleDriveProvider.isConnected 
+                                                      ? Colors.green.shade700
+                                                      : googleDriveProvider.tokenExpired
+                                                          ? Colors.red.shade700
+                                                          : googleDriveProvider.hasConnectionIssues
+                                                              ? Colors.red.shade700
+                                                              : Colors.orange.shade700,
                                                 ),
-                                            child: Container(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 6,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: Color(0xff574131),
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                'View Files',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    googleDriveProvider.connectionStatusMessage!,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: googleDriveProvider.isConnected 
+                                                          ? Colors.green.shade700
+                                                          : googleDriveProvider.tokenExpired
+                                                              ? Colors.red.shade700
+                                                              : googleDriveProvider.hasConnectionIssues
+                                                                  ? Colors.red.shade700
+                                                                  : Colors.orange.shade700,
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
+                                                if (googleDriveProvider.tokenExpired)
+                                                  GestureDetector(
+                                                    onTap: () => googleDriveProvider.connectGoogleDrive(),
+                                                    child: Container(
+                                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red.shade700,
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: Text(
+                                                        'Reconnect',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (googleDriveProvider.isMonitoringConnection && !googleDriveProvider.tokenExpired)
+                                                  SizedBox(
+                                                    width: 12,
+                                                    height: 12,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                                        googleDriveProvider.isConnected 
+                                                            ? Colors.green.shade700
+                                                            : Colors.orange.shade700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        // Last check and sync info
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            if (googleDriveProvider.isConnected)
+                                              GestureDetector(
+                                                onTap: () => context.go('/google-drive-files'),
+                                                child: Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 6,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Color(0xff574131),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  child: Text(
+                                                    'View Files',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
+                                  ),
                                 ],
                               );
                             },
@@ -1140,5 +1220,68 @@ class _AccountState extends State<Account> {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+
+  Widget _buildConnectionStatusIndicator(GoogleDriveProvider provider) {
+    if (provider.isLoading) {
+      return SizedBox(
+        width: 12,
+        height: 12,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+        ),
+      );
+    }
+
+    Color indicatorColor;
+    IconData indicatorIcon;
+    String tooltip;
+
+    if (provider.isConnected) {
+      indicatorColor = Colors.green;
+      indicatorIcon = Icons.check_circle;
+      tooltip = 'Connected to Google Drive';
+    } else if (provider.tokenExpired) {
+      indicatorColor = Colors.red;
+      indicatorIcon = Icons.refresh;
+      tooltip = 'Token expired - Click to reconnect';
+    } else if (provider.hasConnectionIssues) {
+      indicatorColor = Colors.red;
+      indicatorIcon = Icons.error;
+      tooltip = 'Connection issues detected';
+    } else {
+      indicatorColor = Colors.orange;
+      indicatorIcon = Icons.warning;
+      tooltip = 'Not connected to Google Drive';
+    }
+
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: provider.tokenExpired ? () => provider.connectGoogleDrive() : null,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              indicatorIcon,
+              size: 16,
+              color: indicatorColor,
+            ),
+            if (provider.isMonitoringConnection && !provider.tokenExpired) ...[
+              SizedBox(width: 4),
+              SizedBox(
+                width: 8,
+                height: 8,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(indicatorColor),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

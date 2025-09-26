@@ -11,6 +11,7 @@ class FileItemWidget extends StatelessWidget {
   final VoidCallback onIngest;
   final VoidCallback? onOpenInBrowser;
   final IngestionProgress? ingestionProgress;
+  final bool isFailed; // New field to indicate if file failed and can be retried
 
   const FileItemWidget({
     super.key,
@@ -21,6 +22,7 @@ class FileItemWidget extends StatelessWidget {
     required this.onIngest,
     this.onOpenInBrowser,
     this.ingestionProgress,
+    this.isFailed = false, // Default to false for backward compatibility
   });
 
   @override
@@ -33,7 +35,7 @@ class FileItemWidget extends StatelessWidget {
           children: [
             Checkbox(
               value: isSelected,
-              onChanged: isIngested ? null : (bool? value) {
+              onChanged: (isIngested && !isFailed) ? null : (bool? value) {
                 onSelectionToggle();
               },
             ),
@@ -160,6 +162,11 @@ class FileItemWidget extends StatelessWidget {
       statusColor = Colors.green[600]!;
       statusIcon = Icons.check_circle;
       statusText = 'Ingested';
+    } else if (isFailed) {
+      // File failed and can be retried
+      statusColor = Colors.red[600]!;
+      statusIcon = Icons.refresh;
+      statusText = 'Failed - Retry';
     } else {
       // File is available for ingestion
       statusColor = Colors.blue[100]!;
@@ -275,6 +282,16 @@ class FileItemWidget extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           color: Colors.green[700],
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    } else if (isFailed) {
+      // Show failed status with retry option
+      return Text(
+        'Previous ingestion failed - can be retried',
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.red[700],
           fontWeight: FontWeight.w500,
         ),
       );
