@@ -101,4 +101,157 @@ class IntelligentAgentController {
     }
   }
 
+  /// Parse response to determine if it contains clarifying questions
+  bool hasClarifyingQuestions(Map<String, dynamic> response) {
+    if (response.containsKey('data')) {
+      final data = response['data'];
+      return data.containsKey('requiresFollowUp') && data['requiresFollowUp'] == true;
+    }
+    return false;
+  }
+
+  /// Extract missing information from response
+  List<String> getMissingInformation(Map<String, dynamic> response) {
+    if (response.containsKey('data')) {
+      final data = response['data'];
+      if (data.containsKey('searchResults') && 
+          data['searchResults'].containsKey('missingInformation')) {
+        return List<String>.from(data['searchResults']['missingInformation']);
+      }
+    }
+    return [];
+  }
+
+  /// Get query analysis from response
+  Map<String, dynamic>? getQueryAnalysis(Map<String, dynamic> response) {
+    if (response.containsKey('data')) {
+      final data = response['data'];
+      return data.containsKey('queryAnalysis') ? data['queryAnalysis'] : null;
+    }
+    return null;
+  }
+
+  /// Check if response is a specific client search result
+  bool isSpecificClientSearch(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null) {
+      return queryAnalysis['intent'] == 'client_info' && 
+             queryAnalysis['specificityLevel'] == 'specific';
+    }
+    return false;
+  }
+
+  /// Check if response is a product database query
+  bool isProductDatabaseQuery(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null) {
+      return queryAnalysis['intent'] == 'product_database';
+    }
+    return false;
+  }
+
+  /// Check if response is a client preferences query
+  bool isClientPreferencesQuery(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null) {
+      return queryAnalysis['intent'] == 'client_preferences';
+    }
+    return false;
+  }
+
+  /// Check if response is a client past trips query
+  bool isClientPastTripsQuery(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null) {
+      return queryAnalysis['intent'] == 'client_past_trips';
+    }
+    return false;
+  }
+
+  /// Check if response is a recommendations query
+  bool isRecommendationsQuery(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null) {
+      return queryAnalysis['intent'] == 'recommendations';
+    }
+    return false;
+  }
+
+  /// Check if response is a partnerships query
+  bool isPartnershipsQuery(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null) {
+      return queryAnalysis['intent'] == 'partnerships';
+    }
+    return false;
+  }
+
+  /// Check if response is an itinerary creation query
+  bool isItineraryCreationQuery(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null) {
+      return queryAnalysis['intent'] == 'itinerary_creation';
+    }
+    return false;
+  }
+
+  /// Get client preferences from response
+  Map<String, dynamic>? getClientPreferences(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null && queryAnalysis.containsKey('vicPreferences')) {
+      return queryAnalysis['vicPreferences'];
+    }
+    return null;
+  }
+
+  /// Get query parameters from response
+  Map<String, dynamic>? getQueryParameters(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null && queryAnalysis.containsKey('queryParameters')) {
+      return queryAnalysis['queryParameters'];
+    }
+    return null;
+  }
+
+  /// Get client names from response
+  List<String> getClientNames(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null && queryAnalysis.containsKey('clientNames')) {
+      return List<String>.from(queryAnalysis['clientNames']);
+    }
+    return [];
+  }
+
+  /// Get search terms from response
+  List<String> getSearchTerms(Map<String, dynamic> response) {
+    final queryAnalysis = getQueryAnalysis(response);
+    if (queryAnalysis != null && queryAnalysis.containsKey('searchTerms')) {
+      return List<String>.from(queryAnalysis['searchTerms']);
+    }
+    return [];
+  }
+
+  /// Get response type for UI rendering
+  String getResponseType(Map<String, dynamic> response) {
+    if (hasClarifyingQuestions(response)) {
+      return 'clarifying_questions';
+    } else if (isSpecificClientSearch(response)) {
+      return 'specific_client_search';
+    } else if (isProductDatabaseQuery(response)) {
+      return 'product_database';
+    } else if (isClientPreferencesQuery(response)) {
+      return 'client_preferences';
+    } else if (isClientPastTripsQuery(response)) {
+      return 'client_past_trips';
+    } else if (isRecommendationsQuery(response)) {
+      return 'recommendations';
+    } else if (isPartnershipsQuery(response)) {
+      return 'partnerships';
+    } else if (isItineraryCreationQuery(response)) {
+      return 'itinerary_creation';
+    } else {
+      return 'general_response';
+    }
+  }
+
 }

@@ -31,7 +31,10 @@ class _ChatsListState extends State<ChatsList> {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
     if (userProvider.user?.agencyId != null) {
+      print('ChatsList: Fetching conversations for agency: ${userProvider.user!.agencyId}');
       chatProvider.fetchConversations(userProvider.user!.agencyId); // Fetch all conversations
+    } else {
+      print('ChatsList: No agency ID found, cannot fetch conversations');
     }
   }
 

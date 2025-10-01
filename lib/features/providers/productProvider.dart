@@ -63,6 +63,30 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
+  // Fetch limited products by agency ID (optimized for home screen)
+  Future<void> fetchProductsLimitedByAgencyId(String agencyId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _productController.getProductsLimitedByAgencyId(agencyId);
+      result.fold(
+        (failure) {
+          _errorMessage = (failure as ServerFailure).message;
+        },
+        (products) {
+          _products = products;
+        },
+      );
+    } catch (e) {
+      _errorMessage = 'Unexpected error: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Get product by ID
   Future<void> fetchProductById(String productId) async {
     _isLoading = true;

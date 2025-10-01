@@ -1,5 +1,6 @@
 import 'package:enable_web/core/dimensions.dart';
 import 'package:enable_web/features/components/responsive_scaffold.dart';
+import 'package:enable_web/features/components/clarifying_questions_widget.dart';
 import 'package:enable_web/features/providers/agentProvider.dart';
 import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +64,26 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     });
+  }
+
+  void _handleFollowUpSubmitted(String followUpQuery) async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    
+    final userId = userProvider.user!.id;
+    final agencyId = userProvider.user!.agencyId;
+    final searchMode = 'my_knowledge'; // Default to my knowledge for follow-ups
+
+    await chatProvider.sendFollowUpResponse(
+      userId: userId,
+      agencyId: agencyId,
+      followUpQuery: followUpQuery,
+      searchMode: searchMode,
+      context: context,
+    );
+
+    // Scroll to bottom after follow-up
+    _scrollToBottom();
   }
 
   @override
@@ -134,91 +155,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       itemCount: chatProvider.messages.length,
       itemBuilder: (context, index) {
         final message = chatProvider.messages[index];
-        final isUser = message['role'] == 'user';
 
-        return _buildMessageBubble(message, isUser);
+        return EnhancedMessageBubble(
+          message: message,
+          onFollowUpSubmitted: _handleFollowUpSubmitted,
+        );
       },
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> message, bool isUser) {
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: getWidth(context) * 0.7,
-        ),
-        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isUser ? Color(0xff1A1818) : Color(0xff1A1818),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isUser ? Color(0xff292525) : Color(0xff292525),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  isUser ? Icons.person : Icons.smart_toy,
-                  size: 16,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  isUser ? 'You' : 'Assistant',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Spacer(),
-                if (message['searchMode'] != null) ...[
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: message['searchMode'] == 'my_knowledge' 
-                          ? Colors.orange.withOpacity(0.2)
-                          : Colors.purple.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: message['searchMode'] == 'my_knowledge'
-                            ? Colors.orange
-                            : Colors.purple,
-                        width: 0.5,
-                      ),
-                    ),
-                    child: Text(
-                      message['searchMode'] == 'my_knowledge' ? 'Knowledge' : 'Search',
-                      style: TextStyle(
-                        color: message['searchMode'] == 'my_knowledge'
-                            ? Colors.orange
-                            : Colors.purple,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            SizedBox(height: 8),
-            SelectableText(
-              message['content'] ?? '',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildLoadingMessages() {
     return ListView.builder(

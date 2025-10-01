@@ -26,6 +26,34 @@ class ProductController {
     }
   }
 
+  // Get first 20 products by agencyId (optimized for home screen)
+  Future<Either<Failure, List<ProductModel>>> getProductsLimitedByAgencyId(String agencyId) async {
+    try {
+      final endpoint = ApiEndpoints.getProducts.replaceFirst('{agencyId}', agencyId) + '/limited';
+      final response = await _apiClient.get(endpoint);
+
+      if (response.statusCode == 200) {
+        final decodedData = response.data;
+        
+        if (decodedData['success'] == true && decodedData['data'] != null) {
+          final List<dynamic> data = decodedData['data'];
+          final products = data.map((json) => ProductModel.fromJson(json)).toList();
+          return Right(products);
+        } else {
+          return Left(ServerFailure(
+            message: decodedData['message'] ?? 'Failed to get limited products',
+          ));
+        }
+      } else {
+        return Left(ServerFailure(
+          message: response.data['message'] ?? 'Failed to get limited products',
+        ));
+      }
+    } catch (e) {
+      return Left(ServerFailure(message: 'Failed to get limited products: $e'));
+    }
+  }
+
   Future<Either<Failure, ProductModel>> getProductById(String productId) async {
     try {
       // Note: This endpoint would need to be added to the backend
