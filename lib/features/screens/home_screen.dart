@@ -1,10 +1,17 @@
 import 'package:enable_web/core/dimensions.dart';
 import 'package:enable_web/features/components/widgets.dart';
 import 'package:enable_web/features/components/vic_mention_field.dart';
+import 'package:enable_web/features/components/clarifying_questions_widget.dart';
 import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:enable_web/features/providers/productProvider.dart';
+import 'package:enable_web/features/providers/vicProvider.dart';
 import 'package:enable_web/features/components/bookmark_components.dart';
 import 'package:enable_web/features/providers/bookmark_provider.dart';
+import 'package:enable_web/features/components/product_detail_modal.dart';
+import 'package:enable_web/features/components/vic_detail_modal.dart';
+import 'package:enable_web/features/components/experience_detail_modal.dart';
+import 'package:enable_web/features/components/dmc_detail_modal.dart';
+import 'package:enable_web/features/components/service_provider_detail_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
@@ -27,6 +34,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _chatController = TextEditingController();
   String _selectedSearchType = 'My Knowledge';
+
+  void _handleFollowUpSubmitted(String followUpQuery) async {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    
+    final userId = userProvider.user!.id;
+    final agencyId = userProvider.user!.agencyId;
+    final searchMode = _selectedSearchType == 'My Knowledge' ? 'my_knowledge' : 'external_search';
+
+    await chatProvider.sendFollowUpResponse(
+      userId: userId,
+      agencyId: agencyId,
+      followUpQuery: followUpQuery,
+      searchMode: searchMode,
+      context: context,
+    );
+  }
 
   void showAccountOverlay(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -192,40 +216,72 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchProducts();
-      _fetchConversations();
+      // Only fetch data if user is available
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      if (userProvider.user?.agencyId != null) {
+        _fetchInitialData();
+      }
     });
   }
 
-  void _fetchProducts() {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final productProvider = Provider.of<ProductProvider>(
-      context,
-      listen: false,
-    );
-
-    if (userProvider.user?.agencyId != null) {
-      productProvider.fetchProductsByAgencyId(userProvider.user!.agencyId);
-    }
-  }
-
-  void _fetchConversations() {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
+  void _fetchInitialData() {
+    // Clear any previous chat state to show conversations properly
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    chatProvider.startNewConversation();
+    
+    // Fetch products, conversations, and VICs in parallel for better performance
+    Future.wait([
+      _fetchProducts(),
+      _fetchConversations(),
+      _fetchVICs(),
+    ]).catchError((error) {
+      print('Error fetching initial data: $error');
+      return <void>[];
+    });
+  }
 
-    if (userProvider.user?.agencyId != null) {
-      chatProvider.fetchConversations(
-        userProvider.user!.agencyId,
-        limit: 3,
-      ); // Only show 3 on home screen
+  Future<void> _fetchProducts() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+
+      if (userProvider.user?.agencyId != null) {
+        // Use optimized endpoint for home screen - only fetch 20 products
+        await productProvider.fetchProductsLimitedByAgencyId(userProvider.user!.agencyId);
+      }
+    } catch (e) {
+      print('Error fetching products: $e');
     }
   }
 
-  void _showProductDetailModal(
-    BuildContext context,
-    dynamic product,
-    bool isExternalProduct,
-  ) {
+  Future<void> _fetchConversations() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+
+      if (userProvider.user?.id != null) {
+        // Use optimized endpoint for home screen - only fetch 3 latest conversations
+        await chatProvider.fetchLastConversationsByUserId(userProvider.user!.id);
+      }
+    } catch (e) {
+      print('Error fetching conversations: $e');
+    }
+  }
+
+  Future<void> _fetchVICs() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final vicProvider = Provider.of<VICProvider>(context, listen: false);
+
+      if (userProvider.user?.agencyId != null) {
+        await vicProvider.fetchVICsByAgencyId(userProvider.user!.agencyId);
+      }
+    } catch (e) {
+      print('Error fetching VICs: $e');
+    }
+  }
+
+  void _showProductDetailModal(BuildContext context, dynamic product, bool isExternalProduct,) {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -427,6 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     final error = provider.error;
                                     final structuredSummary =
                                         provider.structuredSummary;
+                                    
 
                                     // Show error message if there's an error
                                     if (error != null) {
@@ -494,9 +551,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       );
                                     }
 
-                                    // Show conversations if no summary and no messages
-                                    if (messages.isEmpty &&
-                                        structuredSummary == null) {
+                                    // Show conversations when available and no active chat session
+                                    if (messages.isEmpty && structuredSummary == null) {
                                       // Show loading state
                                       if (provider.isLoadingConversations) {
                                         return ListView.builder(
@@ -568,9 +624,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                             final conversation =
                                                 provider.conversations[index];
                                             final conversationName =
-                                                conversation['name'] ??
+                                                conversation['messages'][0]['content'] ??
                                                 'Conversation ${index + 1}';
-
                                             return Container(
                                               width: getWidth(context),
                                               padding: EdgeInsets.symmetric(
@@ -617,6 +672,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           FontWeight.w500,
                                                       fontSize: 14,
                                                     ),
+                                                    maxLines: 1,
                                                   ),
                                                 ],
                                               ),
@@ -691,62 +747,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                         itemCount: messages.length,
                                         itemBuilder: (context, index) {
                                           final msg = messages[index];
-                                          final isUser = msg['role'] == 'user';
 
-                                          return Align(
-                                            alignment:
-                                                isUser
-                                                    ? Alignment.centerRight
-                                                    : Alignment.centerLeft,
-                                            child: Container(
-                                              constraints: BoxConstraints(
-                                                maxWidth:
-                                                    getWidth(context) * 0.8,
-                                              ),
-                                              margin: EdgeInsets.symmetric(
-                                                vertical: 6,
-                                              ),
-                                              padding: EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    isUser
-                                                        ? Color(0xff292525)
-                                                        : Colors
-                                                            .transparent, // Transparent background for AI responses
-                                                border:
-                                                    isUser
-                                                        ? null
-                                                        : Border.all(
-                                                          color: Color(
-                                                            0xff292525,
-                                                          ),
-                                                          width: 1,
-                                                        ), // Border only for AI responses
-                                                borderRadius: BorderRadius.only(
-                                                  topLeft: Radius.circular(10),
-                                                  topRight: Radius.circular(10),
-                                                  bottomLeft:
-                                                      isUser
-                                                          ? Radius.circular(10)
-                                                          : Radius.circular(0),
-                                                  bottomRight:
-                                                      isUser
-                                                          ? Radius.circular(0)
-                                                          : Radius.circular(10),
-                                                ),
-                                              ),
-                                              child: RichText(
-                                                text: TextSpan(
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 14,
-                                                  ),
-                                                  children: _parseMarkdownText(
-                                                    msg['content'] ?? '',
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                          return EnhancedMessageBubble(
+                                            message: msg,
+                                            onFollowUpSubmitted: _handleFollowUpSubmitted,
                                           );
                                         },
                                       );
@@ -891,11 +895,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   flex: 2,
                   child: SizedBox(
                     height: getHeight(context),
-                    child: Consumer3<
-                      ChatProvider,
-                      ProductProvider,
-                      BookmarkProvider
-                    >(
+                    child: Consumer3<ChatProvider, ProductProvider, BookmarkProvider>(
                       builder: (
                         context,
                         chatProvider,
@@ -1175,106 +1175,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<TextSpan> _parseMarkdownText(String text) {
-
-
-    
-    if (text.isEmpty) return [];
-
-    List<TextSpan> spans = [];
-    String remainingText = text;
-
-    while (remainingText.isNotEmpty) {
-      // ### headers
-      if (remainingText.startsWith('###')) {
-        int endIndex = remainingText.indexOf('\n');
-        if (endIndex == -1) endIndex = remainingText.length;
-
-        String headerText = remainingText.substring(3, endIndex).trim();
-        spans.add(
-          TextSpan(
-            text: headerText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24, // larger
-              fontWeight: FontWeight.w900, // extra bold
-              height: 1.6,
-            ),
-          ),
-        );
-
-        if (endIndex < remainingText.length &&
-            remainingText[endIndex] == '\n') {
-          spans.add(const TextSpan(text: '\n'));
-          remainingText = remainingText.substring(endIndex + 1);
-        } else {
-          remainingText = remainingText.substring(endIndex);
-        }
-        continue;
-      }
-
-      // **bold** simplified handling
-      int boldStart = remainingText.indexOf('**');
-      if (boldStart != -1) {
-        if (boldStart > 0) {
-          spans.add(
-            TextSpan(
-              text: remainingText.substring(0, boldStart),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          );
-        }
-
-        int boldEnd = remainingText.indexOf('**', boldStart + 2);
-        if (boldEnd != -1) {
-          String boldText = remainingText.substring(boldStart + 2, boldEnd);
-          spans.add(
-            TextSpan(
-              text: boldText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                height: 1.4,
-              ),
-            ),
-          );
-          remainingText = remainingText.substring(boldEnd + 2);
-        } else {
-          spans.add(
-            TextSpan(
-              text: remainingText.substring(boldStart, boldStart + 2),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          );
-          remainingText = remainingText.substring(boldStart + 2);
-        }
-        continue;
-      }
-
-      // plain text
-      spans.add(
-        TextSpan(
-          text: remainingText,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            height: 1.4,
-          ),
-        ),
-      );
-      break;
-    }
-    return spans;
-  }
 
   Widget _buildCardBookmarkButton(dynamic product, bool isExternalProduct) {
     // Get product ID safely
@@ -1290,12 +1190,10 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     } catch (e) {
-      print('Error getting product ID: $e');
       return SizedBox.shrink();
     }
 
     if (productId == null) {
-      print('HomeScreen: Product ID is null, returning empty widget');
       return SizedBox.shrink();
     }
 
@@ -1308,18 +1206,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGridContent(
-    ChatProvider chatProvider,
-    ProductProvider productProvider,
-    BookmarkProvider bookmarkProvider,
-    List<dynamic> externalProducts,
-    List<dynamic> vics,
-    List<dynamic> experiences,
-    List<dynamic> dmcs,
-    List<dynamic> serviceProviders,
-    List<dynamic> dbProducts,
-  ) {
-    if (chatProvider.isLoading) {
+  Widget _buildGridContent(ChatProvider chatProvider, ProductProvider productProvider, BookmarkProvider bookmarkProvider, List<dynamic> externalProducts, List<dynamic> vics, List<dynamic> experiences, List<dynamic> dmcs, List<dynamic> serviceProviders, List<dynamic> dbProducts,) {
+    // Show loading state if any provider is loading
+    if (chatProvider.isLoading || productProvider.isLoading) {
       return shimmerGrid();
     }
 
@@ -1348,15 +1237,48 @@ class _HomeScreenState extends State<HomeScreen> {
       return _buildDatabaseProductsGrid(dbProducts, bookmarkProvider);
     }
 
-    return shimmerGrid();
+    // Show empty state instead of shimmer when no data
+    return _buildEmptyState();
   }
 
-  Widget _buildExternalProductsGrid(
-    List<dynamic> externalProducts,
-    BookmarkProvider bookmarkProvider,
-  ) {
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 64,
+            color: Colors.grey[600],
+          ),
+          SizedBox(height: 16),
+          Text(
+            'No results found',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey[400],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Try asking a question to get started',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExternalProductsGrid(List<dynamic> externalProducts, BookmarkProvider bookmarkProvider,) {
+    // Limit external products for better performance
+    final limitedExternalProducts = externalProducts.take(10).toList();
+    
     return GridView.builder(
-      itemCount: externalProducts.length,
+      itemCount: limitedExternalProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 1.5,
@@ -1364,7 +1286,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisSpacing: 15,
       ),
       itemBuilder: (context, index) {
-        final product = externalProducts[index];
+        final product = limitedExternalProducts[index];
         final productId =
             product['_id']?.toString() ?? product['id']?.toString();
         final isSelected = bookmarkProvider.isItemSelected(
@@ -1505,12 +1427,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDatabaseProductsGrid(
-    List<dynamic> dbProducts,
-    BookmarkProvider bookmarkProvider,
-  ) {
+  Widget _buildDatabaseProductsGrid(List<dynamic> dbProducts, BookmarkProvider bookmarkProvider) {
+    // Limit items for better performance
+    final limitedProducts = dbProducts.take(20).toList();
+    
     return GridView.builder(
-      itemCount: dbProducts.length > 50 ? 35 : dbProducts.length,
+      itemCount: limitedProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 1.5,
@@ -1518,7 +1440,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisSpacing: 15,
       ),
       itemBuilder: (context, index) {
-        final product = dbProducts[index];
+        final product = limitedProducts[index];
         final images = product.images;
         final productId = product.id.toString();
         final isSelected = bookmarkProvider.isItemSelected(
@@ -1687,20 +1609,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildVicsGrid(
-    List<dynamic> vics,
-    BookmarkProvider bookmarkProvider,
-  ) {
+  Widget _buildVicsGrid(List<dynamic> vics, BookmarkProvider bookmarkProvider) {
+    // Limit VICs for better performance
+    final limitedVics = vics.take(10).toList();
+    
     return GridView.builder(
-      itemCount: vics.length,
+      itemCount: limitedVics.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.7,
+        childAspectRatio: 1.6,
         mainAxisSpacing: 15,
         crossAxisSpacing: 15,
       ),
       itemBuilder: (context, index) {
-        final vic = vics[index];
+        final vic = limitedVics[index];
         final vicId = vic['_id']?.toString() ?? vic['id']?.toString() ?? '';
         final isSelected = bookmarkProvider.isItemSelected('vic', vicId);
 
@@ -1830,12 +1752,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildExperiencesGrid(
-    List<dynamic> experiences,
-    BookmarkProvider bookmarkProvider,
-  ) {
+  Widget _buildExperiencesGrid(List<dynamic> experiences, BookmarkProvider bookmarkProvider,) {
+    // Limit experiences for better performance
+    final limitedExperiences = experiences.take(10).toList();
+    
     return GridView.builder(
-      itemCount: experiences.length,
+      itemCount: limitedExperiences.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 1.5,
@@ -1843,42 +1765,24 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisSpacing: 15,
       ),
       itemBuilder: (context, index) {
-        final experience = experiences[index];
+        final experience = limitedExperiences[index];
         final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
         final isSelected = bookmarkProvider.isItemSelected('experience', experienceId);
 
         // Get images for the experience
         List<String> images = [];
         try {
-          print('Experience data keys: ${experience.keys.toList()}');
-          print('Experience has images field: ${experience.containsKey('images')}');
           if (experience['images'] != null) {
-            print('Images field type: ${experience['images'].runtimeType}');
-            print('Images field value: ${experience['images']}');
-            
-            if (experience['images'] is List) {
-              for (int i = 0; i < experience['images'].length; i++) {
-                var img = experience['images'][i];
-                print('Image $i: $img');
-                if (img is Map) {
-                  print('Image $i keys: ${img.keys.toList()}');
-                  print('Image $i signedUrl: ${img['signedUrl']}');
-                  print('Image $i imageUrl: ${img['imageUrl']}');
-                }
-              }
-            }
+            // Images are processed below in the main loop
           }
           
           if (experience['images'] != null && experience['images'].isNotEmpty) {
-            print('Found ${experience['images'].length} images for experience');
             for (var img in experience['images']) {
               if (img is Map && img['signedUrl'] != null && img['signedUrl'].toString().isNotEmpty) {
                 images.add(img['signedUrl'].toString());
-                print('Added image from signedUrl: ${img['signedUrl']}');
               } else if (img is Map && img['imageUrl'] != null && img['imageUrl'].toString().isNotEmpty) {
                 // Fallback to imageUrl if signedUrl is not available
                 images.add(img['imageUrl'].toString());
-                print('Added image from imageUrl (fallback): ${img['imageUrl']}');
               }
             }
           } else {
@@ -2027,12 +1931,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDMCsGrid(
-    List<dynamic> dmcs,
-    BookmarkProvider bookmarkProvider,
-  ) {
+  Widget _buildDMCsGrid(List<dynamic> dmcs, BookmarkProvider bookmarkProvider,) {
+    // Limit DMCs for better performance
+    final limitedDMCs = dmcs.take(10).toList();
+    
     return GridView.builder(
-      itemCount: dmcs.length,
+      itemCount: limitedDMCs.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 1.2,
@@ -2040,7 +1944,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisSpacing: 15,
       ),
       itemBuilder: (context, index) {
-        final dmc = dmcs[index];
+        final dmc = limitedDMCs[index];
         final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
         final isSelected = bookmarkProvider.isItemSelected('dmc', dmcId);
 
@@ -2161,12 +2065,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildServiceProvidersGrid(
-    List<dynamic> serviceProviders,
-    BookmarkProvider bookmarkProvider,
-  ) {
+  Widget _buildServiceProvidersGrid(List<dynamic> serviceProviders, BookmarkProvider bookmarkProvider,) {
+    // Limit service providers for better performance
+    final limitedServiceProviders = serviceProviders.take(10).toList();
+    
     return GridView.builder(
-      itemCount: serviceProviders.length,
+      itemCount: limitedServiceProviders.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 1.2,
@@ -2174,7 +2078,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisSpacing: 15,
       ),
       itemBuilder: (context, index) {
-        final serviceProvider = serviceProviders[index];
+        final serviceProvider = limitedServiceProviders[index];
         final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
         final isSelected = bookmarkProvider.isItemSelected('serviceProvider', serviceProviderId);
 
@@ -2465,13 +2369,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _getExperienceNotes(dynamic experience) {
-    try {
-      return experience['notes']?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
 
   int _getExperienceItineraryCount(dynamic experience) {
     try {
@@ -2485,28 +2382,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildExperienceDetailRow(IconData icon, String text) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: Colors.grey[500]),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[400],
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildExperienceBookmarkButton(dynamic experience) {
     return Consumer<BookmarkProvider>(
@@ -2620,7 +2495,6 @@ class _HomeScreenState extends State<HomeScreen> {
           // Find the specific experience by ID
           for (var exp in experiences) {
             if (exp['_id']?.toString() == experienceId || exp['id']?.toString() == experienceId) {
-              print('Found full experience data with ${exp['images']?.length ?? 0} images and ${exp['itinerary']?.length ?? 0} itinerary items');
               return exp;
             }
           }
@@ -2753,10 +2627,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showBulkBookmarkDialog(
-    BuildContext context,
-    BookmarkProvider bookmarkProvider,
-  ) {
+  void _showBulkBookmarkDialog(BuildContext context, BookmarkProvider bookmarkProvider,) {
     final selectedItems = bookmarkProvider.getSelectedItemsData();
     if (selectedItems.isEmpty) return;
 
@@ -2796,10 +2667,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleBulkDelete(
-    BuildContext context,
-    BookmarkProvider bookmarkProvider,
-  ) {
+  void _handleBulkDelete(BuildContext context, BookmarkProvider bookmarkProvider,) {
     final selectedItems = bookmarkProvider.getSelectedItemsData();
     if (selectedItems.isEmpty) return;
 
@@ -2859,1974 +2727,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return selectedItems.any(
       (item) =>
           bookmarkProvider.isItemBookmarked(item['itemType']!, item['itemId']!),
-    );
-  }
-}
-
-class ProductDetailModal extends StatelessWidget {
-  final dynamic product;
-  final bool isExternalProduct;
-
-  const ProductDetailModal({
-    Key? key,
-    required this.product,
-    required this.isExternalProduct,
-  }) : super(key: key);
-
-  // Helper methods to safely access product propertiesv 
-  String _getProductName() {
-    if (product == null) return 'Product Detail'; 
-
-    try {
-      if (isExternalProduct) {
-        return product['name']?.toString() ?? 'Product Detail';
-      } else {
-        // Try both Map and ProductModel access patterns
-        if (product is Map) {
-          return product['name']?.toString() ?? 'Product Detail';
-        } else {
-          return product.name?.toString() ?? 'Product Detail';
-        }
-      }
-    } catch (e) {
-      return 'Product Detail';
-    }
-  }
-
-  String _getProductDescription() {
-    if (product == null) return 'No description available';
-
-    try {
-      if (isExternalProduct) {
-        return product['description']?.toString() ?? 'No description available';
-      } else {
-        // Try both Map and ProductModel access patterns
-        if (product is Map) {
-          return product['description']?.toString() ??
-              'No description available';
-        } else {
-          return product.description?.toString() ?? 'No description available';
-        }
-      }
-    } catch (e) {
-      return 'No description available';
-    }
-  }
-
-  Map<String, dynamic> _getProductTags() {
-    if (product == null) return {};
-
-    try {
-      if (isExternalProduct) {
-        return Map<String, dynamic>.from(product['tags'] ?? {});
-      } else {
-        // Try both Map and ProductModel access patterns
-        if (product is Map) {
-          return Map<String, dynamic>.from(product['tags'] ?? {});
-        } else {
-          return Map<String, dynamic>.from(product.tags ?? {});
-        }
-      }
-    } catch (e) {
-      return {};
-    }
-  }
-
-  List<dynamic> _getProductImages() {
-    if (product == null) return [];
-
-    try {
-      if (isExternalProduct) {
-        return List<dynamic>.from(product['rawData']?['imageUrls'] ?? []);
-      } else {
-        // Try both Map and ProductModel access patterns
-        if (product is Map) {
-          return List<dynamic>.from(product['images'] ?? []);
-        } else {
-          return List<dynamic>.from(product.images ?? []);
-        }
-      }
-    } catch (e) {
-      return [];
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: BoxDecoration(
-          color: Color(0xff292525),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: Colors.white, size: 24),
-                  ),
-                  // Bookmark button
-                  _buildBookmarkButton(),
-                ],
-              ),
-            ),
-            // Main content
-            Expanded(
-              child: Row(
-                children: [
-                  // Left panel (1/3 width)
-                  Expanded(
-                    flex: 1,
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Title
-                          Text(
-                            _getProductName(),
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-
-                          // Folder name button
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Color(0xff3A3A3A),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.folder,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Folder name',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 20),
-
-                          // Description
-                          Text(
-                            _getProductDescription(),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              height: 1.5,
-                            ),
-                          ),
-                          SizedBox(height: 20),
-
-                          // Tags section
-                          Text(
-                            'Tags',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (String key in _getProductTags().keys)
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xff3A3A3A),
-                                    border: Border.all(
-                                      color: Colors.grey[600]!,
-                                    ),
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Text(
-                                    _getProductTags()[key]?.toString() ?? '',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Right panel (2/3 width)
-                  Expanded(
-                    flex: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          // Images grid
-                          Expanded(
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.grey[800],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child:
-                                    isExternalProduct
-                                        ? _buildExternalProductImages()
-                                        : _buildDatabaseProductImages(),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExternalProductImages() {
-    final images = _getProductImages();
-    return _buildImageGrid(images.map((url) => url.toString()).toList());
-  }
-
-  Widget _buildDatabaseProductImages() {
-    final images = _getProductImages();
-    if (images.isNotEmpty) {
-      List<String> imageUrls = [];
-      for (var img in images) {
-        try {
-          if (img is Map && img['signedUrl'] != null) {
-            imageUrls.add(img['signedUrl'].toString());
-          } else if (img.signedUrl != null) {
-            imageUrls.add(img.signedUrl.toString());
-          }
-        } catch (e) {
-          // Skip invalid image entries
-          continue;
-        }
-      }
-      return _buildImageGrid(imageUrls);
-    }
-    return _buildImageGrid([]);
-  }
-
-  Widget _buildImageGrid(List<String> imageUrls) {
-    int imageCount = imageUrls.length;
-    int displayCount;
-    int placeholderCount = 0;
-
-    // Determine how many images to show based on requirements
-    if (imageCount >= 6) {
-      displayCount = 6;
-    } else if (imageCount >= 4) {
-      displayCount = imageCount;
-    } else if (imageCount > 0) {
-      displayCount = 1;
-      placeholderCount = 3;
-    } else {
-      displayCount = 0;
-      placeholderCount = 4;
-    }
-
-    List<Widget> imageWidgets = [];
-
-    // Add actual images
-    for (int i = 0; i < displayCount && i < imageUrls.length; i++) {
-      imageWidgets.add(_buildImageItem(imageUrls[i]));
-    }
-
-    // Add placeholder images
-    for (int i = 0; i < placeholderCount; i++) {
-      imageWidgets.add(_buildPlaceholderImage());
-    }
-
-    if (imageWidgets.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.grey[800],
-        child: Icon(Icons.image, color: Colors.white, size: 60),
-      );
-    }
-
-    // Use GridView for responsive layout
-    return GridView.builder(
-      padding: EdgeInsets.all(8),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: imageWidgets.length <= 2 ? 1 : 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 1.0,
-      ),
-      itemCount: imageWidgets.length,
-      itemBuilder: (context, index) => imageWidgets[index],
-    );
-  }
-
-  Widget _buildImageItem(String imageUrl) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: Colors.grey[700],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Image.network(
-          imageUrl,
-          width: double.infinity,
-          height: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: Colors.grey[700],
-              child: Icon(Icons.broken_image, color: Colors.white, size: 30),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderImage() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: Colors.grey[600],
-        border: Border.all(color: Colors.grey[500]!, width: 1),
-      ),
-      child: Center(
-        child: Icon(Icons.image_outlined, color: Colors.grey[400], size: 30),
-      ),
-    );
-  }
-
-  Widget _buildBookmarkButton() {
-    // Get product ID safely
-    String? productId;
-    try {
-      if (isExternalProduct) {
-        productId = product['_id']?.toString() ?? product['id']?.toString();
-      } else {
-        if (product is Map) {
-          productId = product['_id']?.toString() ?? product['id']?.toString();
-        } else {
-          productId = product.id?.toString() ?? product._id?.toString();
-        }
-      }
-    } catch (e) {
-      print('Error getting product ID: $e');
-      return SizedBox.shrink();
-    }
-
-    if (productId == null) {
-      return SizedBox.shrink();
-    }
-
-    return BookmarkButton(
-      itemType: isExternalProduct ? 'externalProduct' : 'product',
-      itemId: productId,
-      color: Colors.white,
-      activeColor: Colors.amber,
-      size: 24,
-    );
-  }
-}
-
-class VICDetailModal extends StatelessWidget {
-  final dynamic vic;
-
-  const VICDetailModal({
-    Key? key,
-    required this.vic,
-  }) : super(key: key);
-
-  // Helper methods to safely access VIC properties
-  String _getVicName() {
-    if (vic == null) return 'Client Detail';
-    try {
-      return vic['fullName']?.toString() ?? 'Client Detail';
-    } catch (e) {
-      return 'Client Detail';
-    }
-  }
-
-  String _getVicEmail() {
-    if (vic == null) return '';
-    try {
-      return vic['email']?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  String _getVicPhone() {
-    if (vic == null) return '';
-    try {
-      return vic['phone']?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  String _getVicNationality() {
-    if (vic == null) return '';
-    try {
-      return vic['nationality']?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  String _getVicSummary() {
-    if (vic == null) return '';
-    try {
-      return vic['summary']?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  Map<String, dynamic> _getVicPreferences() {
-    if (vic == null) return {};
-    try {
-      return Map<String, dynamic>.from(vic['preferences'] ?? {});
-    } catch (e) {
-      return {};
-    }
-  }
-
-  String _getVicInitials() {
-    final name = _getVicName();
-    if (name.isEmpty) return 'U';
-    
-    final nameParts = name.split(' ');
-    if (nameParts.length >= 2) {
-      return '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
-    } else {
-      return name[0].toUpperCase();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.6,
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: Color(0xff292525),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: Colors.white, size: 24),
-                  ),
-                  // Bookmark button
-                  _buildBookmarkButton(),
-                ],
-              ),
-            ),
-            // Main content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Client Header
-                    Row(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xff574435),
-                          ),
-                          child: Center(
-                            child: Text(
-                              _getVicInitials(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 28,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _getVicName(),
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              if (_getVicEmail().isNotEmpty)
-                                _buildDetailRow(Icons.email, _getVicEmail()),
-                              if (_getVicPhone().isNotEmpty)
-                                _buildDetailRow(Icons.phone, _getVicPhone()),
-                              if (_getVicNationality().isNotEmpty)
-                                _buildDetailRow(Icons.flag, _getVicNationality()),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 30),
-
-                    // Summary Section
-                    if (_getVicSummary().isNotEmpty) ...[
-                      Text(
-                        'Summary',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Color(0xff3A3A3A),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _getVicSummary(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                    ],
-
-                    // Preferences Section
-                    if (_getVicPreferences().isNotEmpty) ...[
-                      Text(
-                        'Preferences',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Color(0xff3A3A3A),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (String key in _getVicPreferences().keys)
-                                  Padding(
-                                    padding: EdgeInsets.only(bottom: 8),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Container(
-                                          width: 120,
-                                          child: Text(
-                                            key.replaceAll('_', ' ').toUpperCase(),
-                                            style: TextStyle(
-                                              color: Colors.grey[300],
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            _getVicPreferences()[key]?.toString() ?? '',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String text) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey[400]),
-          SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[300],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBookmarkButton() {
-    String? vicId;
-    try {
-      vicId = vic['_id']?.toString() ?? vic['id']?.toString();
-    } catch (e) {
-      print('Error getting VIC ID: $e');
-      return SizedBox.shrink();
-    }
-
-    if (vicId == null) {
-      return SizedBox.shrink();
-    }
-
-    return BookmarkButton(
-      itemType: 'vic',
-      itemId: vicId,
-      color: Colors.white,
-      activeColor: Colors.amber,
-      size: 24,
-    );
-  }
-}
-
-// Experience Detail Modal
-class ExperienceDetailModal extends StatelessWidget {
-  final dynamic experience;
-
-  const ExperienceDetailModal({
-    Key? key,
-    required this.experience,
-  }) : super(key: key);
-
-  String _getExperienceDestination() {
-    try {
-      return experience['destination']?.toString() ?? 'Unknown Destination';
-    } catch (e) {
-      return 'Unknown Destination';
-    }
-  }
-
-  String _getExperienceCountry() {
-    try {
-      return experience['country']?.toString() ?? 'Unknown Country';
-    } catch (e) {
-      return 'Unknown Country';
-    }
-  }
-
-  String _getExperienceDates() {
-    try {
-      final startDate = experience['startDate'];
-      final endDate = experience['endDate'];
-      
-      if (startDate != null && endDate != null) {
-        DateTime? start, end;
-        
-        // Handle MongoDB date format
-        if (startDate is Map && startDate['\$date'] != null) {
-          start = DateTime.tryParse(startDate['\$date'].toString());
-        } else if (startDate is String) {
-          start = DateTime.tryParse(startDate);
-        }
-        
-        if (endDate is Map && endDate['\$date'] != null) {
-          end = DateTime.tryParse(endDate['\$date'].toString());
-        } else if (endDate is String) {
-          end = DateTime.tryParse(endDate);
-        }
-        
-        if (start != null && end != null) {
-          return '${start.day}/${start.month}/${start.year} - ${end.day}/${end.month}/${end.year}';
-        }
-      }
-      
-      return 'Dates not available';
-    } catch (e) {
-      return 'Dates not available';
-    }
-  }
-
-  String _getExperienceStatus() {
-    try {
-      return experience['status']?.toString() ?? 'Unknown Status';
-    } catch (e) {
-      return 'Unknown Status';
-    }
-  }
-
-  String _getExperienceNotes() {
-    try {
-      return experience['notes']?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  String _getExperienceParty() {
-    try {
-      final party = experience['party'];
-      if (party != null) {
-        final adults = party['adults'] ?? 0;
-        final children = party['children'] ?? 0;
-        if (children > 0) {
-          return '$adults adults, $children children';
-        } else {
-          return '$adults adults';
-        }
-      }
-      return 'Party size not available';
-    } catch (e) {
-      return 'Party size not available';
-    }
-  }
-
-  List<dynamic> _getExperienceItinerary() {
-    try {
-      final itinerary = experience['itinerary'];
-      if (itinerary != null) {
-        print('Found itinerary with ${itinerary.length} items');
-        return List<dynamic>.from(itinerary);
-      } else {
-        print('No itinerary found for experience');
-        return [];
-      }
-    } catch (e) {
-      print('Error getting itinerary: $e');
-      return [];
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: BoxDecoration(
-          color: Color(0xff292525),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xff574435),
-                    Color(0xff574435).withOpacity(0.8),
-                  ],
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(Icons.flight_takeoff, color: Colors.white, size: 28),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _getExperienceDestination(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (_getExperienceCountry().isNotEmpty) ...[
-                          SizedBox(height: 6),
-                          Text(
-                            _getExperienceCountry(),
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 18,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          _getExperienceStatus().toUpperCase(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      if (_getExperienceItinerary().isNotEmpty)
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            '${_getExperienceItinerary().length} itinerary items',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  SizedBox(width: 16),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: Colors.white, size: 24),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Experience Overview
-                    _buildOverviewSection(),
-                    SizedBox(height: 32),
-                    
-                    // Itinerary Timeline
-                    if (_getExperienceItinerary().isNotEmpty) ...[
-                      _buildItineraryTimeline(),
-                    ] else ...[
-                      _buildEmptyItinerary(),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            
-            // Actions
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Color(0xff1e1e1e),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                    Row(
-                      children: [
-                      Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
-                      SizedBox(width: 8),
-                      Text(
-                        'Experience ID: ${experience['_id']?.toString().substring(0, 8) ?? 'N/A'}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      _buildBookmarkButton(),
-                      SizedBox(width: 16),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text('Close'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOverviewSection() {
-    return Container(
-      padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.dashboard, size: 20, color: Colors.white),
-              SizedBox(width: 8),
-              Text(
-                'Experience Overview',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOverviewItem(
-                  Icons.calendar_today,
-                  'Duration',
-                  _getExperienceDates(),
-                ),
-              ),
-              Expanded(
-                child: _buildOverviewItem(
-                  Icons.people,
-                  'Party',
-                  _getExperienceParty(),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          if (_getExperienceNotes().isNotEmpty) ...[
-            _buildOverviewItem(
-              Icons.note,
-              'Notes',
-              _getExperienceNotes(),
-            ),
-            SizedBox(height: 16),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverviewItem(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: Colors.white),
-        ),
-        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blue[300],
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildItineraryTimeline() {
-    final itinerary = _getExperienceItinerary();
-    
-    // Group itinerary items by day
-    Map<int, List<dynamic>> groupedByDay = {};
-    for (var item in itinerary) {
-      if (item['day'] != null) {
-        final day = item['day'] as int;
-        groupedByDay.putIfAbsent(day, () => []).add(item);
-      }
-    }
-    
-    // Sort days and items within each day
-    var sortedDays = groupedByDay.keys.toList()..sort();
-    for (var day in sortedDays) {
-      groupedByDay[day]!.sort((a, b) => (a['order'] ?? 0).compareTo(b['order'] ?? 0));
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.timeline, size: 24, color: Colors.white),
-            SizedBox(width: 12),
-            Text(
-              'Itinerary Timeline',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-            Spacer(),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white),
-              ),
-              child: Text(
-                '${sortedDays.length} days',
-                                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                                ),
-                              ),
-                            ],
-                          ),
-        SizedBox(height: 24),
-        ...sortedDays.map((day) => _buildDaySection(day, groupedByDay[day]!)),
-      ],
-    );
-  }
-
-  Widget _buildDaySection(int day, List<dynamic> dayItems) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Day Header
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey[400]!),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.calendar_today, size: 16, color: Colors.white),
-                ),
-                SizedBox(width: 12),
-                      Text(
-                  'Day $day',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                Spacer(),
-                Text(
-                  '${dayItems.length} activities',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 16),
-          
-          // Timeline items
-          ...dayItems.asMap().entries.map((entry) {
-            int index = entry.key;
-            dynamic item = entry.value;
-            return _buildTimelineItem(item, index, dayItems.length);
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimelineItem(dynamic item, int index, int totalItems) {
-    bool isLast = index == totalItems - 1;
-    
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Timeline line and dot
-        Column(
-          children: [
-                      Container(
-              width: 16,
-              height: 16,
-                        decoration: BoxDecoration(
-                color: _getItineraryItemColor(item['type']),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: _getItineraryItemColor(item['type']).withOpacity(0.3),
-                    spreadRadius: 2,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-            ),
-            if (!isLast)
-              Container(
-                width: 3,
-                height: 80,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      _getItineraryItemColor(item['type']).withOpacity(0.3),
-                      _getItineraryItemColor(item['type']).withOpacity(0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-          ],
-        ),
-        SizedBox(width: 20),
-        
-        // Item content
-        Expanded(
-          child: Container(
-            margin: EdgeInsets.only(bottom: 20),
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _getItineraryItemColor(item['type']).withOpacity(0.2)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.08),
-                  spreadRadius: 1,
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header row
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _getItineraryItemColor(item['type']).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _getItineraryItemColor(item['type']).withOpacity(0.2)),
-                      ),
-                      child: Text(
-                        (item['type'] ?? 'UNKNOWN').toString().toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: _getItineraryItemColor(item['type']),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(item['status']).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _getStatusColor(item['status']).withOpacity(0.2)),
-                      ),
-                      child: Text(
-                        (item['status'] ?? 'SUGGESTED').toString().toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: _getStatusColor(item['status']),
-                        ),
-                      ),
-                    ),
-                    Spacer(),
-                    if (item['order'] != null)
-                      Container(
-                        padding: EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '#${item['order']}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: 16),
-                
-                // Description
-                Text(
-                  item['details']?['description'] ?? 'No description available',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                    height: 1.4,
-                  ),
-                ),
-                SizedBox(height: 16),
-                
-                // Additional details in a grid layout
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 12,
-                  children: [
-                    if (item['supplier'] != null && item['supplier']['name'] != null)
-                      _buildDetailChip(Icons.business, 'Supplier', item['supplier']['name']),
-                    if (item['startAt'] != null)
-                      _buildDetailChip(Icons.access_time, 'Start', _formatDateTime(item['startAt'])),
-                    if (item['endAt'] != null)
-                      _buildDetailChip(Icons.access_time, 'End', _formatDateTime(item['endAt'])),
-                    if (item['location'] != null && item['location']['address'] != null)
-                      _buildDetailChip(Icons.location_on, 'Location', item['location']['address']),
-                    if (item['location'] != null && item['location']['city'] != null)
-                      _buildDetailChip(Icons.location_city, 'City', item['location']['city']),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailChip(IconData icon, String label, String value) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.grey[600]),
-          SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-          Text(
-                label,
-            style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[600],
-                ),
-              ),
-              Text(
-              value,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[800],
-                  fontWeight: FontWeight.w500,
-              ),
-            ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyItinerary() {
-    return Container(
-      padding: EdgeInsets.all(40),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.timeline,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            'No Itinerary Items',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
-            ),
-          ),
-          SizedBox(height: 12),
-          Text(
-            'This experience doesn\'t have any itinerary items yet.\nAdd activities, flights, accommodations, and more to create a complete travel plan.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 16,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getItineraryItemColor(String? type) {
-    switch (type?.toLowerCase()) {
-      case 'flight':
-        return Colors.blue;
-      case 'stay':
-        return Colors.green;
-      case 'activity':
-        return Colors.orange;
-      case 'transfer':
-        return Colors.purple;
-      case 'reservation':
-        return Colors.teal;
-      case 'info':
-        return Colors.indigo;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'confirmed':
-        return Colors.green;
-      case 'proposed':
-        return Colors.orange;
-      case 'cancelled':
-        return Colors.red;
-      case 'suggested':
-      default:
-        return Colors.blue;
-    }
-  }
-
-  String _formatDateTime(dynamic dateTime) {
-    try {
-      if (dateTime is Map && dateTime['\$date'] != null) {
-        // Handle MongoDB date format
-        final parsed = DateTime.tryParse(dateTime['\$date'].toString());
-        if (parsed != null) {
-          return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
-        }
-      } else if (dateTime is String) {
-        final parsed = DateTime.tryParse(dateTime);
-        if (parsed != null) {
-          return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
-        }
-      }
-      return dateTime.toString();
-    } catch (e) {
-      return dateTime.toString();
-    }
-  }
-
-  Widget _buildBookmarkButton() {
-    final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
-    
-    return BookmarkButton(
-      itemType: 'experience',
-      itemId: experienceId,
-      color: Colors.white,
-      activeColor: Colors.amber,
-      size: 24,
-    );
-  }
-}
-
-// DMC Detail Modal
-class DMCDetailModal extends StatelessWidget {
-  final dynamic dmc;
-
-  const DMCDetailModal({
-    Key? key,
-    required this.dmc,
-  }) : super(key: key);
-
-  String _getDMCBusinessName() {
-    try {
-      return dmc['businessName']?.toString() ?? 'Unknown Business';
-    } catch (e) {
-      return 'Unknown Business';
-    }
-  }
-
-  String _getDMCLocation() {
-    try {
-      return dmc['location']?.toString() ?? 'Unknown Location';
-    } catch (e) {
-      return 'Unknown Location';
-    }
-  }
-
-  String _getDMCDescription() {
-    try {
-      return dmc['description']?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  List<dynamic> _getDMCServiceProviders() {
-    try {
-      return List<dynamic>.from(dmc['serviceProviders'] ?? []);
-    } catch (e) {
-      return [];
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.6,
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: Color(0xff292525),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: Colors.white, size: 24),
-                  ),
-                  _buildBookmarkButton(),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // DMC Header
-                    Row(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Color(0xff574435),
-                            borderRadius: BorderRadius.circular(40),
-                          ),
-                          child: Icon(
-                            Icons.business,
-                            color: Colors.white,
-                            size: 40,
-                          ),
-                        ),
-                        SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _getDMCBusinessName(),
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                _getDMCLocation(),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[300],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 30),
-                    // DMC Details
-                    if (_getDMCDescription().isNotEmpty) ...[
-                      Text(
-                        'Description',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF1E1E1E),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _getDMCDescription(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[300],
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                    ],
-                    // Service Providers
-                    if (_getDMCServiceProviders().isNotEmpty) ...[
-                      Text(
-                        'Service Providers',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _getDMCServiceProviders().length,
-                          itemBuilder: (context, index) {
-                            final provider = _getDMCServiceProviders()[index];
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 8),
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Color(0xFF1E1E1E),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    provider['companyName']?.toString() ?? 'Unknown Company',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  if (provider['countryOfOperation'] != null)
-                                    Text(
-                                      provider['countryOfOperation'],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBookmarkButton() {
-    final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
-    
-    return BookmarkButton(
-      itemType: 'dmc',
-      itemId: dmcId,
-      color: Colors.white,
-      activeColor: Colors.amber,
-      size: 24,
-    );
-  }
-}
-
-// Service Provider Detail Modal
-class ServiceProviderDetailModal extends StatelessWidget {
-  final dynamic serviceProvider;
-
-  const ServiceProviderDetailModal({
-    Key? key,
-    required this.serviceProvider,
-  }) : super(key: key);
-
-  String _getServiceProviderCompanyName() {
-    try {
-      return serviceProvider['companyName']?.toString() ?? 'Unknown Company';
-    } catch (e) {
-      return 'Unknown Company';
-    }
-  }
-
-  String _getServiceProviderCountry() {
-    try {
-      return serviceProvider['countryOfOperation']?.toString() ?? 'Unknown Country';
-    } catch (e) {
-      return 'Unknown Country';
-    }
-  }
-
-  String _getServiceProviderAddress() {
-    try {
-      return serviceProvider['address']?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  String _getServiceProviderExpertise() {
-    try {
-      final expertise = serviceProvider['productExpertise'];
-      if (expertise is List) {
-        return expertise.join(', ');
-      }
-      return expertise?.toString() ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  List<dynamic> _getServiceProviderContacts() {
-    try {
-      return List<dynamic>.from(serviceProvider['pointsOfContact'] ?? []);
-    } catch (e) {
-      return [];
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.6,
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: Color(0xff292525),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: Colors.white, size: 24),
-                  ),
-                  _buildBookmarkButton(),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Service Provider Header
-                    Row(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Color(0xff574435),
-                            borderRadius: BorderRadius.circular(40),
-                          ),
-                          child: Icon(
-                            Icons.support_agent,
-                            color: Colors.white,
-                            size: 40,
-                          ),
-                        ),
-                        SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _getServiceProviderCompanyName(),
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                _getServiceProviderCountry(),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[300],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 30),
-                    // Service Provider Details
-                    if (_getServiceProviderAddress().isNotEmpty)
-                      _buildDetailRow(Icons.location_on, 'Address', _getServiceProviderAddress()),
-                    if (_getServiceProviderExpertise().isNotEmpty)
-                      _buildDetailRow(Icons.star, 'Expertise', _getServiceProviderExpertise()),
-                    SizedBox(height: 20),
-                    // Contacts
-                    if (_getServiceProviderContacts().isNotEmpty) ...[
-                      Text(
-                        'Contact Information',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _getServiceProviderContacts().length,
-                          itemBuilder: (context, index) {
-                            final contact = _getServiceProviderContacts()[index];
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 8),
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Color(0xFF1E1E1E),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${contact['name'] ?? ''} ${contact['surname'] ?? ''}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  if (contact['emailAddress'] != null)
-                                    Text(
-                                      contact['emailAddress'],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ),
-                                  if (contact['phoneNumber'] != null)
-                                    Text(
-                                      contact['phoneNumber'],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey[400], size: 20),
-          SizedBox(width: 12),
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[300],
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBookmarkButton() {
-    final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
-    
-    return BookmarkButton(
-      itemType: 'serviceProvider',
-      itemId: serviceProviderId,
-      color: Colors.white,
-      activeColor: Colors.amber,
-      size: 24,
     );
   }
 }

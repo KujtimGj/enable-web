@@ -40,16 +40,45 @@ class ChatProvider extends ChangeNotifier {
   bool get isLoadingConversations => _isLoadingConversations;
   bool get isLoadingMessages => _isLoadingMessages;
 
-  List<Map<String, String>> _messages = [];
-  List<Map<String, String>> get messages => _messages;
+  List<Map<String, dynamic>> _messages = [];
+  List<Map<String, dynamic>> get messages => _messages;
+  
+  // Enhanced message properties
+  Map<String, dynamic>? _lastResponse;
+  Map<String, dynamic>? _pendingClarification;
+  bool _isWaitingForClarification = false;
+  
+  Map<String, dynamic>? get lastResponse => _lastResponse;
+  Map<String, dynamic>? get pendingClarification => _pendingClarification;
+  bool get isWaitingForClarification => _isWaitingForClarification;
 
-  void addUserMessage(String text) {
-    _messages.add({'role': 'user', 'content': text});
+  void addUserMessage(String text, {Map<String, dynamic>? metadata}) {
+    _messages.add({
+      'role': 'user', 
+      'content': text,
+      'timestamp': DateTime.now().toIso8601String(),
+      if (metadata != null) ...metadata,
+    });
     notifyListeners();
   }
 
   void addAgentPlaceholder() {
-    _messages.add({'role': 'agent', 'content': 'Finding items for you...'});
+    _messages.add({
+      'role': 'agent', 
+      'content': 'Finding items for you...',
+      'timestamp': DateTime.now().toIso8601String(),
+      'isLoading': true,
+    });
+    notifyListeners();
+  }
+
+  void addAgentMessage(String content, {Map<String, dynamic>? metadata}) {
+    _messages.add({
+      'role': 'agent', 
+      'content': content,
+      'timestamp': DateTime.now().toIso8601String(),
+      if (metadata != null) ...metadata,
+    });
     notifyListeners();
   }
 
@@ -93,6 +122,9 @@ class ChatProvider extends ChangeNotifier {
         _message = null;
         _externalProducts = [];
         _structuredSummary = null;
+        _lastResponse = null;
+        _pendingClarification = null;
+        _isWaitingForClarification = false;
       },
       (data) {
         print("✅ Intelligent agent success: ${data['success']}");
@@ -104,6 +136,24 @@ class ChatProvider extends ChangeNotifier {
           // Store conversation ID if provided
           if (responseData.containsKey('conversationId')) {
             _conversationId = responseData['conversationId'];
+          }
+          
+          // Store the full response for enhanced processing
+          _lastResponse = data;
+          
+          // Check if this is a clarifying questions response
+          if (_intelligentAgentController.hasClarifyingQuestions(data)) {
+            _isWaitingForClarification = true;
+            _pendingClarification = {
+              'missingInfo': _intelligentAgentController.getMissingInformation(data),
+              'queryAnalysis': _intelligentAgentController.getQueryAnalysis(data),
+              'clientPreferences': _intelligentAgentController.getClientPreferences(data),
+              'queryParameters': _intelligentAgentController.getQueryParameters(data),
+            };
+            print("🔍 Clarifying questions detected: ${_pendingClarification!['missingInfo']}");
+          } else {
+            _isWaitingForClarification = false;
+            _pendingClarification = null;
           }
           
           // Handle search results
@@ -134,11 +184,24 @@ class ChatProvider extends ChangeNotifier {
             _serviceProviders = [];
           }
           
-          // Update messages
-          _messages.removeWhere((m) => m['role'] == 'agent' && m['content'] == 'Finding items for you...');
+          // Update messages with enhanced metadata
+          _messages.removeWhere((m) => m['role'] == 'agent' && m['isLoading'] == true);
+          
+          final responseType = _intelligentAgentController.getResponseType(data);
+          final messageMetadata = {
+            'responseType': responseType,
+            'queryAnalysis': _intelligentAgentController.getQueryAnalysis(data),
+            'clientNames': _intelligentAgentController.getClientNames(data),
+            'searchTerms': _intelligentAgentController.getSearchTerms(data),
+            'requiresFollowUp': _isWaitingForClarification,
+            'missingInformation': _pendingClarification?['missingInfo'] ?? [],
+          };
+          
           _messages.add({
             'role': 'agent',
             'content': responseData['detailedResponse'] ?? 'Here are the results. Let me know if you want more suggestions or refinements.',
+            'timestamp': DateTime.now().toIso8601String(),
+            ...messageMetadata,
           });
           
           _structuredSummary = responseData['detailedResponse'];
@@ -146,9 +209,13 @@ class ChatProvider extends ChangeNotifier {
           _message = data['message'] ?? 'No results found';
           _externalProducts = [];
           _structuredSummary = null;
+          _lastResponse = null;
+          _pendingClarification = null;
+          _isWaitingForClarification = false;
         }
         
         print("External products: $_externalProducts");
+        print("Response type: ${_intelligentAgentController.getResponseType(data)}");
       },
     );
 
@@ -168,7 +235,195 @@ class ChatProvider extends ChangeNotifier {
     _conversationId = null;
     _error = null;
     _messages.clear();
+    _lastResponse = null;
+    _pendingClarification = null;
+    _isWaitingForClarification = false;
     notifyListeners();
+  }
+
+  /// Send a follow-up response to clarifying questions
+  Future<void> sendFollowUpResponse({
+    required String userId,
+    required String agencyId,
+    required String followUpQuery,
+    required String searchMode,
+    BuildContext? context,
+  }) async {
+    if (!_isWaitingForClarification || _pendingClarification == null) {
+      print("⚠️ No pending clarification to respond to");
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    print("🔍 Sending follow-up response for clarification");
+    print("Follow-up query: $followUpQuery");
+    print("Missing info was: ${_pendingClarification!['missingInfo']}");
+
+    // Add the follow-up as a user message
+    addUserMessage(followUpQuery, metadata: {
+      'isFollowUp': true,
+      'originalMissingInfo': _pendingClarification!['missingInfo'],
+    });
+
+    // Send the follow-up query
+    final result = await _intelligentAgentController.sendIntelligentQuery(
+      userId: userId,
+      agencyId: agencyId,
+      query: followUpQuery,
+      searchMode: searchMode,
+      existingConversationId: _conversationId,
+      context: context,
+    );
+
+    result.fold(
+      (failure) {
+        print("❌ Follow-up response error: $failure");
+        _error = failure.toString();
+        _isWaitingForClarification = false;
+        _pendingClarification = null;
+      },
+      (data) {
+        print("✅ Follow-up response success: ${data['success']}");
+        
+        if (data['success'] == true && data.containsKey('data')) {
+          final responseData = data['data'];
+          
+          // Check if this follow-up resolved the clarification
+          if (!_intelligentAgentController.hasClarifyingQuestions(data)) {
+            _isWaitingForClarification = false;
+            _pendingClarification = null;
+            print("✅ Clarification resolved, proceeding with full response");
+          } else {
+            // Still need more clarification
+            _pendingClarification = {
+              'missingInfo': _intelligentAgentController.getMissingInformation(data),
+              'queryAnalysis': _intelligentAgentController.getQueryAnalysis(data),
+              'clientPreferences': _intelligentAgentController.getClientPreferences(data),
+              'queryParameters': _intelligentAgentController.getQueryParameters(data),
+            };
+            print("🔍 Still need clarification: ${_pendingClarification!['missingInfo']}");
+          }
+          
+          // Add the agent's response
+          final responseType = _intelligentAgentController.getResponseType(data);
+          final messageMetadata = {
+            'responseType': responseType,
+            'queryAnalysis': _intelligentAgentController.getQueryAnalysis(data),
+            'clientNames': _intelligentAgentController.getClientNames(data),
+            'searchTerms': _intelligentAgentController.getSearchTerms(data),
+            'requiresFollowUp': _isWaitingForClarification,
+            'missingInformation': _pendingClarification?['missingInfo'] ?? [],
+            'isFollowUpResponse': true,
+          };
+          
+          addAgentMessage(
+            responseData['detailedResponse'] ?? 'Here are the results.',
+            metadata: messageMetadata,
+          );
+          
+          // Update other data if available
+          if (responseData.containsKey('searchResults')) {
+            final searchResults = responseData['searchResults'];
+            _externalProducts = searchResults['externalProducts'] ?? [];
+            
+            final products = searchResults['products'] ?? [];
+            final experiences = searchResults['experiences'] ?? [];
+            final clients = searchResults['clients'] ?? [];
+            final dmcs = searchResults['dmcs'] ?? [];
+            final serviceProviders = searchResults['serviceProviders'] ?? [];
+            
+            _vics = clients;
+            _experiences = experiences;
+            _dmcs = dmcs;
+            _serviceProviders = serviceProviders;
+            _externalProducts = [..._externalProducts, ...products];
+          }
+          
+          _structuredSummary = responseData['detailedResponse'];
+        } else {
+          _error = data['message'] ?? 'Follow-up response failed';
+          _isWaitingForClarification = false;
+          _pendingClarification = null;
+        }
+      },
+    );
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Cancel pending clarification
+  void cancelClarification() {
+    _isWaitingForClarification = false;
+    _pendingClarification = null;
+    notifyListeners();
+  }
+
+  /// Get suggested responses for clarifying questions
+  List<String> getSuggestedResponses() {
+    if (!_isWaitingForClarification || _pendingClarification == null) {
+      return [];
+    }
+
+    final missingInfo = _pendingClarification!['missingInfo'] as List<String>;
+    final clientPreferences = _pendingClarification!['clientPreferences'] as Map<String, dynamic>?;
+
+    List<String> suggestions = [];
+
+    for (String missing in missingInfo) {
+      if (missing.contains('destination strategy')) {
+        // Strategic destination suggestions
+        suggestions.addAll([
+          "Return to his previous destination",
+          "Try something new",
+          "Suggest a similar destination",
+          "Let me choose",
+        ]);
+      } else if (missing.contains('destination') || missing.contains('location')) {
+        // Suggest destinations based on client preferences
+        if (clientPreferences != null && clientPreferences.isNotEmpty) {
+          final clientName = clientPreferences.keys.first;
+          final preferences = clientPreferences[clientName] as Map<String, dynamic>?;
+          if (preferences != null && preferences.containsKey('preferences')) {
+            final prefData = preferences['preferences'] as Map<String, dynamic>;
+            if (prefData.containsKey('destinations')) {
+              final destinations = prefData['destinations'] as List<dynamic>;
+              suggestions.addAll(destinations.map((d) => "Let's go to $d").toList());
+            }
+            if (prefData.containsKey('countries')) {
+              final countries = prefData['countries'] as List<dynamic>;
+              suggestions.addAll(countries.map((c) => "How about $c?").toList());
+            }
+          }
+        }
+        // Generic location suggestions
+        suggestions.addAll([
+          "Let's go to Paris",
+          "How about Tokyo?",
+          "I'd like to visit London",
+          "What about New York?",
+        ]);
+      } else if (missing.contains('timeframe')) {
+        suggestions.addAll([
+          "For 3 days",
+          "A weekend trip",
+          "One week",
+          "Two weeks",
+        ]);
+      } else if (missing.contains('budget')) {
+        suggestions.addAll([
+          "Around £5,000",
+          "Budget of £10,000",
+          "Up to £15,000",
+          "No specific budget",
+        ]);
+      }
+    }
+
+    return suggestions.take(4).toList(); // Limit to 4 suggestions
   }
 
   // Load conversations for a user
@@ -316,19 +571,23 @@ class ChatProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
+    print('ChatProvider: Starting to fetch conversations for agency: $agencyId');
+    
     final result = await _conversationController.getConversationsByAgencyId(agencyId);
     
     result.fold(
       (failure) {
         _error = 'Failed to fetch conversations';
         _conversations = [];
-        print('Failed to fetch conversations: ${failure.toString()}');
+        print('ChatProvider: Failed to fetch conversations: ${failure.toString()}');
       },
       (conversations) {
         if (limit != null) {
           _conversations = conversations.take(limit).toList();
+          print('ChatProvider: Fetched ${_conversations.length} conversations (limited to $limit)');
         } else {
           _conversations = conversations; // Show all conversations
+          print('ChatProvider: Fetched ${_conversations.length} conversations (all)');
         }
         _error = null;
       },
@@ -336,6 +595,35 @@ class ChatProvider extends ChangeNotifier {
 
     _isLoadingConversations = false;
     notifyListeners();
+    print('ChatProvider: Finished fetching conversations. Total: ${_conversations.length}');
+  }
+
+  // Fetch last 3 conversations by userId (optimized for home screen)
+  Future<void> fetchLastConversationsByUserId(String userId) async {
+    _isLoadingConversations = true;
+    _error = null;
+    notifyListeners();
+
+    print('ChatProvider: Starting to fetch last 3 conversations for user: $userId');
+    
+    final result = await _conversationController.getLastConversationsByUserId(userId);
+    
+    result.fold(
+      (failure) {
+        _error = 'Failed to fetch last conversations';
+        _conversations = [];
+        print('ChatProvider: Failed to fetch last conversations: ${failure.toString()}');
+      },
+      (conversations) {
+        _conversations = conversations;
+        _error = null;
+        print('ChatProvider: Fetched ${_conversations.length} latest conversations');
+      },
+    );
+
+    _isLoadingConversations = false;
+    notifyListeners();
+    print('ChatProvider: Finished fetching last conversations. Total: ${_conversations.length}');
   }
 
   // Clear conversations

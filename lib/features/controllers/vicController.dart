@@ -34,13 +34,32 @@ class VICController {
           try {
             final item = vicsList[i];
             
+            // Skip if item is null or not a valid type
+            if (item == null) {
+              print('VICController: Skipping null item at index $i');
+              continue;
+            }
+            
+            // Handle the case where item might be a List instead of Map
+            if (item is List) {
+              continue;
+            }
+            
             Map<String, dynamic> jsonMap;
             if (item is Map<String, dynamic>) {
               jsonMap = item;
+            } else if (item is Map) {
+              // Handle generic Map type
+              jsonMap = Map<String, dynamic>.from(item);
             } else {
               // Convert JSObject to Map using json encode/decode
-              final jsonString = jsonEncode(item);
-              jsonMap = jsonDecode(jsonString) as Map<String, dynamic>;
+              try {
+                final jsonString = jsonEncode(item);
+                jsonMap = jsonDecode(jsonString) as Map<String, dynamic>;
+              } catch (jsonError) {
+                print('VICController: JSON conversion failed for item $i: $jsonError');
+                continue;
+              }
             }
             
             final vic = VICModel.fromJson(jsonMap);
@@ -180,13 +199,33 @@ class VICController {
           for (int i = 0; i < vicsList.length; i++) {
             try {
               final item = vicsList[i];
+              
+              // Skip if item is null or not a valid type
+              if (item == null) {
+                print('VICController: Skipping null search result item at index $i');
+                continue;
+              }
+              
+              // Handle the case where item might be a List instead of Map
+              if (item is List) {
+                continue;
+              }
+              
               Map<String, dynamic> jsonMap;
               if (item is Map<String, dynamic>) {
                 jsonMap = item;
+              } else if (item is Map) {
+                // Handle generic Map type
+                jsonMap = Map<String, dynamic>.from(item);
               } else {
                 // Convert JSObject to Map using json encode/decode
-                final jsonString = jsonEncode(item);
-                jsonMap = jsonDecode(jsonString) as Map<String, dynamic>;
+                try {
+                  final jsonString = jsonEncode(item);
+                  jsonMap = jsonDecode(jsonString) as Map<String, dynamic>;
+                } catch (jsonError) {
+                  print('VICController: JSON conversion failed for search result item $i: $jsonError');
+                  continue;
+                }
               }
               vics.add(jsonMap);
             } catch (e) {
