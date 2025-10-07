@@ -264,15 +264,38 @@ class AgencyController {
     }
   }
 
-  Future<Either<Failure, List<Map<String, dynamic>>>> getExperiencesByAgencyId(String agencyId) async {
+  Future<Either<Failure, Map<String, dynamic>>> getExperiencesByAgencyId(
+    String agencyId, {
+    int page = 1,
+    int limit = 100,
+  }) async {
     try {
-      final endpoint = ApiEndpoints.getExperiences.replaceFirst('{agencyId}', agencyId);
+      final endpoint = '${ApiEndpoints.getExperiences.replaceFirst('{agencyId}', agencyId)}?page=$page&limit=$limit';
 
       final response = await _apiClient.get(endpoint);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return Right(data.cast<Map<String, dynamic>>());
+        // Handle both old format (direct array) and new format (with pagination)
+        if (response.data is List) {
+          // Old format - backward compatibility
+          final List<dynamic> data = response.data;
+          return Right({
+            'experiences': data.cast<Map<String, dynamic>>(),
+            'pagination': {
+              'currentPage': 1,
+              'totalPages': 1,
+              'totalCount': data.length,
+              'limit': data.length,
+              'hasMore': false,
+            }
+          });
+        } else {
+          // New format with pagination
+          return Right({
+            'experiences': (response.data['experiences'] as List).cast<Map<String, dynamic>>(),
+            'pagination': response.data['pagination'],
+          });
+        }
       } else {
         print('AgencyController: Error response: ${response.data}');
         return Left(ServerFailure(

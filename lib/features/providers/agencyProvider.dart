@@ -60,6 +60,13 @@ class AgencyProvider extends ChangeNotifier {
   List<ExperienceModel> _experiences = [];
   bool _isLoadingData = false;
   
+  // Pagination state
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _totalCount = 0;
+  bool _hasMore = false;
+  bool _isLoadingMore = false;
+  
   // Search state
   List<ExperienceModel> _filteredExperiences = [];
   String _searchQuery = '';
@@ -84,6 +91,13 @@ class AgencyProvider extends ChangeNotifier {
   List<ServiceProviderModel> get serviceProviders => _serviceProviders;
   List<ExperienceModel> get experiences => _experiences;
   bool get isLoadingData => _isLoadingData;
+  
+  // Pagination getters
+  int get currentPage => _currentPage;
+  int get totalPages => _totalPages;
+  int get totalCount => _totalCount;
+  bool get hasMore => _hasMore;
+  bool get isLoadingMore => _isLoadingMore;
   
   // Search getters
   List<ExperienceModel> get filteredExperiences => _filteredExperiences.isEmpty ? _experiences : _filteredExperiences;
@@ -300,21 +314,45 @@ class AgencyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchExperiences(String agencyId) async {
-    _isLoadingData = true;
+  Future<void> fetchExperiences(String agencyId, {bool refresh = true}) async {
+    if (refresh) {
+      _isLoadingData = true;
+      _currentPage = 1;
+      _experiences = [];
+    }
     _errorMessage = null;
     notifyListeners();
 
-                  try {
-      final result = await _agencyController.getExperiencesByAgencyId(agencyId);
+    try {
+      final result = await _agencyController.getExperiencesByAgencyId(
+        agencyId,
+        page: _currentPage,
+        limit: 100,
+      );
 
       result.fold(
         (failure) {
           print('AgencyProvider: API call failed with failure: $failure');
           _errorMessage = (failure as ServerFailure).message;
         },
-        (experiences) {
-          _experiences = experiences.map((json) => ExperienceModel.fromJson(json)).toList();
+        (data) {
+          final experiencesJson = data['experiences'] as List;
+          final pagination = data['pagination'] as Map<String, dynamic>;
+          
+          final newExperiences = experiencesJson
+              .map((json) => ExperienceModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+          
+          if (refresh) {
+            _experiences = newExperiences;
+          } else {
+            _experiences.addAll(newExperiences);
+          }
+          
+          _currentPage = pagination['currentPage'] ?? 1;
+          _totalPages = pagination['totalPages'] ?? 1;
+          _totalCount = pagination['totalCount'] ?? 0;
+          _hasMore = pagination['hasMore'] ?? false;
         },
       );
     } catch (e, stackTrace) {
@@ -324,6 +362,54 @@ class AgencyProvider extends ChangeNotifier {
     }
 
     _isLoadingData = false;
+    notifyListeners();
+  }
+
+  Future<void> loadMoreExperiences(String agencyId) async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    _isLoadingMore = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _currentPage++;
+      final result = await _agencyController.getExperiencesByAgencyId(
+        agencyId,
+        page: _currentPage,
+        limit: 100,
+      );
+
+      result.fold(
+        (failure) {
+          print('AgencyProvider: Load more failed with failure: $failure');
+          _errorMessage = (failure as ServerFailure).message;
+          _currentPage--; // Revert page increment on failure
+        },
+        (data) {
+          final experiencesJson = data['experiences'] as List;
+          final pagination = data['pagination'] as Map<String, dynamic>;
+          
+          final newExperiences = experiencesJson
+              .map((json) => ExperienceModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+          
+          _experiences.addAll(newExperiences);
+          
+          _currentPage = pagination['currentPage'] ?? _currentPage;
+          _totalPages = pagination['totalPages'] ?? 1;
+          _totalCount = pagination['totalCount'] ?? 0;
+          _hasMore = pagination['hasMore'] ?? false;
+        },
+      );
+    } catch (e, stackTrace) {
+      print('AgencyProvider: Exception in loadMoreExperiences: $e');
+      print('AgencyProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred: $e';
+      _currentPage--; // Revert page increment on failure
+    }
+
+    _isLoadingMore = false;
     notifyListeners();
   }
 

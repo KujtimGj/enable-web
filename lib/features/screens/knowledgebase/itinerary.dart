@@ -19,12 +19,17 @@ class Itinerary extends StatefulWidget {
 
 class _ItineraryState extends State<Itinerary> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
     print('Itinerary screen initState called');
+    
+    // Setup scroll listener for infinite scroll
+    _scrollController.addListener(_onScroll);
+    
     // Fetch experiences when the page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print('Itinerary screen post frame callback executing');
@@ -36,7 +41,7 @@ class _ItineraryState extends State<Itinerary> {
       
       if (userProvider.user?.agencyId != null) {
         print('Fetching experiences for agency: ${userProvider.user!.agencyId}');
-        agencyProvider.fetchExperiences(userProvider.user!.agencyId);
+        agencyProvider.fetchExperiences(userProvider.user!.agencyId, refresh: true);
       } else {
         print('No agency ID found in user provider');
       }
@@ -46,8 +51,24 @@ class _ItineraryState extends State<Itinerary> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      // Load more when user is 200 pixels from the bottom
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
+      
+      if (userProvider.user?.agencyId != null && 
+          agencyProvider.hasMore && 
+          !agencyProvider.isLoadingMore &&
+          agencyProvider.searchQuery.isEmpty) {
+        agencyProvider.loadMoreExperiences(userProvider.user!.agencyId);
+      }
+    }
   }
 
   void _onSearchChanged(String query) {
@@ -199,28 +220,97 @@ class _ItineraryState extends State<Itinerary> {
                       onRefresh: () async {
                         final userProvider = Provider.of<UserProvider>(context, listen: false);
                         if (userProvider.user?.agencyId != null) {
-                          await agencyProvider.fetchExperiences(userProvider.user!.agencyId);
+                          await agencyProvider.fetchExperiences(userProvider.user!.agencyId, refresh: true);
                         }
                       },
-                      child: GridView.builder(
-                        shrinkWrap: false,
-                        physics: AlwaysScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount:
-                          ResponsiveUtils.isMobile(context)
-                              ? 1
-                              : ResponsiveUtils.isTablet(context)
-                              ? 2
-                              : 3,
-                          childAspectRatio: 1.7,
-                          mainAxisSpacing: 20,
-                          crossAxisSpacing: 20,
-                        ),
-                        itemCount: experiences.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final experience = experiences[index];
-                          return _buildItineraryCard(experience, index);
-                        },
+                      child: Column(
+                        children: [
+                          // Pagination info bar
+                          if (agencyProvider.totalCount > 0) ...[
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Showing ${experiences.length} of ${agencyProvider.totalCount} itineraries',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Page ${agencyProvider.currentPage} of ${agencyProvider.totalPages}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                          ],
+                          
+                          // Grid view
+                          Expanded(
+                            child: GridView.builder(
+                              controller: _scrollController,
+                              shrinkWrap: false,
+                              physics: AlwaysScrollableScrollPhysics(),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount:
+                                ResponsiveUtils.isMobile(context)
+                                    ? 1
+                                    : ResponsiveUtils.isTablet(context)
+                                    ? 2
+                                    : 3,
+                                childAspectRatio: 1.7,
+                                mainAxisSpacing: 20,
+                                crossAxisSpacing: 20,
+                              ),
+                              itemCount: experiences.length + (agencyProvider.hasMore ? 1 : 0),
+                              itemBuilder: (BuildContext context, int index) {
+                                // Show loading indicator at the end
+                                if (index == experiences.length) {
+                                  return Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          if (agencyProvider.isLoadingMore)
+                                            CircularProgressIndicator()
+                                          else
+                                            ElevatedButton.icon(
+                                              onPressed: () {
+                                                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                                                if (userProvider.user?.agencyId != null) {
+                                                  agencyProvider.loadMoreExperiences(userProvider.user!.agencyId);
+                                                }
+                                              },
+                                              icon: Icon(Icons.refresh),
+                                              label: Text('Load More'),
+                                              style: ElevatedButton.styleFrom(
+                                                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+                                
+                                final experience = experiences[index];
+                                return _buildItineraryCard(experience, index);
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
