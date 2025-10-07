@@ -150,15 +150,37 @@ class AgencyController {
     }
   }
 
-  Future<Either<Failure, List<ProductModel>>> getAgencyProducts(String agencyId) async {
+  Future<Either<Failure, Map<String, dynamic>>> getAgencyProducts(
+    String agencyId, {
+    int page = 1,
+    int limit = 100,
+  }) async {
     try {
       final apiClient = ApiClient();
-      final response = await apiClient.get('${ApiEndpoints.baseUrl}/agency/products/$agencyId');
+      final response = await apiClient.get('${ApiEndpoints.baseUrl}/agency/products/$agencyId?page=$page&limit=$limit');
       if (response.statusCode == 200) {
-        // Parse the response data as a list of products
-        final List<dynamic> data = response.data;
-        final products = data.map((json) => ProductModel.fromJson(json)).toList();
-        return Right(products);
+        // Handle both old format (direct array) and new format (with pagination)
+        if (response.data is List) {
+          // Old format - backward compatibility
+          final List<dynamic> data = response.data;
+          return Right({
+            'products': data.map((json) => ProductModel.fromJson(json)).toList(),
+            'pagination': {
+              'currentPage': 1,
+              'totalPages': 1,
+              'totalCount': data.length,
+              'limit': data.length,
+              'hasMore': false,
+            }
+          });
+        } else {
+          // New format with pagination
+          final List<dynamic> productsJson = response.data['products'];
+          return Right({
+            'products': productsJson.map((json) => ProductModel.fromJson(json)).toList(),
+            'pagination': response.data['pagination'],
+          });
+        }
       } else {
         print("Failure: ${response.data}");
         return Left(ServerFailure(message: 'Failed to fetch products: ${response.statusCode}'));

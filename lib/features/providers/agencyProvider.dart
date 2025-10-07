@@ -60,12 +60,20 @@ class AgencyProvider extends ChangeNotifier {
   List<ExperienceModel> _experiences = [];
   bool _isLoadingData = false;
   
-  // Pagination state
+  // Pagination state for experiences
   int _currentPage = 1;
   int _totalPages = 1;
   int _totalCount = 0;
   bool _hasMore = false;
   bool _isLoadingMore = false;
+  
+  // Pagination state for products
+  int _productsCurrentPage = 1;
+  int _productsTotalPages = 1;
+  int _productsTotalCount = 0;
+  bool _productsHasMore = false;
+  bool _isLoadingMoreProducts = false;
+  bool _isLoadingProducts = false;
   
   // Search state
   List<ExperienceModel> _filteredExperiences = [];
@@ -92,12 +100,20 @@ class AgencyProvider extends ChangeNotifier {
   List<ExperienceModel> get experiences => _experiences;
   bool get isLoadingData => _isLoadingData;
   
-  // Pagination getters
+  // Pagination getters for experiences
   int get currentPage => _currentPage;
   int get totalPages => _totalPages;
   int get totalCount => _totalCount;
   bool get hasMore => _hasMore;
   bool get isLoadingMore => _isLoadingMore;
+  
+  // Pagination getters for products
+  int get productsCurrentPage => _productsCurrentPage;
+  int get productsTotalPages => _productsTotalPages;
+  int get productsTotalCount => _productsTotalCount;
+  bool get productsHasMore => _productsHasMore;
+  bool get isLoadingMoreProducts => _isLoadingMoreProducts;
+  bool get isLoadingProducts => _isLoadingProducts;
   
   // Search getters
   List<ExperienceModel> get filteredExperiences => _filteredExperiences.isEmpty ? _experiences : _filteredExperiences;
@@ -156,22 +172,188 @@ class AgencyProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchAgencyProducts(String agencyId) async {
-    _isLoading = true;
+  Future<void> fetchAgencyProducts(String agencyId, {bool refresh = true}) async {
+    // Prevent multiple simultaneous calls
+    if (_isLoadingProducts) {
+      return;
+    }
+    
+    _isLoadingProducts = true;
+    if (refresh) {
+      _isLoading = true;
+      _productsCurrentPage = 1;
+      // Don't clear products immediately to avoid showing empty state
+    }
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _agencyController.getAgencyProducts(agencyId);
+    final result = await _agencyController.getAgencyProducts(
+      agencyId,
+      page: _productsCurrentPage,
+      limit: 100,
+    );
+    
     result.fold(
       (failure) {
-        _errorMessage = (failure as ServerFailure).message;
+        final serverFailure = failure as ServerFailure;
+        _errorMessage = serverFailure.message;
       },
-      (products) {
-        _products = products; // Update to handle a list of products
+      (data) {
+        // Get the products list from data - it's already List<ProductModel> from controller
+        final productsList = List<ProductModel>.from(data['products'] as List);
+        final pagination = data['pagination'] as Map<String, dynamic>;
+        
+        if (refresh) {
+          _products = productsList;
+        } else {
+          _products.addAll(productsList);
+        }
+        
+        _productsCurrentPage = pagination['currentPage'] ?? 1;
+        _productsTotalPages = pagination['totalPages'] ?? 1;
+        _productsTotalCount = pagination['totalCount'] ?? 0;
+        _productsHasMore = pagination['hasMore'] ?? false;
       },
     );
 
     _isLoading = false;
+    _isLoadingProducts = false;
+    notifyListeners();
+  }
+
+  Future<void> loadMoreProducts(String agencyId) async {
+    if (_isLoadingMoreProducts || !_productsHasMore) return;
+
+    _isLoadingMoreProducts = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _productsCurrentPage++;
+      final result = await _agencyController.getAgencyProducts(
+        agencyId,
+        page: _productsCurrentPage,
+        limit: 100,
+      );
+
+      result.fold(
+        (failure) {
+          print('AgencyProvider: Load more products failed: $failure');
+          _errorMessage = (failure as ServerFailure).message;
+          _productsCurrentPage--;
+        },
+        (data) {
+          final productsList = List<ProductModel>.from(data['products'] as List);
+          final pagination = data['pagination'] as Map<String, dynamic>;
+          
+          _products.addAll(productsList);
+          
+          _productsCurrentPage = pagination['currentPage'] ?? _productsCurrentPage;
+          _productsTotalPages = pagination['totalPages'] ?? 1;
+          _productsTotalCount = pagination['totalCount'] ?? 0;
+          _productsHasMore = pagination['hasMore'] ?? false;
+        },
+      );
+    } catch (e, stackTrace) {
+      print('AgencyProvider: Exception in loadMoreProducts: $e');
+      print('AgencyProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred: $e';
+      _productsCurrentPage--;
+    }
+
+    _isLoadingMoreProducts = false;
+    notifyListeners();
+  }
+
+  Future<void> goToNextProductsPage(String agencyId) async {
+    if (_productsCurrentPage >= _productsTotalPages || _isLoadingProducts) return;
+    
+    _isLoadingProducts = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _productsCurrentPage++;
+      final result = await _agencyController.getAgencyProducts(
+        agencyId,
+        page: _productsCurrentPage,
+        limit: 100,
+      );
+
+      result.fold(
+        (failure) {
+          print('AgencyProvider: Go to next products page failed: $failure');
+          _errorMessage = (failure as ServerFailure).message;
+          _productsCurrentPage--;
+        },
+        (data) {
+          final productsList = List<ProductModel>.from(data['products'] as List);
+          final pagination = data['pagination'] as Map<String, dynamic>;
+          
+          _products = productsList; // Replace with new page data
+          
+          _productsCurrentPage = pagination['currentPage'] ?? _productsCurrentPage;
+          _productsTotalPages = pagination['totalPages'] ?? 1;
+          _productsTotalCount = pagination['totalCount'] ?? 0;
+          _productsHasMore = pagination['hasMore'] ?? false;
+        },
+      );
+    } catch (e, stackTrace) {
+      print('AgencyProvider: Exception in goToNextProductsPage: $e');
+      print('AgencyProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred: $e';
+      _productsCurrentPage--;
+    }
+
+    _isLoading = false;
+    _isLoadingProducts = false;
+    notifyListeners();
+  }
+
+  Future<void> goToPreviousProductsPage(String agencyId) async {
+    if (_productsCurrentPage <= 1 || _isLoadingProducts) return;
+    
+    _isLoadingProducts = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _productsCurrentPage--;
+      final result = await _agencyController.getAgencyProducts(
+        agencyId,
+        page: _productsCurrentPage,
+        limit: 100,
+      );
+
+      result.fold(
+        (failure) {
+          print('AgencyProvider: Go to previous products page failed: $failure');
+          _errorMessage = (failure as ServerFailure).message;
+          _productsCurrentPage++;
+        },
+        (data) {
+          final productsList = List<ProductModel>.from(data['products'] as List);
+          final pagination = data['pagination'] as Map<String, dynamic>;
+          
+          _products = productsList; // Replace with new page data
+          
+          _productsCurrentPage = pagination['currentPage'] ?? _productsCurrentPage;
+          _productsTotalPages = pagination['totalPages'] ?? 1;
+          _productsTotalCount = pagination['totalCount'] ?? 0;
+          _productsHasMore = pagination['hasMore'] ?? false;
+        },
+      );
+    } catch (e, stackTrace) {
+      print('AgencyProvider: Exception in goToPreviousProductsPage: $e');
+      print('AgencyProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred: $e';
+      _productsCurrentPage++;
+    }
+
+    _isLoading = false;
+    _isLoadingProducts = false;
     notifyListeners();
   }
 
@@ -410,6 +592,102 @@ class AgencyProvider extends ChangeNotifier {
     }
 
     _isLoadingMore = false;
+    notifyListeners();
+  }
+
+  Future<void> goToNextPage(String agencyId) async {
+    if (_currentPage >= _totalPages) return;
+    
+    _isLoadingData = true;
+    _errorMessage = null;
+    notifyListeners();
+    
+    try {
+      _currentPage++;
+      final result = await _agencyController.getExperiencesByAgencyId(
+        agencyId,
+        page: _currentPage,
+        limit: 100,
+      );
+
+      result.fold(
+        (failure) {
+          print('AgencyProvider: Go to next page failed: $failure');
+          _errorMessage = (failure as ServerFailure).message;
+          _currentPage--; // Revert on failure
+        },
+        (data) {
+          final experiencesJson = data['experiences'] as List;
+          final pagination = data['pagination'] as Map<String, dynamic>;
+          
+          final newExperiences = experiencesJson
+              .map((json) => ExperienceModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+          
+          _experiences = newExperiences; // Replace with new page data
+          
+          _currentPage = pagination['currentPage'] ?? _currentPage;
+          _totalPages = pagination['totalPages'] ?? 1;
+          _totalCount = pagination['totalCount'] ?? 0;
+          _hasMore = pagination['hasMore'] ?? false;
+        },
+      );
+    } catch (e, stackTrace) {
+      print('AgencyProvider: Exception in goToNextPage: $e');
+      print('AgencyProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred: $e';
+      _currentPage--;
+    }
+
+    _isLoadingData = false;
+    notifyListeners();
+  }
+
+  Future<void> goToPreviousPage(String agencyId) async {
+    if (_currentPage <= 1) return;
+    
+    _isLoadingData = true;
+    _errorMessage = null;
+    notifyListeners();
+    
+    try {
+      _currentPage--;
+      final result = await _agencyController.getExperiencesByAgencyId(
+        agencyId,
+        page: _currentPage,
+        limit: 100,
+      );
+
+      result.fold(
+        (failure) {
+          print('AgencyProvider: Go to previous page failed: $failure');
+          _errorMessage = (failure as ServerFailure).message;
+          _currentPage++; // Revert on failure
+        },
+        (data) {
+          final experiencesJson = data['experiences'] as List;
+          final pagination = data['pagination'] as Map<String, dynamic>;
+          
+          final newExperiences = experiencesJson
+              .map((json) => ExperienceModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+          
+          _experiences = newExperiences; // Replace with new page data
+          
+          _currentPage = pagination['currentPage'] ?? _currentPage;
+          _totalPages = pagination['totalPages'] ?? 1;
+          _totalCount = pagination['totalCount'] ?? 0;
+          _hasMore = pagination['hasMore'] ?? false;
+        },
+      );
+    } catch (e, stackTrace) {
+      print('AgencyProvider: Exception in goToPreviousPage: $e');
+      print('AgencyProvider: Stack trace: $stackTrace');
+      _errorMessage = 'Exception occurred: $e';
+      _currentPage++;
+    }
+
+    _isLoadingData = false;
     notifyListeners();
   }
 

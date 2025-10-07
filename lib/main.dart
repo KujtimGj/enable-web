@@ -6,6 +6,7 @@ import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:enable_web/features/providers/google_drive_provider.dart';
 import 'package:enable_web/features/providers/vicProvider.dart';
 import 'package:enable_web/features/providers/productProvider.dart';
+import 'package:enable_web/features/providers/productsProvider.dart';
 import 'package:enable_web/features/providers/bookmark_provider.dart';
 import 'package:enable_web/theme.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_)=>ChatProvider()),
         ChangeNotifierProvider(create: (_)=>VICProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => BookmarkProvider()),
       ],
       child: Consumer2<UserProvider, AgencyProvider>(

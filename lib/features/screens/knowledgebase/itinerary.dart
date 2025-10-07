@@ -230,7 +230,6 @@ class _ItineraryState extends State<Itinerary> {
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               decoration: BoxDecoration(
-                                color: Colors.grey[200],
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -243,12 +242,48 @@ class _ItineraryState extends State<Itinerary> {
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                  Text(
-                                    'Page ${agencyProvider.currentPage} of ${agencyProvider.totalPages}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Page ${agencyProvider.currentPage} of ${agencyProvider.totalPages}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      // Previous page button
+                                      IconButton(
+                                        icon: Icon(Icons.arrow_back_ios, size: 16),
+                                        onPressed: agencyProvider.currentPage > 1
+                                            ? () {
+                                                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                                                if (userProvider.user?.agencyId != null) {
+                                                  agencyProvider.goToPreviousPage(userProvider.user!.agencyId);
+                                                }
+                                              }
+                                            : null,
+                                        tooltip: 'Previous page',
+                                        padding: EdgeInsets.all(4),
+                                        constraints: BoxConstraints(),
+                                      ),
+                                      SizedBox(width: 4),
+                                      // Next page button
+                                      IconButton(
+                                        icon: Icon(Icons.arrow_forward_ios, size: 16),
+                                        onPressed: agencyProvider.currentPage < agencyProvider.totalPages
+                                            ? () {
+                                                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                                                if (userProvider.user?.agencyId != null) {
+                                                  agencyProvider.goToNextPage(userProvider.user!.agencyId);
+                                                }
+                                              }
+                                            : null,
+                                        tooltip: 'Next page',
+                                        padding: EdgeInsets.all(4),
+                                        constraints: BoxConstraints(),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

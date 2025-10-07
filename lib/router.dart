@@ -407,7 +407,10 @@ GoRouter createGoRouter({String? initialLocation}) {
       path: routeProducts.path,
       name: routeProducts.name,
       pageBuilder: (context, state) {
-        return MaterialPage(child: Products());
+        return MaterialPage(
+          key: const ValueKey('products-page'),
+          child: const Products(),
+        );
       },
     ),
     // ---------------------------------
