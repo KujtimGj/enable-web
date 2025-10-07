@@ -2491,7 +2491,10 @@ class _HomeScreenState extends State<HomeScreen> {
         (failure) {
           throw Exception('Failed to fetch experiences: ${failure.toString()}');
         },
-        (experiences) {
+        (data) {
+          // Extract experiences list from the response
+          final experiences = data['experiences'] as List;
+          
           // Find the specific experience by ID
           for (var exp in experiences) {
             if (exp['_id']?.toString() == experienceId || exp['id']?.toString() == experienceId) {
@@ -2501,7 +2504,7 @@ class _HomeScreenState extends State<HomeScreen> {
           throw Exception('Experience not found');
         },
       );
-    } catch (e) {
+    } catch (e) { 
       print('Error fetching full experience data: $e');
       rethrow;
     }

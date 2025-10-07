@@ -525,6 +525,7 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
               pagination: _state.currentFolder!.pagination,
               isLoadingMore: _state.isLoadingMore,
               onPageChange: _goToPage,
+              onPageSizeChange: _changePageSize,
             ),
             const SizedBox(height: 16),
           ],
@@ -885,6 +886,50 @@ class _GoogleDriveFilesScreenState extends State<GoogleDriveFilesScreen> {
   }
 
   // Pagination methods
+  Future<void> _changePageSize(int newPageSize) async {
+    if (_state.currentFolderId == null || newPageSize == _state.pageSize) return;
+    
+    _state.setLoadingMore(true);
+    _state.setPageSize(newPageSize);
+    _state.setCurrentPage(1); // Reset to first page when changing page size
+    
+    try {
+      final result = await _controller.getFolderContents(_state.currentFolderId!, page: 1, pageSize: newPageSize);
+      result.fold(
+        (failure) {
+          print('❌ [changePageSize] Failed to change page size: ${failure.toString()}');
+          _state.setLoadingMore(false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to change page size: ${failure.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
+        (folderContents) {
+          // Update the current folder with the new page data
+          _state.setCurrentFolder(folderContents);
+          _state.setAllItems(List.from(folderContents.contents));
+          _state.setHasMoreItems(folderContents.pagination?.hasMore ?? false);
+          _state.setLoadingMore(false);
+          _state.clearSelection(); // Clear selection when changing page size
+          
+          // Check ingestion status for files on this page
+          _checkIngestionStatusForItemsAsync(folderContents.contents);
+        },
+      );
+    } catch (e) {
+      print('❌ [changePageSize] Exception changing page size: $e');
+      _state.setLoadingMore(false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to change page size: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _goToPage(int page) async {
     if (_state.currentFolderId == null || page == _state.currentPage) return;
     

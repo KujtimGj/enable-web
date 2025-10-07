@@ -25,7 +25,7 @@ class GoogleDriveState extends ChangeNotifier {
   
   // Pagination state
   int _currentPage = 1;
-  int _pageSize = 50;
+  int _pageSize = 200;
   bool _hasMoreItems = true;
   bool _isLoadingMore = false;
   bool _isLoadingFolders = false;
@@ -321,7 +321,7 @@ class GoogleDriveState extends ChangeNotifier {
     _isTrackingProgress = false;
     _ingestedFiles.clear();
     _currentPage = 1;
-    _pageSize = 50;
+    _pageSize = 200;
     _hasMoreItems = true;
     _isLoadingMore = false;
     _isLoadingFolders = false;
