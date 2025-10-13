@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     UserModel? user = await userProvider.login(email, password);
     if (user != null) {
-      context.go('/account');
+      context.go('/home');
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -255,21 +255,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   // SizedBox(height: ResponsiveUtils.responsiveSpacing(context, mobile: 8, tablet: 12, desktop: 15)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text("Don't have an account? "),
-                      GestureDetector(
-                        onTap: () {
-                          context.goNamed(routeRegister.name);
-                          },
-                        child: Text(
-                          "Sign up",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.end,
+                  //   children: [
+                  //     Text("Don't have an account? "),
+                  //     GestureDetector(
+                  //       onTap: () {
+                  //         context.goNamed(routeRegister.name);
+                  //         },
+                  //       child: Text(
+                  //         "Sign up",
+                  //         style: TextStyle(fontWeight: FontWeight.bold),
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                   SizedBox(
                     height: ResponsiveUtils.responsiveSpacing(
                       context,
@@ -279,22 +279,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   // Clear Auth Button (for testing)
-                  TextButton(
-                    onPressed: () async {
-                      final userProvider = Provider.of<UserProvider>(
-                        context,
-                        listen: false,
-                      );
-                      await userProvider.logout();
-                      if (mounted) {
-                        context.go('/signin');
-                      }
-                    },
-                    child: const Text(
-                      'Clear Stored Auth (Testing)',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
+                  // TextButton(
+                  //   onPressed: () async {
+                  //     final userProvider = Provider.of<UserProvider>(
+                  //       context,
+                  //       listen: false,
+                  //     );
+                  //     await userProvider.logout();
+                  //     if (mounted) {
+                  //       context.go('/signin');
+                  //     }
+                  //   },
+                  //   child: const Text(
+                  //     'Clear Stored Auth (Testing)',
+                  //     style: TextStyle(color: Colors.grey),
+                  //   ),
+                  // ),
                 ],
               ),
             ),

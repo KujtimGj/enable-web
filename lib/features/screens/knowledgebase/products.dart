@@ -16,6 +16,8 @@ class Products extends StatefulWidget {
 }
 
 class _ProductsState extends State<Products> {
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +31,25 @@ class _ProductsState extends State<Products> {
         productsProvider.fetchProducts(userProvider.user!.agencyId);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<ProductModel> _filterProducts(List<ProductModel> products) {
+    if (_searchController.text.isEmpty) {
+      return products;
+    }
+    
+    final query = _searchController.text.toLowerCase();
+    return products.where((product) {
+      return product.name.toLowerCase().contains(query) ||
+             (product.description?.toLowerCase().contains(query) ?? false) ||
+             product.category.toLowerCase().contains(query);
+    }).toList();
   }
 
   @override
@@ -54,19 +75,35 @@ class _ProductsState extends State<Products> {
           ),
         ),
         centerTitle: true,
-        title: Text('Products'),
-        actions: [
-          Consumer<ProductsProvider>(
-            builder: (context, provider, _) {
-              return IconButton(
-                onPressed: provider.isLoading 
-                  ? null 
-                  : () => provider.refresh(agencyId),
-                icon: Icon(Icons.refresh),
-                tooltip: 'Refresh products',
-              );
+        title: Container(
+          constraints: BoxConstraints(maxWidth: 500),
+          child: TextField(
+            controller: _searchController,
+            style: TextStyle(fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Search products...',
+              hintStyle: TextStyle(fontSize: 14),
+              suffixIcon: Icon(Icons.search, size: 20),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[700]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[700]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.blue[600]!, width: 1.5),
+              ),
+            ),
+            onChanged: (value) {
+              setState(() {});
             },
           ),
+        ),
+        actions: [
           customButton(() {
             context.go("/");
           }),
@@ -162,6 +199,8 @@ class _ProductsState extends State<Products> {
                     }
 
                     // Products list
+                    final filteredProducts = _filterProducts(provider.products);
+                    
                     return Column(
                       children: [
                         // Pagination bar
@@ -174,43 +213,46 @@ class _ProductsState extends State<Products> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Showing ${provider.products.length} of ${provider.totalCount} products',
+                                _searchController.text.isEmpty
+                                    ? 'Showing ${provider.products.length} of ${provider.totalCount} products'
+                                    : 'Found ${filteredProducts.length} of ${provider.products.length} products',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              Row(
-                                children: [
-                                  Text(
-                                    'Page ${provider.currentPage} of ${provider.totalPages}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
+                              if (_searchController.text.isEmpty)
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Page ${provider.currentPage} of ${provider.totalPages}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  IconButton(
-                                    icon: Icon(Icons.arrow_back_ios, size: 16),
-                                    onPressed: provider.currentPage > 1
-                                        ? () => provider.previousPage(agencyId)
-                                        : null,
-                                    tooltip: 'Previous page',
-                                    padding: EdgeInsets.all(4),
-                                    constraints: BoxConstraints(),
-                                  ),
-                                  SizedBox(width: 4),
-                                  IconButton(
-                                    icon: Icon(Icons.arrow_forward_ios, size: 16),
-                                    onPressed: provider.currentPage < provider.totalPages
-                                        ? () => provider.nextPage(agencyId)
-                                        : null,
-                                    tooltip: 'Next page',
-                                    padding: EdgeInsets.all(4),
-                                    constraints: BoxConstraints(),
-                                  ),
-                                ],
-                              ),
+                                    SizedBox(width: 12),
+                                    IconButton(
+                                      icon: Icon(Icons.arrow_back_ios, size: 16),
+                                      onPressed: provider.currentPage > 1
+                                          ? () => provider.previousPage(agencyId)
+                                          : null,
+                                      tooltip: 'Previous page',
+                                      padding: EdgeInsets.all(4),
+                                      constraints: BoxConstraints(),
+                                    ),
+                                    SizedBox(width: 4),
+                                    IconButton(
+                                      icon: Icon(Icons.arrow_forward_ios, size: 16),
+                                      onPressed: provider.currentPage < provider.totalPages
+                                          ? () => provider.nextPage(agencyId)
+                                          : null,
+                                      tooltip: 'Next page',
+                                      padding: EdgeInsets.all(4),
+                                      constraints: BoxConstraints(),
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -218,26 +260,53 @@ class _ProductsState extends State<Products> {
 
                         // Grid view
                         Expanded(
-                          child: GridView.builder(
-                            shrinkWrap: false,
-                            physics: AlwaysScrollableScrollPhysics(),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount:
-                                  ResponsiveUtils.isMobile(context)
-                                      ? 1
-                                      : ResponsiveUtils.isTablet(context)
-                                      ? 2
-                                      : 3,
-                              childAspectRatio: 1.7,
-                              mainAxisSpacing: 20,
-                              crossAxisSpacing: 20,
-                            ),
-                            itemCount: provider.products.length,
-                            itemBuilder: (BuildContext context, int index) {
-                              final product = provider.products[index];
-                              return _buildProductCard(product);
-                            },
-                          ),
+                          child: filteredProducts.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.search_off,
+                                        size: 64,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'No products found',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Try adjusting your search query',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(color: Colors.grey[600]),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : GridView.builder(
+                                  shrinkWrap: false,
+                                  physics: AlwaysScrollableScrollPhysics(),
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount:
+                                        ResponsiveUtils.isMobile(context)
+                                            ? 1
+                                            : ResponsiveUtils.isTablet(context)
+                                            ? 2
+                                            : 3,
+                                    childAspectRatio: 1.7,
+                                    mainAxisSpacing: 20,
+                                    crossAxisSpacing: 20,
+                                  ),
+                                  itemCount: filteredProducts.length,
+                                  itemBuilder: (BuildContext context, int index) {
+                                    final product = filteredProducts[index];
+                                    return _buildProductCard(product);
+                                  },
+                                ),
                         ),
                       ],
                     );
@@ -341,68 +410,38 @@ class _ProductsState extends State<Products> {
   Widget _buildProductImage(ProductModel product) {
     return Container(
       child: product.images != null && product.images!.isNotEmpty
-          ? Column(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: _buildImageItem(product, 0),
-                            ),
-                            SizedBox(height: 4),
-                            Expanded(
-                              child: _buildImageItem(product, 2),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: _buildImageItem(product, 1),
-                            ),
-                            SizedBox(height: 4),
-                            Expanded(
-                              child: _buildImageItem(product, 3),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
+          ? _buildRandomImageItem(product)
           : _buildNoImagesPlaceholder(),
     );
   }
 
-  Widget _buildImageItem(ProductModel product, int index) {
-    if (index < product.images!.length && 
-        product.images![index].signedUrl != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(5),
-        child: Image.network(
-          product.images![index].signedUrl!,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildPlaceholderIcon();
-          },
-        ),
-      );
-    } else {
-      return _buildPlaceholderIcon();
+  Widget _buildRandomImageItem(ProductModel product) {
+    if (product.images == null || product.images!.isEmpty) {
+      return _buildNoImagesPlaceholder();
     }
+
+    // Use product ID hash to generate a stable "random" index
+    final hash = product.id.hashCode;
+    final stableIndex = hash.abs() % product.images!.length;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(5),
+      child: Image.network(
+        product.images![stableIndex].signedUrl!,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildNoImagesPlaceholder();
+        },
+      ),
+    );
   }
 
   Widget _buildNoImagesPlaceholder() {
     return Container(
       height: double.infinity,
+      width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(5),
         color: Color(0xff1e1e1e),
@@ -412,22 +451,6 @@ class _ProductsState extends State<Products> {
           Icons.image_outlined,
           color: Colors.grey[600],
           size: 48,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderIcon() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        color: Color(0xff1e1e1e),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.image_outlined,
-          color: Colors.grey[600],
-          size: 24,
         ),
       ),
     );
