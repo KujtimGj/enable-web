@@ -459,7 +459,7 @@ GoRouter createGoRouter({String? initialLocation}) {
 
         // Use the dynamic authentication function
         if (!AuthUtils.isAnyUserAuthenticated(context)) {
-          return routeWelcome.path;
+          return routeSignIn.path;
         }
 
         String? userType = AuthUtils.getCurrentUserType(context);

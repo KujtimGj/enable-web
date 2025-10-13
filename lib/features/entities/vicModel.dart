@@ -76,13 +76,27 @@ class VICModel {
   }
 
   factory VICModel.fromJson(Map<String, dynamic> json) {
+    // Handle preferences field - it should be a Map, but might be a List in some cases
+    Map<String, dynamic>? preferences;
+    final prefsData = json['preferences'];
+    if (prefsData is Map<String, dynamic>) {
+      preferences = prefsData;
+    } else if (prefsData is Map) {
+      preferences = Map<String, dynamic>.from(prefsData);
+    } else if (prefsData is List) {
+      // If preferences is a List, convert it to an empty map or skip it
+      preferences = null;
+    } else if (prefsData != null) {
+      preferences = null;
+    }
+
     return VICModel(
       id: json['_id'] ?? json['id'],
       fullName: json['fullName'],
       email: json['email'],
       phone: json['phone'],
       nationality: json['nationality'],
-      preferences: json['preferences'],
+      preferences: preferences,
       summary: json['summary'],
       embedding: json['embedding'] != null
           ? List<double>.from(json['embedding'])

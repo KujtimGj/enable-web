@@ -183,6 +183,7 @@ void showAccountOverlay(BuildContext context) {
                         );
                         await userProvider.logout();
                         overlayEntry?.remove();
+                        context.go("/signin");
                       },
                     ),
                   ),
@@ -211,54 +212,72 @@ Widget bottomLeftBar() {
               onTap: () {
                 context.go("/chats");
               },
-              child: SvgPicture.asset('assets/icons/mssg.svg'),
+              child: Tooltip(
+                message: 'Chats',
+                child: SvgPicture.asset('assets/icons/mssg.svg'),
+              ),
             ),
             SizedBox(height: 10),
             GestureDetector(
               onTap: () {
                 context.go('/products');
               },
-              child: SvgPicture.asset('assets/icons/cube-02.svg'),
+              child: Tooltip(
+                message: 'Products',
+                child: SvgPicture.asset('assets/icons/cube-02.svg'),
+              ),
             ),
             SizedBox(height: 10),
             GestureDetector(
               onTap: () {
                 context.go("/vics");
               },
-              child: SvgPicture.asset("assets/icons/user-02.svg"),
+              child: Tooltip(
+                message: 'VICs',
+                child: SvgPicture.asset("assets/icons/user-02.svg"),
+              ),
             ),
             SizedBox(height: 10),
             GestureDetector(
               onTap: () {
                 context.go("/itinerary");
               },
-              child: SvgPicture.asset('assets/icons/asterisk-01.svg'),
+              child: Tooltip(
+                message: 'Itinerary',
+                child: SvgPicture.asset('assets/icons/asterisk-01.svg'),
+              ),
             ),
             SizedBox(height: 10),
             GestureDetector(
                 onTap: (){
                   context.go("/bookmarks");
                   },
-                child: SvgPicture.asset('assets/icons/image-03.svg')),
+                child: Tooltip(
+                  message: 'Bookmarks',
+                  child: SvgPicture.asset('assets/icons/image-03.svg'),
+                )),
             SizedBox(height: 10),
             GestureDetector(
               onTap: () {
                 showAccountOverlay(context);
               },
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: CircleAvatar(
-                  maxRadius: 14,
-                  minRadius: 14,
-                  backgroundColor: Color(0xff574131),
-                  child: Text(
-                    user?.name.isNotEmpty == true
-                        ? user!.name[0].toUpperCase()
-                        : 'U',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+              child: Tooltip(
+                message: 'Account',
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: CircleAvatar(
+                    maxRadius: 14,
+                    minRadius: 14,
+                    backgroundColor: Color(0xff574131),
+                    child: Text(
+                      user?.name.isNotEmpty == true
+                          ? user!.name[0].toUpperCase()
+                          : 'U',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
