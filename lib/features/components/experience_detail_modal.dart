@@ -92,7 +92,7 @@ class ExperienceDetailModal extends StatelessWidget {
 
   List<dynamic> _getExperienceItinerary() {
     try {
-      final itinerary = experience['itinerary'];
+      final itinerary = experience['itinerary'] ?? experience['itineraryItems'];
       if (itinerary != null) {
         return List<dynamic>.from(itinerary);
       } else {
@@ -163,7 +163,6 @@ class ExperienceDetailModal extends StatelessWidget {
           Container(
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(Icons.flight_takeoff, color: Colors.white, size: 28),
@@ -200,7 +199,6 @@ class ExperienceDetailModal extends StatelessWidget {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withOpacity(0.3)),
                 ),
@@ -388,6 +386,11 @@ class ExperienceDetailModal extends StatelessWidget {
       }
     }
 
+    // Fallback: if no day values present, show all items under Day 1
+    if (groupedByDay.isEmpty && itinerary.isNotEmpty) {
+      groupedByDay[1] = List<dynamic>.from(itinerary);
+    }
+
     var sortedDays = groupedByDay.keys.toList()..sort();
     for (var day in sortedDays) {
       groupedByDay[day]!.sort((a, b) => (a['order'] ?? 0).compareTo(b['order'] ?? 0));
@@ -502,7 +505,6 @@ class ExperienceDetailModal extends StatelessWidget {
                 border: Border.all(color: Colors.white, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: _getItineraryItemColor(item['type']).withOpacity(0.3),
                     spreadRadius: 2,
                     blurRadius: 4,
                     offset: Offset(0, 2),
@@ -534,7 +536,6 @@ class ExperienceDetailModal extends StatelessWidget {
             margin: EdgeInsets.only(bottom: 20),
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: _getItineraryItemColor(item['type']).withOpacity(0.2)),
               boxShadow: [
@@ -573,14 +574,14 @@ class ExperienceDetailModal extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: _getStatusColor(item['status']).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _getStatusColor(item['status']).withOpacity(0.2)),
+                        border: Border.all(color: Colors.white),
                       ),
                       child: Text(
                         (item['status'] ?? 'SUGGESTED').toString().toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: _getStatusColor(item['status']),
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -605,7 +606,7 @@ class ExperienceDetailModal extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  item['details']?['description'] ?? 'No description available',
+                  _getItineraryItemDescription(item),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -642,7 +643,6 @@ class ExperienceDetailModal extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
@@ -768,6 +768,49 @@ class ExperienceDetailModal extends StatelessWidget {
     } catch (e) {
       return dateTime.toString();
     }
+  }
+
+  // Derive a meaningful itinerary item description
+  String _getItineraryItemDescription(dynamic item) {
+    try {
+      // Prefer explicit fields
+      final String? title = item['details']?['title']?.toString();
+      final String? description = item['details']?['description']?.toString();
+      final String? name = item['details']?['name']?.toString();
+      final String? supplier = item['supplier']?['name']?.toString();
+      final String? address = item['location']?['address']?.toString();
+      final String? city = item['location']?['city']?.toString();
+
+      String base = title?.trim().isNotEmpty == true
+          ? title!
+          : (description?.trim().isNotEmpty == true
+              ? description!
+              : (name?.trim().isNotEmpty == true ? name! : ''));
+
+      final List<String> suffix = [];
+      if (supplier != null && supplier.trim().isNotEmpty) suffix.add(supplier);
+      if (address != null && address.trim().isNotEmpty) suffix.add(address);
+      if ((address == null || address.trim().isEmpty) && city != null && city.trim().isNotEmpty) suffix.add(city);
+
+      if (base.isEmpty && suffix.isEmpty) {
+        // Construct something from type and status
+        final type = (item['type'] ?? 'item').toString();
+        final status = (item['status'] ?? '').toString();
+        base = status.isNotEmpty ? '${_capitalize(type)} • ${_capitalize(status)}' : _capitalize(type);
+      }
+
+      if (suffix.isNotEmpty) {
+        return '$base — ${suffix.join(' • ')}';
+      }
+      return base;
+    } catch (_) {
+      return 'Itinerary item';
+    }
+  }
+
+  String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1);
   }
 
   Widget _buildBookmarkButton() {
