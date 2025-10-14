@@ -115,7 +115,7 @@ class _VICMentionFieldState extends State<VICMentionField> {
                 ? Container(
                     padding: EdgeInsets.all(16),
                     child: Text(
-                      'Loading VICs...',
+                      'No matching VICs',
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 14,
@@ -211,13 +211,25 @@ class _VICMentionFieldState extends State<VICMentionField> {
     if (mentionMatch != null) {
       final query = mentionMatch['query'] as String;
       print('VICMentionField: Found mention with query: "$query"');
-      
+      // Only show overlay when at least 1 character is typed after '@'
+      if (query.trim().isEmpty) {
+        setState(() {
+          _showVicDropdown = false;
+          _selectedVicIndex = 0;
+          _filteredVics = [];
+        });
+        _removeOverlay();
+        return;
+      }
+
       setState(() {
         _showVicDropdown = true;
       });
-      
+
       _filterVics(query);
       _showOverlay();
+      // Ensure overlay rebuilds as the filter updates
+      _overlayEntry?.markNeedsBuild();
     } else {
       print('VICMentionField: No mention found, hiding dropdown');
       setState(() {
@@ -285,22 +297,18 @@ class _VICMentionFieldState extends State<VICMentionField> {
     final allVics = vicProvider.vics;
     
     setState(() {
-      if (query.isEmpty) {
-        // Show all VICs if no query
-        _filteredVics = allVics;
-      } else {
-        // Filter VICs based on query
-        _filteredVics = allVics.where((vic) {
-          final name = (vic.fullName ?? '').toLowerCase();
-          final email = (vic.email ?? '').toLowerCase();
-          final queryLower = query.toLowerCase();
-          
-          return name.contains(queryLower) || email.contains(queryLower);
-        }).toList();
-      }
+      // Always filter by query; when query is empty we don't show overlay upstream
+      _filteredVics = allVics.where((vic) {
+        final name = (vic.fullName ?? '').toLowerCase();
+        final email = (vic.email ?? '').toLowerCase();
+        final queryLower = query.toLowerCase();
+        return name.contains(queryLower) || email.contains(queryLower);
+      }).toList();
       
       _selectedVicIndex = 0;
     });
+    // Rebuild overlay list when filtered data changes
+    _overlayEntry?.markNeedsBuild();
   }
 
   void _selectVic(VICModel vic) {
@@ -377,12 +385,14 @@ class _VICMentionFieldState extends State<VICMentionField> {
         setState(() {
           _selectedVicIndex = (_selectedVicIndex + 1) % _filteredVics.length;
         });
+          _overlayEntry?.markNeedsBuild();
       } else if (event.logicalKey.keyLabel == 'Arrow Up') {
         setState(() {
           _selectedVicIndex = _selectedVicIndex == 0 
               ? _filteredVics.length - 1 
               : _selectedVicIndex - 1;
         });
+          _overlayEntry?.markNeedsBuild();
       } else if (event.logicalKey.keyLabel == 'Enter') {
         _selectVic(_filteredVics[_selectedVicIndex]);
       } else if (event.logicalKey.keyLabel == 'Escape') {

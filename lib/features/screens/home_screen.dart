@@ -22,7 +22,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../providers/agentProvider.dart';
-import '../controllers/agencyController.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -71,12 +70,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1E1E),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 20,
-                    ),
-                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1212,13 +1205,45 @@ class _HomeScreenState extends State<HomeScreen> {
       return shimmerGrid();
     }
 
-    // Prioritize different data types based on what's available
-    if (vics.isNotEmpty) {
-      return _buildVicsGrid(vics, bookmarkProvider);
+    // If experiences are present, always show them (optionally with the client on top if provided)
+    if (experiences.isNotEmpty) {
+      if (vics.isNotEmpty) {
+        final singleVic = vics.take(1).toList();
+        return ListView(
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Text(
+                'Client',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            _buildVicsGrid(singleVic, bookmarkProvider),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Text(
+                'Past trips',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            _buildExperiencesGrid(experiences, bookmarkProvider),
+          ],
+        );
+      }
+      return _buildExperiencesGrid(experiences, bookmarkProvider);
     }
 
-    if (experiences.isNotEmpty) {
-      return _buildExperiencesGrid(experiences, bookmarkProvider);
+    // Otherwise, prioritize different data types based on what's available
+    if (vics.isNotEmpty) {
+      return _buildVicsGrid(vics, bookmarkProvider);
     }
 
     if (dmcs.isNotEmpty) {
@@ -1614,6 +1639,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final limitedVics = vics.take(10).toList();
     
     return GridView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
       itemCount: limitedVics.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -1757,6 +1784,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final limitedExperiences = experiences.take(10).toList();
     
     return GridView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
       itemCount: limitedExperiences.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -2372,7 +2401,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _getExperienceItineraryCount(dynamic experience) {
     try {
-      final itinerary = experience['itinerary'];
+      final itinerary = experience['itinerary'] ?? experience['itineraryItems'];
       if (itinerary is List) {
         return itinerary.length;
       }
@@ -2380,7 +2409,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       return 0;
     }
-  }
+  }  
 
 
   Widget _buildExperienceBookmarkButton(dynamic experience) {
@@ -2407,108 +2436,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showExperienceDetailModal(BuildContext context, dynamic experience) async {
-    // Show loading dialog first
+    // Open directly with available data to avoid fetch mismatch issues
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Color(0xff292525),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: Colors.white),
-                SizedBox(height: 16),
-                Text(
-                  'Loading experience details...',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        );
+        return ExperienceDetailModal(experience: experience);
       },
     );
-
-    try {
-      // Fetch full experience data
-      final fullExperience = await _fetchFullExperienceData(experience['_id']?.toString() ?? experience['id']!.toString());
-      
-      // Close loading dialog 
-      Navigator.of(context).pop();
-      
-      // Show experience modal with full data
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (BuildContext context) {
-          return ExperienceDetailModal(experience: fullExperience ?? experience);
-        },
-      );
-    } catch (e) {
-      // Close loading dialog
-      Navigator.of(context).pop();
-      
-      // Show error and fallback to original experience data
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to load full experience details: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      
-      // Show modal with original data
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (BuildContext context) {
-          return ExperienceDetailModal(experience: experience);
-        },
-      );
-    }
   }
-
-  Future<dynamic> _fetchFullExperienceData(String experienceId) async {
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final agencyId = userProvider.user?.agencyId;
-      
-      if (agencyId == null) {
-        throw Exception('No agency ID found');
-      }
-
-      // Use the agency controller to fetch full experience data
-      final agencyController = AgencyController();
-      final result = await agencyController.getExperiencesByAgencyId(agencyId);
-      
-      return result.fold(
-        (failure) {
-          throw Exception('Failed to fetch experiences: ${failure.toString()}');
-        },
-        (data) {
-          // Extract experiences list from the response
-          final experiences = data['experiences'] as List;
-          
-          // Find the specific experience by ID
-          for (var exp in experiences) {
-            if (exp['_id']?.toString() == experienceId || exp['id']?.toString() == experienceId) {
-              return exp;
-            }
-          }
-          throw Exception('Experience not found');
-        },
-      );
-    } catch (e) { 
-      print('Error fetching full experience data: $e');
-      rethrow;
-    }
-  }
+  
 
   // DMC helper methods
   String _getDMCBusinessName(dynamic dmc) {
@@ -2526,7 +2463,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return 'Unknown Location';
     }
   }
-
+  
   String _getDMCDescription(dynamic dmc) {
     try {
       return dmc['description']?.toString() ?? '';

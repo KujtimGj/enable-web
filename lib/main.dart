@@ -21,7 +21,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // Cache the router instance to prevent recreation
   static final GoRouter _router = createGoRouter(initialLocation: '/home');
 
   @override
