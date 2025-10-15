@@ -765,17 +765,73 @@ class AgencyProvider extends ChangeNotifier {
     }
 
     _searchQuery = query;
-    
-    // Perform local filtering for partial matches
+    final q = query.toLowerCase();
+
+    bool mapContains(Map<String, dynamic>? map, String q) {
+      if (map == null) return false;
+      for (final entry in map.entries) {
+        final v = entry.value;
+        if (v == null) continue;
+        if (v is String && v.toLowerCase().contains(q)) return true;
+        if (v is num && v.toString().toLowerCase().contains(q)) return true;
+        if (v is Map<String, dynamic> && mapContains(v, q)) return true;
+        if (v is List) {
+          for (final item in v) {
+            if (item == null) continue;
+            if (item is String && item.toLowerCase().contains(q)) return true;
+            if (item is num && item.toString().toLowerCase().contains(q)) return true;
+            if (item is Map<String, dynamic> && mapContains(item, q)) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // Perform local filtering across many fields (destination, country, notes, tags, extras, party, status, itinerary fields)
     _filteredExperiences = _experiences.where((experience) {
-      final destination = (experience.destination ?? '').toLowerCase();
-      final country = (experience.country ?? '').toLowerCase();
-      final notes = (experience.notes ?? '').toLowerCase();
-      final queryLower = query.toLowerCase();
-      
-      return destination.contains(queryLower) || 
-             country.contains(queryLower) || 
-             notes.contains(queryLower);
+      if ((experience.destination ?? '').toLowerCase().contains(q)) return true;
+      if ((experience.country ?? '').toLowerCase().contains(q)) return true;
+      if ((experience.status ?? '').toLowerCase().contains(q)) return true;
+      if ((experience.notes ?? '').toLowerCase().contains(q)) return true;
+
+      // dates
+      if (experience.startDate != null &&
+          experience.startDate!.toIso8601String().toLowerCase().contains(q)) return true;
+      if (experience.endDate != null &&
+          experience.endDate!.toIso8601String().toLowerCase().contains(q)) return true;
+
+      // party
+      if (experience.party != null) {
+        final adults = experience.party!['adults']?.toString().toLowerCase() ?? '';
+        final children = experience.party!['children']?.toString().toLowerCase() ?? '';
+        if (adults.contains(q) || children.contains(q)) return true;
+      }
+
+      // tags / extras / totals
+      if (mapContains(experience.tags, q)) return true;
+      if (mapContains(experience.extras, q)) return true;
+      if (mapContains(experience.totals, q)) return true;
+
+      // itinerary nested fields
+      if (experience.itinerary != null) {
+        for (final it in experience.itinerary!) {
+          if ((it.type ?? '').toLowerCase().contains(q)) return true;
+          if ((it.status ?? '').toLowerCase().contains(q)) return true;
+          if (it.supplier != null &&
+              ((it.supplier!['name']?.toString().toLowerCase() ?? '').contains(q) ||
+               (it.supplier!['confirmationCode']?.toString().toLowerCase() ?? '').contains(q))) return true;
+          if (it.location != null) {
+            final loc = it.location!;
+            if ((loc['address']?.toString().toLowerCase() ?? '').contains(q)) return true;
+            if ((loc['city']?.toString().toLowerCase() ?? '').contains(q)) return true;
+          }
+          if (mapContains(it.details, q)) return true;
+          if (mapContains(it.extras, q)) return true;
+          if (mapContains(it.snapshot, q)) return true;
+        }
+      }
+
+      return false;
     }).toList();
     
     notifyListeners();

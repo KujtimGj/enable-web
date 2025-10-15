@@ -1,4 +1,5 @@
 import 'package:enable_web/core/responsive_utils.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ class Products extends StatefulWidget {
 
 class _ProductsState extends State<Products> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -36,21 +38,11 @@ class _ProductsState extends State<Products> {
   @override
   void dispose() {
     _searchController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
-  List<ProductModel> _filterProducts(List<ProductModel> products) {
-    if (_searchController.text.isEmpty) {
-      return products;
-    }
-    
-    final query = _searchController.text.toLowerCase();
-    return products.where((product) {
-      return product.name.toLowerCase().contains(query) ||
-             (product.description?.toLowerCase().contains(query) ?? false) ||
-             product.category.toLowerCase().contains(query);
-    }).toList();
-  }
+  // Removed old local filter (now handled in provider)
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +91,21 @@ class _ProductsState extends State<Products> {
               ),
             ),
             onChanged: (value) {
+              final provider = Provider.of<ProductsProvider>(context, listen: false);
+              // Local filtering for responsiveness
+              provider.localSearch(value);
               setState(() {});
+
+              // Debounced server-side search for smarter results
+              _debounceTimer?.cancel();
+              final query = value.trim();
+              if (query.isEmpty) {
+                provider.clearSearch();
+                return;
+              }
+              _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+                provider.serverSearch(query, agencyId, limit: 200);
+              });
             },
           ),
         ),
@@ -199,7 +205,7 @@ class _ProductsState extends State<Products> {
                     }
 
                     // Products list
-                    final filteredProducts = _filterProducts(provider.products);
+                    final filteredProducts = provider.products;
                     
                     return Column(
                       children: [
