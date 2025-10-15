@@ -332,7 +332,8 @@ class AgencyController {
 
   Future<Either<Failure, List<Map<String, dynamic>>>> searchExperiences(String query, String agencyId) async {
     try {
-      final endpoint = ApiEndpoints.searchExperiences;
+      // Use itinerary-aware search to match across itinerary fields too
+      final endpoint = ApiEndpoints.searchItineraries;
       final body = {
         'query': query,
         'agencyId': agencyId,
@@ -343,7 +344,8 @@ class AgencyController {
       if (response.statusCode == 200) {
         final data = response.data;
         if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> experiences = data['data']['experiences'] ?? [];
+          // Support both keys from different endpoints: experiences or itineraries
+          final List<dynamic> experiences = (data['data']['experiences'] ?? data['data']['itineraries'] ?? []) as List<dynamic>;
           return Right(experiences.cast<Map<String, dynamic>>());
         } else {
           return Left(ServerFailure(
@@ -358,6 +360,38 @@ class AgencyController {
     } catch (e) {
       print('AgencyController: Exception in searchExperiences: $e');
       return Left(ServerFailure(message: 'Failed to search experiences: $e'));
+    }
+  }
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchProducts(String query, String agencyId, {int limit = 200}) async {
+    try {
+      final endpoint = ApiEndpoints.searchProducts;
+      final body = {
+        'query': query,
+        'agencyId': agencyId,
+        'limit': limit,
+      };
+
+      final response = await _apiClient.post(endpoint, data: body);
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> products = data['data']['products'] ?? [];
+          return Right(products.cast<Map<String, dynamic>>());
+        } else {
+          return Left(ServerFailure(
+            message: data['message'] ?? 'Product search failed',
+          ));
+        }
+      } else {
+        return Left(ServerFailure(
+          message: response.data['message'] ?? 'Failed to search products',
+        ));
+      }
+    } catch (e) {
+      print('AgencyController: Exception in searchProducts: $e');
+      return Left(ServerFailure(message: 'Failed to search products: $e'));
     }
   }
 }

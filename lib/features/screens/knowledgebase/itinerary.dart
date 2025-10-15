@@ -89,6 +89,7 @@ class _ItineraryState extends State<Itinerary> {
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       if (userProvider.user?.agencyId != null) {
+        // Use server search which already queries itinerary-aware endpoint
         agencyProvider.searchExperiences(query, userProvider.user!.agencyId);
       }
     });
