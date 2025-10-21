@@ -79,6 +79,13 @@ class AgencyProvider extends ChangeNotifier {
   List<ExperienceModel> _filteredExperiences = [];
   String _searchQuery = '';
   bool _isSearching = false;
+  
+  // Experience filter state
+  String? _selectedStatus;
+  String? _selectedCountryFilter; // separate from searchQuery text
+  String? _selectedDestination;
+  final Set<String> _selectedTagKeys = {};
+  String _tagTextQuery = '';
 
   AgencyModel? get agency => _agency;
   List<ProductModel> get products => _products;
@@ -119,6 +126,101 @@ class AgencyProvider extends ChangeNotifier {
   List<ExperienceModel> get filteredExperiences => _filteredExperiences.isEmpty ? _experiences : _filteredExperiences;
   String get searchQuery => _searchQuery;
   bool get isSearching => _isSearching;
+  
+  // Filter getters
+  String? get selectedStatus => _selectedStatus;
+  String? get selectedCountryFilter => _selectedCountryFilter;
+  String? get selectedDestination => _selectedDestination;
+  Set<String> get selectedExperienceTagKeys => _selectedTagKeys;
+  bool get hasActiveExperienceFilters =>
+      _selectedStatus != null ||
+      _selectedCountryFilter != null ||
+      _selectedDestination != null ||
+      _selectedTagKeys.isNotEmpty ||
+      _tagTextQuery.isNotEmpty;
+
+  // Derived options from current experiences dataset
+  List<String> get experienceStatuses {
+    final set = <String>{};
+    for (final e in _experiences) {
+      final s = (e.status ?? '').trim();
+      if (s.isNotEmpty) set.add(_normalizeCase(s));
+    }
+    final list = set.toList();
+    list.sort();
+    return list;
+  }
+
+  List<String> get experienceCountries {
+    final set = <String>{};
+    for (final e in _experiences) {
+      final c = (e.country ?? '').trim();
+      if (c.isNotEmpty) set.add(_normalizeCase(c));
+    }
+    final list = set.toList();
+    list.sort();
+    return list;
+  }
+
+  List<String> get experienceDestinations {
+    final set = <String>{};
+    for (final e in _experiences) {
+      final d = (e.destination ?? '').trim();
+      if (d.isNotEmpty) set.add(_normalizeCase(d));
+    }
+    final list = set.toList();
+    list.sort();
+    return list;
+  }
+
+  List<String> get experienceTagKeys {
+    final set = <String>{};
+    for (final e in _experiences) {
+      final tags = e.tags;
+      if (tags == null) continue;
+      for (final value in tags.values) {
+        if (value == null) continue;
+        final v = value.toString().trim();
+        if (v.isNotEmpty) set.add(_normalizeCase(v));
+      }
+    }
+    final list = set.toList();
+    list.sort();
+    return list;
+  }
+
+  // Final list after applying search and filters
+  List<ExperienceModel> get visibleExperiences {
+    final base = filteredExperiences; // already considers text search
+    if (!hasActiveExperienceFilters) return base;
+
+    bool matches(ExperienceModel e) {
+      if (_selectedStatus != null &&
+          _normalizeCase(e.status ?? '') != _selectedStatus) return false;
+      if (_selectedCountryFilter != null &&
+          _normalizeCase(e.country ?? '') != _selectedCountryFilter) return false;
+      if (_selectedDestination != null &&
+          _normalizeCase(e.destination ?? '') != _selectedDestination) return false;
+      if (_selectedTagKeys.isNotEmpty) {
+        final tags = e.tags;
+        if (tags == null) return false;
+        for (final key in _selectedTagKeys) {
+          final exists = tags.values.any((v) => _normalizeCase(v.toString()) == key);
+          if (!exists) return false;
+        }
+      }
+      if (_tagTextQuery.isNotEmpty) {
+        final tags = e.tags;
+        if (tags == null) return false;
+        final q = _tagTextQuery.toLowerCase();
+        final contains = tags.values.any((v) => v != null && v.toString().toLowerCase().contains(q));
+        if (!contains) return false;
+      }
+      return true;
+    }
+
+    return base.where(matches).toList();
+  }
 
   AgencyProvider() {
     _initializeAuth();
@@ -172,7 +274,7 @@ class AgencyProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchAgencyProducts(String agencyId, {bool refresh = true}) async {
+  Future<void> fetchAgencyProducts(String agencyId, {bool refresh = true, String? q}) async {
     // Prevent multiple simultaneous calls
     if (_isLoadingProducts) {
       return;
@@ -191,6 +293,7 @@ class AgencyProvider extends ChangeNotifier {
       agencyId,
       page: _productsCurrentPage,
       limit: 100,
+      q: q,
     );
     
     result.fold(
@@ -221,7 +324,7 @@ class AgencyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadMoreProducts(String agencyId) async {
+  Future<void> loadMoreProducts(String agencyId, {String? q}) async {
     if (_isLoadingMoreProducts || !_productsHasMore) return;
 
     _isLoadingMoreProducts = true;
@@ -234,6 +337,7 @@ class AgencyProvider extends ChangeNotifier {
         agencyId,
         page: _productsCurrentPage,
         limit: 100,
+        q: q,
       );
 
       result.fold(
@@ -265,7 +369,7 @@ class AgencyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> goToNextProductsPage(String agencyId) async {
+  Future<void> goToNextProductsPage(String agencyId, {String? q}) async {
     if (_productsCurrentPage >= _productsTotalPages || _isLoadingProducts) return;
     
     _isLoadingProducts = true;
@@ -279,6 +383,7 @@ class AgencyProvider extends ChangeNotifier {
         agencyId,
         page: _productsCurrentPage,
         limit: 100,
+        q: q,
       );
 
       result.fold(
@@ -311,7 +416,7 @@ class AgencyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> goToPreviousProductsPage(String agencyId) async {
+  Future<void> goToPreviousProductsPage(String agencyId, {String? q}) async {
     if (_productsCurrentPage <= 1 || _isLoadingProducts) return;
     
     _isLoadingProducts = true;
@@ -325,6 +430,7 @@ class AgencyProvider extends ChangeNotifier {
         agencyId,
         page: _productsCurrentPage,
         limit: 100,
+        q: q,
       );
 
       result.fold(
@@ -727,14 +833,22 @@ class AgencyProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _agencyController.searchExperiences(query, agencyId);
-      
+      // Use unprotected GET with query filtering across all pages
+      final result = await _agencyController.getExperiencesByAgencyId(
+        agencyId,
+        page: 1,
+        limit: 500,
+        q: query,
+        itineraryOnly: true,
+      );
+
       result.fold(
         (failure) {
           _errorMessage = (failure as ServerFailure).message;
           _filteredExperiences = [];
         },
-        (experiencesJson) {
+        (data) {
+          final experiencesJson = data['experiences'] as List<Map<String, dynamic>>;
           _filteredExperiences = experiencesJson.map((json) => ExperienceModel.fromJson(json)).toList();
         },
       );
@@ -835,6 +949,53 @@ class AgencyProvider extends ChangeNotifier {
     }).toList();
     
     notifyListeners();
+  }
+
+  // ===== Experience filter mutators =====
+  void setExperienceStatus(String? value) {
+    _selectedStatus = value?.trim().isEmpty == true ? null : value;
+    notifyListeners();
+  }
+
+  void setExperienceCountry(String? value) {
+    _selectedCountryFilter = value?.trim().isEmpty == true ? null : value;
+    notifyListeners();
+  }
+
+  void setExperienceDestination(String? value) {
+    _selectedDestination = value?.trim().isEmpty == true ? null : value;
+    notifyListeners();
+  }
+
+  void toggleExperienceTag(String value) {
+    final normalized = _normalizeCase(value);
+    if (_selectedTagKeys.contains(normalized)) {
+      _selectedTagKeys.remove(normalized);
+    } else {
+      _selectedTagKeys.add(normalized);
+    }
+    notifyListeners();
+  }
+
+  void setExperienceTagQuery(String value) {
+    _tagTextQuery = value.trim();
+    notifyListeners();
+  }
+
+  void clearExperienceFilters() {
+    _selectedStatus = null;
+    _selectedCountryFilter = null;
+    _selectedDestination = null;
+    _selectedTagKeys.clear();
+    _tagTextQuery = '';
+    notifyListeners();
+  }
+
+  // Helpers
+  String _normalizeCase(String value) {
+    if (value.isEmpty) return value;
+    final lower = value.toLowerCase();
+    return lower[0].toUpperCase() + lower.substring(1);
   }
 
 }

@@ -154,10 +154,12 @@ class AgencyController {
     String agencyId, {
     int page = 1,
     int limit = 100,
+    String? q,
   }) async {
     try {
       final apiClient = ApiClient();
-      final response = await apiClient.get('${ApiEndpoints.baseUrl}/agency/products/$agencyId?page=$page&limit=$limit');
+      final queryParam = (q != null && q.trim().isNotEmpty) ? '&q=${Uri.encodeQueryComponent(q)}' : '';
+      final response = await apiClient.get('${ApiEndpoints.baseUrl}/agency/products/$agencyId?page=$page&limit=$limit$queryParam');
       if (response.statusCode == 200) {
         // Handle both old format (direct array) and new format (with pagination)
         if (response.data is List) {
@@ -290,9 +292,18 @@ class AgencyController {
     String agencyId, {
     int page = 1,
     int limit = 100,
+    String? q,
+    bool itineraryOnly = false,
   }) async {
     try {
-      final endpoint = '${ApiEndpoints.getExperiences.replaceFirst('{agencyId}', agencyId)}?page=$page&limit=$limit';
+      final qp = <String>['page=$page','limit=$limit'];
+      if (q != null && q.trim().isNotEmpty) {
+        qp.add('q=${Uri.encodeQueryComponent(q)}');
+      }
+      if (itineraryOnly) {
+        qp.add('itineraryOnly=true');
+      }
+      final endpoint = '${ApiEndpoints.getExperiences.replaceFirst('{agencyId}', agencyId)}?'+qp.join('&');
 
       final response = await _apiClient.get(endpoint);
 

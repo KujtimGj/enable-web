@@ -1,3 +1,4 @@
+import 'package:enable_web/features/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -22,9 +23,7 @@ class _BookmarksState extends State<Bookmarks> {
     'product',
     'externalProduct',
     'experience',
-    'file',
     'conversation',
-    'custom',
   ];
 
   @override
@@ -86,7 +85,7 @@ class _BookmarksState extends State<Bookmarks> {
         toolbarHeight: 65,
         automaticallyImplyLeading: false,
         leadingWidth: 120,
-        leading: GestureDetector (
+        leading: GestureDetector(
           onTap: () => context.go('/home'),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -101,63 +100,12 @@ class _BookmarksState extends State<Bookmarks> {
         centerTitle: true,
         title: customForm(context),
         actions: [
-          Container(
-            decoration: BoxDecoration(
-              color: Color(0xff383232),
-              borderRadius: BorderRadius.circular(5),
-            ),
-            padding: EdgeInsets.all(5),
-            width: 160,
-            height: 30,
-            child: MenuAnchor(
-              builder: (context, controller, child) {
-                return InkWell(
-                  onTap: () {
-                    if (controller.isOpen) {
-                      controller.close();
-                    } else {
-                      controller.open();
-                    }
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _getItemTypeDisplayName(_selectedItemType),
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      Icon(
-                        Icons.arrow_drop_down,
-                        color: Colors.white,
-                      ),
-                    ],
-                  ),
-                );
-              },
-              menuChildren:
-              _itemTypes.map<Widget>((String value) {
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedItemType = value;
-                      _applyFilters();
-                    });
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 16,
-                    ),
-                    child: Text(
-                      _getItemTypeDisplayName(value),
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+          customButton(() {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => HomeScreen()),
+            );
+          }),
         ],
       ),
       body: Consumer<BookmarkProvider>(
@@ -201,24 +149,64 @@ class _BookmarksState extends State<Bookmarks> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${_filteredBookmarks.length} bookmark${_filteredBookmarks.length != 1 ? 's' : ''}',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    if (_filteredBookmarks.isNotEmpty)
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedItemType = 'all';
-                            _selectedVic = 'all';
-                          });
-                          _applyFilters();
-                        },
-                        child: Text(
-                          'Clear Filters',
-                          style: TextStyle(color: Colors.blue),
-                        ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Color(0xff383232),
+                        borderRadius: BorderRadius.circular(5),
                       ),
+                      padding: EdgeInsets.all(5),
+                      width: 160,
+                      height: 30,
+                      child: MenuAnchor(
+                        builder: (context, controller, child) {
+                          return InkWell(
+                            onTap: () {
+                              if (controller.isOpen) {
+                                controller.close();
+                              } else {
+                                controller.open();
+                              }
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _getItemTypeDisplayName(_selectedItemType),
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                Icon(
+                                  Icons.arrow_drop_down,
+                                  color: Colors.white,
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        menuChildren:
+                        _itemTypes.map<Widget>((String value) {
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedItemType = value;
+                                _applyFilters();
+                              });
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                _getItemTypeDisplayName(value),
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
                   ],
                 ),
               ),
@@ -228,8 +216,7 @@ class _BookmarksState extends State<Bookmarks> {
                 child:
                     _filteredBookmarks.isEmpty
                         ? _buildEmptyState()
-                        : _buildBookmarksGrid(bookmarkProvider)
-
+                        : _buildBookmarksGrid(bookmarkProvider),
               ),
             ],
           );
@@ -281,7 +268,10 @@ class _BookmarksState extends State<Bookmarks> {
     );
   }
 
-  Widget _buildBookmarkGridCard(dynamic bookmark, BookmarkProvider bookmarkProvider,) {
+  Widget _buildBookmarkGridCard(
+    dynamic bookmark,
+    BookmarkProvider bookmarkProvider,
+  ) {
     // Handle both Map and Model objects
     final item = _getBookmarkItem(bookmark);
     if (item == null) {
@@ -290,11 +280,11 @@ class _BookmarksState extends State<Bookmarks> {
 
     // Extract images from the item
     List<dynamic> images = _getItemImages(item);
+    bool isHovered = false;
 
     return StatefulBuilder(
       builder: (context, setState) {
-        bool isHovered = false;
-        
+
         return MouseRegion(
           onEnter: (_) => setState(() => isHovered = true),
           onExit: (_) => setState(() => isHovered = false),
@@ -308,152 +298,173 @@ class _BookmarksState extends State<Bookmarks> {
                     color: Color(0xFF181616),
                     border: Border.all(color: Colors.grey[400]!, width: 1),
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: isHovered ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.6),
-                        blurRadius: 15,
-                        offset: Offset(0, 8),
-                        spreadRadius: 2,
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: Offset(0, 2),
-                        spreadRadius: 1,
-                      ),
-                    ] : <BoxShadow>[],
+                    boxShadow:
+                        isHovered
+                            ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.6),
+                                blurRadius: 15,
+                                offset: Offset(0, 8),
+                                spreadRadius: 2,
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                                spreadRadius: 1,
+                              ),
+                            ]
+                            : <BoxShadow>[],
                   ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 1,
-                  child:
-                      images.isNotEmpty
-                          ? Row(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child:
+                            images.isNotEmpty
+                                ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          Expanded(
+                                            child: _buildImageItem(images, 0),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Expanded(
+                                            child: _buildImageItem(images, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          Expanded(
+                                            child: _buildImageItem(images, 1),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Expanded(
+                                            child: _buildImageItem(images, 3),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                                : Container(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[800],
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.image,
+                                    color: Colors.white,
+                                    size: 40,
+                                  ),
+                                ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    Expanded(child: _buildImageItem(images, 0)),
-                                    SizedBox(height: 4),
-                                    Expanded(child: _buildImageItem(images, 2)),
-                                  ],
-                                ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _getItemProperty(item, 'name').isNotEmpty
+                                          ? _getItemProperty(item, 'name')
+                                          : 'Unknown Item',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  // Bookmark indicator
+                                  Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Icon(
+                                      Icons.bookmark,
+                                      color: Colors.amber,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    Expanded(child: _buildImageItem(images, 1)),
-                                    SizedBox(height: 4),
-                                    Expanded(child: _buildImageItem(images, 3)),
-                                  ],
+                              SizedBox(height: 4),
+                              if (_getItemProperty(item, 'category').isNotEmpty)
+                                Text(
+                                  _capitalizeFirst(_getItemProperty(item, 'category')),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[400],
+                                  ),
                                 ),
-                              ),
+                              if (_getItemProperty(
+                                    item,
+                                    'country',
+                                  ).isNotEmpty &&
+                                  _getItemProperty(
+                                    item,
+                                    'city',
+                                  ).isNotEmpty) ...[
+                                SizedBox(height: 4),
+                                Text(
+                                  '${_capitalizeFirst(_getItemProperty(item, 'city'))}, ${_capitalizeFirst(_getItemProperty(item, 'country'))}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                              Spacer(),
+                              // Notes section
+                              if (_getBookmarkProperty(
+                                bookmark,
+                                'notes',
+                              ).isNotEmpty)
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[800],
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    _getBookmarkProperty(bookmark, 'notes'),
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 10,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                             ],
-                          )
-                          : Container(
-                            width: double.infinity,
-                            height: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[800],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              Icons.image,
-                              color: Colors.white,
-                              size: 40,
-                            ),
                           ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _getItemProperty(item, 'name').isNotEmpty
-                                    ? _getItemProperty(item, 'name')
-                                    : 'Unknown Item',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            // Bookmark indicator
-                            Container(
-                              padding: EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Icon(
-                                Icons.bookmark,
-                                color: Colors.amber,
-                                size: 16,
-                              ),
-                            ),
-                          ],
                         ),
-                        SizedBox(height: 4),
-                        if (_getItemProperty(item, 'category').isNotEmpty)
-                          Text(
-                            _getItemProperty(item, 'category'),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[400],
-                            ),
-                          ),
-                        if (_getItemProperty(item, 'country').isNotEmpty &&
-                            _getItemProperty(item, 'city').isNotEmpty) ...[
-                          SizedBox(height: 4),
-                          Text(
-                            '${_getItemProperty(item, 'city')}, ${_getItemProperty(item, 'country')}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                        Spacer(),
-                        // Notes section
-                        if (_getBookmarkProperty(bookmark, 'notes').isNotEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[800],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              _getBookmarkProperty(bookmark, 'notes'),
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-        // Bookmark actions overlay
+              ),
+              // Bookmark actions overlay
             ],
           ),
         );
@@ -494,7 +505,10 @@ class _BookmarksState extends State<Bookmarks> {
     );
   }
 
-  Widget _buildBookmarkCard(dynamic bookmark, BookmarkProvider bookmarkProvider,) {
+  Widget _buildBookmarkCard(
+    dynamic bookmark,
+    BookmarkProvider bookmarkProvider,
+  ) {
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -515,9 +529,9 @@ class _BookmarksState extends State<Bookmarks> {
                 children: [
                   SizedBox(width: 12),
                   Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
                           _getItemTypeDisplayName(
                             _getBookmarkProperty(bookmark, 'itemType'),
@@ -686,8 +700,6 @@ class _BookmarksState extends State<Bookmarks> {
     );
   }
 
-
-
   String _getItemTypeDisplayName(String itemType) {
     switch (itemType) {
       case 'product':
@@ -703,7 +715,7 @@ class _BookmarksState extends State<Bookmarks> {
       case 'custom':
         return 'Custom';
       default:
-        return 'Product';
+        return 'All';
     }
   }
 
@@ -760,7 +772,14 @@ class _BookmarksState extends State<Bookmarks> {
     }
   }
 
-  // Helper methods to safely access bookmark properties 
+  String _capitalizeFirst(String input) {
+    if (input.isEmpty) return input;
+    final String firstCharacterUpper = input[0].toUpperCase();
+    if (input.length == 1) return firstCharacterUpper;
+    return firstCharacterUpper + input.substring(1);
+  }
+
+  // Helper methods to safely access bookmark properties
   dynamic _getBookmarkItem(dynamic bookmark) {
     if (bookmark is Map) {
       return bookmark['item'];
@@ -850,7 +869,7 @@ class _BookmarksState extends State<Bookmarks> {
       }
     }
   }
-  
+
   List<dynamic> _getItemImages(dynamic item) {
     if (item is Map) {
       return item['images'] ?? [];
