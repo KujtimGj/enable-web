@@ -416,10 +416,6 @@ class _VICMentionFieldState extends State<VICMentionField> {
           children: [
             Container(
               decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.white,
-                  width: 1,
-                ),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: TextFormField(

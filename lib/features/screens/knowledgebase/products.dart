@@ -24,7 +24,6 @@ class _ProductsState extends State<Products> {
   void initState() {
     super.initState();
     
-    // Fetch products after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
@@ -42,7 +41,6 @@ class _ProductsState extends State<Products> {
     super.dispose();
   }
 
-  // Removed old local filter (now handled in provider)
 
   @override
   Widget build(BuildContext context) {
@@ -279,84 +277,81 @@ class _ProductsState extends State<Products> {
   Widget _buildProductCard(ProductModel product) {
     return _HoverableProductCard(
       onTap: () => _showProductModal(context, product),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
         child: Container(
-          decoration: BoxDecoration(
-            color: Color(0xFF181616),
-            border: Border.all(width: 1, color: Colors.grey),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: 1, child: _buildProductImage(product)),
-                SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+        decoration: BoxDecoration(
+          border: Border.all(width: 1, color: Colors.grey),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(flex: 1, child: _buildProductImage(product)),
+              SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 10),
+                    Text(
+                      product.name,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 4),
+                    if (product.category.isNotEmpty)
                       Text(
-                        product.name,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        maxLines: 1,
+                        product.category.toString()[0].toUpperCase()+
+                            product.category.toString().substring(1),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    SizedBox(height: 4),
+                    if (product.description != null &&
+                        product.description!.isNotEmpty)
+                      Text(
+                        product.description!,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        maxLines: 5,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: 4),
-                      if (product.category.isNotEmpty)
-                        Text(
-                          product.category.toString()[0].toUpperCase()+
-                              product.category.toString().substring(1),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blue[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      SizedBox(height: 4),
-                      if (product.description != null &&
-                          product.description!.isNotEmpty)
-                        Text(
-                          product.description!,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          maxLines: 5,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      SizedBox(height: 8),
-                      Row(
-                        children: [
-                          if (product.rating != null)
-                            Row(
-                              children: [
-                                Icon(Icons.star, size: 16, color: Colors.amber),
-                                SizedBox(width: 4),
-                                Text(
-                                  product.rating!.toString(),
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                                SizedBox(width: 16),
-                              ],
-                            ),
-                          if (product.priceMin != null && product.priceMax != null)
-                            Text(
-                              '\$${product.priceMin!.toStringAsFixed(0)} - \$${product.priceMax!.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (product.rating != null)
+                          Row(
+                            children: [
+                              Icon(Icons.star, size: 16, color: Colors.amber),
+                              SizedBox(width: 4),
+                              Text(
+                                product.rating!.toString(),
+                                style: TextStyle(fontSize: 12),
                               ),
+                              SizedBox(width: 16),
+                            ],
+                          ),
+                        if (product.priceMin != null && product.priceMax != null)
+                          Text(
+                            '\$${product.priceMin!.toStringAsFixed(0)} - \$${product.priceMax!.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
-                        ],
-                      ),
-                    ],
-                  ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -459,6 +454,7 @@ class _ProductsState extends State<Products> {
                   child: SingleChildScrollView(
                     padding: EdgeInsets.all(16),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (product.category.isNotEmpty)
@@ -592,19 +588,10 @@ class _HoverableProductCardState extends State<_HoverableProductCard> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: Duration(milliseconds: 200),
+          duration: Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 2,
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ]
-                : [],
+            color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
           ),
           child: widget.child,
         ),

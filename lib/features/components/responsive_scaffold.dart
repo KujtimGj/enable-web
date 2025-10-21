@@ -112,6 +112,7 @@ class ResponsiveContainer extends StatelessWidget {
           maxWidth: maxWidth ?? _getMaxWidth(context),
         ),
         child: Container(
+          color: Color(0xff181616),
           padding: padding ?? ResponsiveUtils.responsivePadding(context),
           alignment: alignment,
           child: child,
