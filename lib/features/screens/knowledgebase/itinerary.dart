@@ -168,18 +168,18 @@ class _ItineraryState extends State<Itinerary> {
                     );
                   }
 
-                  final experiences = agencyProvider.filteredExperiences;
+                  final visible = agencyProvider.visibleExperiences;
                   
-                  if (experiences.isEmpty) {
+                  if (agencyProvider.experiences.isEmpty) {
                     final isSearching = agencyProvider.searchQuery.isNotEmpty;
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            isSearching ? Icons.search_off : Icons.flight_takeoff, 
-                            size: 64, 
-                            color: Colors.grey
+                            isSearching ? Icons.search_off : Icons.flight_takeoff,
+                            size: 64,
+                            color: Colors.grey,
                           ),
                           SizedBox(height: 16),
                           Text(
@@ -192,9 +192,9 @@ class _ItineraryState extends State<Itinerary> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            isSearching 
-                              ? 'Try searching with different keywords'
-                              : 'Create your first experience to see itineraries here',
+                            isSearching
+                                ? 'Try searching with different keywords'
+                                : 'Create your first experience to see itineraries here',
                             style: TextStyle(
                               color: Colors.grey[500],
                             ),
@@ -226,6 +226,8 @@ class _ItineraryState extends State<Itinerary> {
                       },
                       child: Column(
                         children: [
+                          _ItineraryFilterBar(),
+                          SizedBox(height: 10),
                           // Pagination info bar
                           if (agencyProvider.totalCount > 0) ...[
                             Container(
@@ -237,7 +239,7 @@ class _ItineraryState extends State<Itinerary> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Showing ${experiences.length} of ${agencyProvider.totalCount} itineraries',
+                                    'Showing ${visible.length} of ${agencyProvider.totalCount} itineraries',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -294,7 +296,34 @@ class _ItineraryState extends State<Itinerary> {
                           
                           // Grid view
                           Expanded(
-                            child: GridView.builder(
+                            child: visible.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.search_off,
+                                          size: 64,
+                                          color: Colors.grey,
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'No experiences found',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Try adjusting your filters',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(color: Colors.grey[600]),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : GridView.builder(
                               controller: _scrollController,
                               shrinkWrap: false,
                               physics: AlwaysScrollableScrollPhysics(),
@@ -309,10 +338,10 @@ class _ItineraryState extends State<Itinerary> {
                                 mainAxisSpacing: 20,
                                 crossAxisSpacing: 20,
                               ),
-                              itemCount: experiences.length + (agencyProvider.hasMore ? 1 : 0),
+                              itemCount: visible.length + ((agencyProvider.hasMore && !agencyProvider.hasActiveExperienceFilters) ? 1 : 0),
                               itemBuilder: (BuildContext context, int index) {
                                 // Show loading indicator at the end
-                                if (index == experiences.length) {
+                                if (index == visible.length && agencyProvider.hasMore && !agencyProvider.hasActiveExperienceFilters) {
                                   return Center(
                                     child: Padding(
                                       padding: EdgeInsets.all(16),
@@ -341,7 +370,7 @@ class _ItineraryState extends State<Itinerary> {
                                   );
                                 }
                                 
-                                final experience = experiences[index];
+                                final experience = visible[index];
                                 return _buildItineraryCard(experience, index);
                               },
                             ),
@@ -1346,5 +1375,177 @@ class _ItineraryState extends State<Itinerary> {
 
   String _formatDateTime(DateTime dateTime) {
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _ItineraryFilterBar extends StatefulWidget {
+  @override
+  State<_ItineraryFilterBar> createState() => _ItineraryFilterBarState();
+}
+
+class _ItineraryFilterBarState extends State<_ItineraryFilterBar> {
+  String _tagQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AgencyProvider>(
+      builder: (context, provider, _) {
+        final statuses = provider.experienceStatuses;
+        final countries = provider.experienceCountries;
+        final destinations = provider.experienceDestinations;
+        final tags = provider.experienceTagKeys;
+
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[700]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: _DropdownFilter<String>(
+                    label: 'Status',
+                    value: provider.selectedStatus,
+                    items: statuses,
+                    onChanged: provider.setExperienceStatus,
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: _DropdownFilter<String>(
+                    label: 'Country',
+                    value: provider.selectedCountryFilter,
+                    items: countries,
+                    onChanged: provider.setExperienceCountry,
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: _DropdownFilter<String>(
+                    label: 'Destination',
+                    value: provider.selectedDestination,
+                    items: destinations,
+                    onChanged: provider.setExperienceDestination,
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: (tags.isNotEmpty)
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 36,
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: TextField(
+                              onChanged: (v) {
+                                setState(() => _tagQuery = v);
+                                provider.setExperienceTagQuery(v);
+                              },
+                              style: TextStyle(fontSize: 12),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText: 'Search tags',
+                                hintStyle: TextStyle(fontSize: 12),
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                                suffixIcon: _tagQuery.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        onPressed: () => setState(() => _tagQuery = ''),
+                                        icon: Icon(Icons.close, size: 16, color: Colors.grey[400]),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : SizedBox.shrink(),
+              ),
+
+              if (provider.hasActiveExperienceFilters) ...[
+                SizedBox(width: 10),
+                SizedBox(
+                  height: 36,
+                  child: TextButton(
+                    onPressed: provider.clearExperienceFilters,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[300],
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: Text('Clear'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DropdownFilter<T> extends StatelessWidget {
+  final String label;
+  final T? value;
+  final List<T> items;
+  final ValueChanged<T?> onChanged;
+
+  const _DropdownFilter({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          canvasColor: Colors.black,
+          hoverColor: Colors.grey[800],
+          focusColor: Colors.grey[800],
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            isDense: true,
+            isExpanded: true,
+            value: value,
+            hint: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+            items: [
+              DropdownMenuItem<T>(
+                value: null,
+                child: Text('All $label', style: TextStyle(fontSize: 12, color: Colors.white)),
+              ),
+              ...items.map((e) => DropdownMenuItem<T>(
+                value: e,
+                child: Text(e.toString(), style: TextStyle(fontSize: 12, color: Colors.white)),
+              )),
+            ],
+            onChanged: onChanged,
+            dropdownColor: Colors.black,
+            style: TextStyle(color: Colors.white, fontSize: 12),
+            iconSize: 18,
+          ),
+        ),
+      ),
+    );
   }
 }

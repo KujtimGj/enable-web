@@ -104,7 +104,7 @@ class _ProductsState extends State<Products> {
                 return;
               }
               _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-                provider.serverSearch(query, agencyId, limit: 200);
+                provider.serverSearch(query, agencyId, limit: 2000);
               });
             },
           ),
@@ -204,64 +204,14 @@ class _ProductsState extends State<Products> {
                       );
                     }
 
-                    // Products list
-                    final filteredProducts = provider.products;
+                    // Products list (after filters)
+                    final filteredProducts = provider.visibleProducts;
                     
                     return Column(
                       children: [
-                        // Pagination bar
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _searchController.text.isEmpty
-                                    ? 'Showing ${provider.products.length} of ${provider.totalCount} products'
-                                    : 'Found ${filteredProducts.length} of ${provider.products.length} products',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              if (_searchController.text.isEmpty)
-                                Row(
-                                  children: [
-                                    Text(
-                                      'Page ${provider.currentPage} of ${provider.totalPages}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    IconButton(
-                                      icon: Icon(Icons.arrow_back_ios, size: 16),
-                                      onPressed: provider.currentPage > 1
-                                          ? () => provider.previousPage(agencyId)
-                                          : null,
-                                      tooltip: 'Previous page',
-                                      padding: EdgeInsets.all(4),
-                                      constraints: BoxConstraints(),
-                                    ),
-                                    SizedBox(width: 4),
-                                    IconButton(
-                                      icon: Icon(Icons.arrow_forward_ios, size: 16),
-                                      onPressed: provider.currentPage < provider.totalPages
-                                          ? () => provider.nextPage(agencyId)
-                                          : null,
-                                      tooltip: 'Next page',
-                                      padding: EdgeInsets.all(4),
-                                      constraints: BoxConstraints(),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ),
+
+                        // Horizontal filter bar
+                        _ProductsFilterBar(),
                         SizedBox(height: 10),
 
                         // Grid view
@@ -657,6 +607,183 @@ class _HoverableProductCardState extends State<_HoverableProductCard> {
                 : [],
           ),
           child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductsFilterBar extends StatefulWidget {
+  @override
+  State<_ProductsFilterBar> createState() => _ProductsFilterBarState();
+}
+
+class _ProductsFilterBarState extends State<_ProductsFilterBar> {
+  String _tagQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProductsProvider>(
+      builder: (context, provider, _) {
+        final cats = provider.categories;
+        final countries = provider.countries;
+        final cities = provider.cities;
+        final tags = provider.tagKeys;
+        // final filteredTags = _tagQuery.isEmpty
+        //     ? tags
+        //     : tags.where((t) => t.toLowerCase().contains(_tagQuery.toLowerCase())).toList();
+
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[700]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: _DropdownFilter<String>(
+                  label: 'Category',
+                  value: provider.selectedCategory,
+                  items: cats,
+                  onChanged: provider.setCategory,
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: _DropdownFilter<String>(
+                  label: 'Country',
+                  value: provider.selectedCountry,
+                  items: countries,
+                  onChanged: provider.setCountry,
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 36, 
+                  child: _DropdownFilter<String>(
+                  label: 'City',
+                  value: provider.selectedCity,
+                  items: cities,
+                  onChanged: provider.setCity,
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: (tags.isNotEmpty)
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 36,
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: TextField(
+                              onChanged: (v) {
+                                setState(() => _tagQuery = v);
+                                provider.setTagTextQuery(v);
+                              },
+                              style: TextStyle(fontSize: 12),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText: 'Search tags',
+                                hintStyle: TextStyle(fontSize: 12),
+                                // Remove visible borders and outlines
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                                suffixIcon: _tagQuery.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        onPressed: () => setState(() => _tagQuery = ''),
+                                        icon: Icon(Icons.close, size: 16, color: Colors.grey[400]),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : SizedBox.shrink(),
+              ),
+
+              if (provider.hasActiveFilters) ...[
+                SizedBox(width: 10),
+                SizedBox(
+                  height: 36,
+                  child: TextButton(
+                    onPressed: provider.clearFilters,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[300],
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: Text('Clear'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DropdownFilter<T> extends StatelessWidget {
+  final String label;
+  final T? value;
+  final List<T> items;
+  final ValueChanged<T?> onChanged;
+
+  const _DropdownFilter({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          // Keep menu dark and overlays non-white so text stays visible
+          canvasColor: Colors.black,
+          hoverColor: Colors.grey[800],
+          focusColor: Colors.grey[800],
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            isDense: true,
+            isExpanded: true,
+            value: value,
+            hint: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+            items: [
+              DropdownMenuItem<T>(
+                value: null,
+                child: Text('All $label', style: TextStyle(fontSize: 12, color: Colors.white)),
+              ),
+              ...items.map((e) => DropdownMenuItem<T>(
+                value: e,
+                child: Text(e.toString(), style: TextStyle(fontSize: 12, color: Colors.white)),
+              )),
+            ],
+            onChanged: onChanged,
+            dropdownColor: Colors.black,
+            style: TextStyle(color: Colors.white, fontSize: 12),
+            iconSize: 18,
+          ),
         ),
       ),
     );
