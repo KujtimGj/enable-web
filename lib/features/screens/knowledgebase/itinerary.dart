@@ -433,19 +433,16 @@ class _ItineraryState extends State<Itinerary> {
     final hasItinerary = experience.itinerary != null && experience.itinerary!.isNotEmpty;
     final itineraryCount = hasItinerary ? experience.itinerary!.length : 0;
     
-    return GestureDetector(
+    return _HoverableItineraryCard(
       onTap: () {
         _showItineraryDetails(context, experience);
       },
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            border: Border.all(width: 1, color: Colors.grey),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(width: 1, color: Colors.grey),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Padding(
             padding: EdgeInsets.all(12),
             child: Row(
               children: [
@@ -655,7 +652,6 @@ class _ItineraryState extends State<Itinerary> {
               ],
             ),
           ),
-        ),
       ),
     );
   }
@@ -1375,6 +1371,42 @@ class _ItineraryState extends State<Itinerary> {
 
   String _formatDateTime(DateTime dateTime) {
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _HoverableItineraryCard extends StatefulWidget {
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _HoverableItineraryCard({
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  State<_HoverableItineraryCard> createState() => _HoverableItineraryCardState();
+}
+
+class _HoverableItineraryCardState extends State<_HoverableItineraryCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
+          ),
+          child: widget.child,
+        ),
+      ),
+    );
   }
 }
 

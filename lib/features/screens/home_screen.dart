@@ -303,8 +303,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  bool isHovered = false;
-
   // Helper methods for grid view product cards
   String _getProductName(dynamic product, bool isExternal) {
     if (product == null) return 'No Name';
@@ -405,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  @override
+  @override 
   Widget build(BuildContext context) {
     return ResponsiveScaffold(
       appBar: AppBar(
@@ -459,16 +457,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 Text(
                                   "Hi ${user?.name ?? 'User'}",
-                                  style: TextStyle(fontSize: 20),
+                                  style: TextStyle(fontSize: 18),
                                 ),
                                 // User type indicator
                                 Text(
                                   "How can I help you?",
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 18,
                                     color: Colors.grey[600],
                                   ),
                                 ),
+                                
                                 // Removed duplicate structured summary display - now only shown in messages below
                                 Consumer<ChatProvider>(
                                   builder: (context, provider, _) {
@@ -477,7 +476,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     final structuredSummary =
                                         provider.structuredSummary;
                                     
-
                                     // Show error message if there's an error
                                     if (error != null) {
                                       return Container(
@@ -607,70 +605,100 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                       // Show real conversations if available
                                       if (provider.conversations.isNotEmpty) {
-                                        return ListView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                              NeverScrollableScrollPhysics(),
-                                          itemCount:
-                                              provider.conversations.length,
-                                          itemBuilder: (context, index) {
-                                            final conversation =
-                                                provider.conversations[index];
-                                            final conversationName =
-                                                conversation['messages'][0]['content'] ??
-                                                'Conversation ${index + 1}';
-                                            return Container(
+                                        return Column(
+                                          children: [
+                                            SizedBox(
                                               width: getWidth(context),
-                                              padding: EdgeInsets.symmetric(
-                                                vertical: 15,
-                                                horizontal: 10,
-                                              ),
-                                              margin: EdgeInsets.symmetric(
-                                                vertical: 10,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                border: Border.all(
-                                                  color: Color(0xff292525),
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                                color: Color(0xff1A1818),
-                                              ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                 children: [
-                                                  Container(
-                                                    padding: EdgeInsets.all(10),
-                                                    width: 30,
-                                                    decoration: BoxDecoration(
-                                                      color: Color(0xff292525),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            5,
+                                                  Text("Recent Conversations",style: TextStyle(fontSize: 12),),
+                                                  MouseRegion(
+                                                    cursor: SystemMouseCursors.click,
+                                                    child: GestureDetector(
+                                                      onTap: (){
+                                                        context.go("/chats");
+                                                      },
+                                                      child: Row(
+                                                        children: [
+                                                          Padding(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                                            child: Text("View all",style: TextStyle(fontSize: 12),),
                                                           ),
-                                                    ),
-                                                    child: Center(
-                                                      child: SvgPicture.asset(
-                                                        'assets/icons/chat.svg',
+                                                          SvgPicture.asset("assets/icons/arrow-right.svg")
+                                                        ],
                                                       ),
                                                     ),
-                                                  ),
-                                                  SizedBox(height: 8),
-                                                  Text(
-                                                    conversationName,
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      fontSize: 14,
-                                                    ),
-                                                    maxLines: 1,
-                                                  ),
+                                                  )
                                                 ],
                                               ),
-                                            );
-                                          },
+                                            ),
+                                            ListView.builder(
+                                              shrinkWrap: true,
+                                              physics:
+                                                  NeverScrollableScrollPhysics(),
+                                              itemCount:
+                                                  provider.conversations.length,
+                                              itemBuilder: (context, index) {
+                                                final conversation =
+                                                    provider.conversations[index];
+                                                final conversationName =
+                                                    conversation['messages'][0]['content'] ??
+                                                    'Conversation ${index + 1}';
+                                                return Container(
+                                                  width: getWidth(context),
+                                                  padding: EdgeInsets.symmetric(
+                                                    vertical: 15,
+                                                    horizontal: 10,
+                                                  ),
+                                                  margin: EdgeInsets.symmetric(
+                                                    vertical: 10,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    border: Border.all(
+                                                      color: Color(0xff292525),
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(5),
+                                                    color: Color(0xff1A1818),
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.start,
+                                                    children: [
+                                                      Container(
+                                                        padding: EdgeInsets.all(10),
+                                                        width: 30,
+                                                        decoration: BoxDecoration(
+                                                          color: Color(0xff292525),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                5,
+                                                              ),
+                                                        ),
+                                                        child: Center(
+                                                          child: SvgPicture.asset(
+                                                            'assets/icons/chat.svg',
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      SizedBox(height: 8),
+                                                      Text(
+                                                        conversationName,
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          fontSize: 14,
+                                                        ),
+                                                        maxLines: 1,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
                                         );
                                       }
 
@@ -806,7 +834,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       context: context,
                                     );
                                   },
-                                  hintText: 'Ask Enable',
+                                  hintText: 'Search and ask anything',
                                   prefixIcon: Padding(
                                     padding: const EdgeInsets.all(8.0),
                                     child: SvgPicture.asset(
@@ -1023,9 +1051,9 @@ class _HomeScreenState extends State<HomeScreen> {
       shrinkWrap: true,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.5,
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 15,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 20,
+        crossAxisSpacing: 20,
       ),
       itemCount: 8,
       itemBuilder: (context, index) {
@@ -1035,7 +1063,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             padding: EdgeInsets.zero,
             decoration: BoxDecoration(
-              border: Border.all(width: 0.5, color: Colors.grey),
+              border: Border.all(width: 0.5, color: Color(0xff292525)),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -1146,24 +1174,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final hash = productId.hashCode;
     final stableIndex = hash.abs() % images.length;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        images[stableIndex].signedUrl,
-        width: double.infinity,
-        height: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.image, color: Colors.white, size: 20),
-          );
-        },
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          images[stableIndex].signedUrl,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.image, color: Colors.white, size: 20),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1306,9 +1337,9 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedExternalProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.5,
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 15,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 30,
+        crossAxisSpacing: 30,
       ),
       itemBuilder: (context, index) {
         final product = limitedExternalProducts[index];
@@ -1339,9 +1370,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   .cast<String>();
         }
 
+        bool isHoveredExternal = false;
         return Stack(
           children: [
-            InkWell(
+            // Hoverable external product card
+            StatefulBuilder(
+              builder: (context, setHoverState) {
+                return MouseRegion(
+                  onEnter: (_) => setHoverState(() => isHoveredExternal = true),
+                  onExit: (_) => setHoverState(() => isHoveredExternal = false),
+                  child: InkWell(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
               onTap: () {
                 if (bookmarkProvider.isMultiSelectMode) {
                   bookmarkProvider.toggleItemSelection(
@@ -1356,9 +1397,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
               },
-              child: Container(
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 150),
                 padding: EdgeInsets.zero,
                 decoration: BoxDecoration(
+                  color: isHoveredExternal ? Color(0xFF211E1E) : Colors.transparent,
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Colors.blue : Colors.grey,
@@ -1430,6 +1473,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+                );
+              },
+            ),
             // Multi-select checkbox
             if (bookmarkProvider.isMultiSelectMode)
               Positioned(
@@ -1460,9 +1506,9 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.5,
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 15,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 30,
+        crossAxisSpacing: 30,
       ),
       itemBuilder: (context, index) {
         final product = limitedProducts[index];
@@ -1473,12 +1519,17 @@ class _HomeScreenState extends State<HomeScreen> {
           productId,
         );
 
+        bool isHoveredProduct = false;
         return Stack(
           children: [
-            MouseRegion(
-              onEnter: (_) => setState(() => isHovered = true),
-              onExit: (_) => setState(() => isHovered = false),
-              child: InkWell(
+            StatefulBuilder(
+              builder: (context, setHoverState) => MouseRegion(
+                onEnter: (_) => setHoverState(() => isHoveredProduct = true),
+                onExit: (_) => setHoverState(() => isHoveredProduct = false),
+                child: InkWell(
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
                 onTap: () {
                   if (bookmarkProvider.isMultiSelectMode) {
                     bookmarkProvider.toggleItemSelection('product', productId);
@@ -1490,7 +1541,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   duration: Duration(milliseconds: 200),
                   padding: EdgeInsets.zero,
                   decoration: BoxDecoration(
-                    color: Color(0xFF181616),
+                    color: isHoveredProduct ? Color(0xFF211E1E) : Color(0xFF181616),
                     border: Border.all(
                       width: isSelected ? 2 : 0.5,
                       color: isSelected ? Colors.blue : Colors.grey,
@@ -1612,6 +1663,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+            ),
             // Multi-select checkbox
             if (bookmarkProvider.isMultiSelectMode)
               Positioned(
@@ -1644,18 +1696,26 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedVics.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.6,
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 15,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 30,
+        crossAxisSpacing:30,
       ),
       itemBuilder: (context, index) {
         final vic = limitedVics[index];
         final vicId = vic['_id']?.toString() ?? vic['id']?.toString() ?? '';
         final isSelected = bookmarkProvider.isItemSelected('vic', vicId);
 
+        bool isHoveredVic = false;
         return Stack(
           children: [
-            InkWell(
+            StatefulBuilder(
+              builder: (context, setHoverState) => MouseRegion(
+                onEnter: (_) => setHoverState(() => isHoveredVic = true),
+                onExit: (_) => setHoverState(() => isHoveredVic = false),
+                child: InkWell(
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
               onTap: () {
                 if (bookmarkProvider.isMultiSelectMode) {
                   bookmarkProvider.toggleItemSelection('vic', vicId);
@@ -1663,10 +1723,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showVicDetailModal(context, vic);
                 }
               },
-              child: Container(
+              child: AnimatedContainer(
                 padding: EdgeInsets.all(16),
+                duration: Duration(milliseconds: 150),
                 decoration: BoxDecoration(
-                  color: Color(0xFF181616),
+                  color: isHoveredVic ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Colors.blue : Colors.grey,
@@ -1760,6 +1821,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+                ),
+              ),
             ),
             // Multi-select checkbox
             if (bookmarkProvider.isMultiSelectMode)
@@ -1789,9 +1852,9 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedExperiences.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.5,
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 15,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 30,
+        crossAxisSpacing: 30,
       ),
       itemBuilder: (context, index) {
         final experience = limitedExperiences[index];
@@ -1821,9 +1884,17 @@ class _HomeScreenState extends State<HomeScreen> {
           print('Error extracting images: $e');
         }
 
+        bool isHoveredExperience = false;
         return Stack(
           children: [
-            InkWell(
+            StatefulBuilder(
+              builder: (context, setHoverState) => MouseRegion(
+                onEnter: (_) => setHoverState(() => isHoveredExperience = true),
+                onExit: (_) => setHoverState(() => isHoveredExperience = false),
+                child: InkWell(
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
               onTap: () {
                 if (bookmarkProvider.isMultiSelectMode) {
                   bookmarkProvider.toggleItemSelection('experience', experienceId);
@@ -1831,12 +1902,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showExperienceDetailModal(context, experience);
                 }
               },
-              child: Container(
+              child: AnimatedContainer(
                 padding: EdgeInsets.zero,
+                duration: Duration(milliseconds: 150),
                 decoration: BoxDecoration(
+                  color: isHoveredExperience ? Color(0xFF211E1E) : Colors.transparent,
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Colors.blue : Colors.grey,
+                    color: isSelected ? Colors.blue : Color(0xff292525),
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1941,6 +2014,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+                ),
+              ),
             ),
             // Multi-select checkbox
             if (bookmarkProvider.isMultiSelectMode)
@@ -1968,18 +2043,26 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedDMCs.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.2,
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 15,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 30,
+        crossAxisSpacing: 30,
       ),
       itemBuilder: (context, index) {
         final dmc = limitedDMCs[index];
         final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
         final isSelected = bookmarkProvider.isItemSelected('dmc', dmcId);
 
+        bool isHoveredDmc = false;
         return Stack(
           children: [
-            InkWell(
+            StatefulBuilder(
+              builder: (context, setHoverState) => MouseRegion(
+                onEnter: (_) => setHoverState(() => isHoveredDmc = true),
+                onExit: (_) => setHoverState(() => isHoveredDmc = false),
+                child: InkWell(
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
               onTap: () {
                 if (bookmarkProvider.isMultiSelectMode) {
                   bookmarkProvider.toggleItemSelection('dmc', dmcId);
@@ -1987,13 +2070,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showDMCDetailModal(context, dmc);
                 }
               },
-              child: Container(
+              child: AnimatedContainer(
                 padding: EdgeInsets.all(16),
+                duration: Duration(milliseconds: 150),
                 decoration: BoxDecoration(
-                  color: Color(0xFF181616),
+                  color: isHoveredDmc ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Colors.blue : Colors.grey,
+                    color: isSelected ? Colors.blue : Color(0xff292525),
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -2074,7 +2158,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ],
                 ),
+                ),
               ),
+            ),
             ),
             // Multi-select checkbox
             if (bookmarkProvider.isMultiSelectMode)
@@ -2102,18 +2188,26 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedServiceProviders.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.2,
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 15,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 30,
+        crossAxisSpacing: 30,
       ),
       itemBuilder: (context, index) {
         final serviceProvider = limitedServiceProviders[index];
         final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
         final isSelected = bookmarkProvider.isItemSelected('serviceProvider', serviceProviderId);
 
+        bool isHoveredSp = false;
         return Stack(
           children: [
-            InkWell(
+            StatefulBuilder(
+              builder: (context, setHoverState) => MouseRegion(
+                onEnter: (_) => setHoverState(() => isHoveredSp = true),
+                onExit: (_) => setHoverState(() => isHoveredSp = false),
+                child: InkWell(
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
               onTap: () {
                 if (bookmarkProvider.isMultiSelectMode) {
                   bookmarkProvider.toggleItemSelection('serviceProvider', serviceProviderId);
@@ -2121,13 +2215,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showServiceProviderDetailModal(context, serviceProvider);
                 }
               },
-              child: Container(
+              child: AnimatedContainer(
                 padding: EdgeInsets.all(16),
+                duration: Duration(milliseconds: 150),
                 decoration: BoxDecoration(
-                  color: Color(0xFF181616),
+                  color: isHoveredSp ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Colors.blue : Colors.grey,
+                    color: isSelected ? Colors.blue : Color(0xff292525),
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -2208,7 +2303,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ],
                 ),
+                ),
               ),
+            ),
             ),
             // Multi-select checkbox
             if (bookmarkProvider.isMultiSelectMode)
@@ -2418,17 +2515,19 @@ class _HomeScreenState extends State<HomeScreen> {
         final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
         final isBookmarked = bookmarkProvider.isItemBookmarked('experience', experienceId);
         
-        return IconButton(
-          onPressed: () {
+        return GestureDetector(
+          onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: 'experience',
               itemId: experienceId,
             );
           },
-          icon: Icon(
-            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-            color: isBookmarked ? Colors.amber : Colors.grey[400],
-            size: 20,
+          child: Container(
+            height: 30,
+            width: 30,
+            decoration: BoxDecoration(
+              border: Border.all(color: Color(0xff292525),width: 1)
+            ),
           ),
         );
       },
