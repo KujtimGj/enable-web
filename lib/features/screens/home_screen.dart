@@ -455,33 +455,33 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 bottomLeftBar(),
                 SizedBox(width: 5),
-                Expanded(
-                  flex: 1,
-                  child: Container(
-                    height: getHeight(context),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      children: [
-                        _isChatContainerExpanded 
-                          ? Expanded(
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      "Hi ${user?.name ?? 'User'}",
-                                      style: TextStyle(fontSize: 18),
+                if (_isChatContainerExpanded) ...[
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      height: getHeight(context),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  Text(
+                                    "Hi ${user?.name ?? 'User'}",
+                                    style: TextStyle(fontSize: 18),
+                                  ),
+                                  // User type indicator
+                                  Text(
+                                    "How can I help you?",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey[600],
                                     ),
-                                    // User type indicator
-                                    Text(
-                                      "How can I help you?",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    Consumer<ChatProvider>(
+                                  ),
+                                  Consumer<ChatProvider>(
                                   builder: (context, provider, _) {
                                     final messages = provider.messages;
                                     final error = provider.error;
@@ -806,26 +806,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ],
                             ),
                           ),
-                        )
-                          : Container(
-                              height: 60,
-                              child: Center(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "Chat collapsed",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    _buildCollapseIcon(),
-                                  ],
-                                ),
-                              ),
-                            ),
+                        ),
                         // Input field and dropdown at the bottom
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 5.0),
@@ -953,9 +934,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                SizedBox(width: 20),
+                ],
+                if (_isChatContainerExpanded) SizedBox(width: 20),
                 Expanded(
-                  flex: 2,
+                  flex: _isChatContainerExpanded ? 2 : 1,
                   child: SizedBox(
                     height: getHeight(context),
                     child: Consumer3<ChatProvider, ProductProvider, BookmarkProvider>(
@@ -1032,6 +1014,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         return Column(
                           children: [
+                            // Show collapse icon when chat is hidden
+                            if (!_isChatContainerExpanded)
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    _buildCollapseIcon(),
+                                  ],
+                                ),
+                              ),
                             // Multi-select toolbar
                             MultiSelectToolbar(
                               selectedCount: bookmarkProvider.selectedCount,
