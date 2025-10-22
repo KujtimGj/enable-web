@@ -34,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _chatController = TextEditingController();
   String _selectedSearchType = 'My Knowledge';
   bool _isChatContainerExpanded = true;
+  bool _hasMessageBeenSent = false;
 
   void _handleFollowUpSubmitted(String followUpQuery) async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
@@ -469,18 +470,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: SingleChildScrollView(
                               child: Column(
                                 children: [
-                                  Text(
-                                    "Hi ${user?.name ?? 'User'}",
-                                    style: TextStyle(fontSize: 18),
-                                  ),
-                                  // User type indicator
-                                  Text(
-                                    "How can I help you?",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.grey[600],
+                                  if (!_hasMessageBeenSent) ...[
+                                    Text(
+                                      "Hi ${user?.name ?? 'User'}",
+                                      style: TextStyle(fontSize: 18),
                                     ),
-                                  ),
+                                    // User type indicator
+                                    Text(
+                                      "How can I help you?",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
                                   Consumer<ChatProvider>(
                                   builder: (context, provider, _) {
                                     final messages = provider.messages;
@@ -829,12 +832,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                           context,
                                           listen: false,
                                         );
- 
+
                                     final userId = userProvider.user!.id;
                                     final agencyId =
                                         userProvider.user!.agencyId;
 
                                     if (value.trim().isEmpty) return;
+
+                                    // Hide greeting texts after first message
+                                    if (!_hasMessageBeenSent) {
+                                      setState(() {
+                                        _hasMessageBeenSent = true;
+                                      });
+                                    }
 
                                     chatProvider.addUserMessage(value.trim());
                                     chatProvider.addAgentPlaceholder();
