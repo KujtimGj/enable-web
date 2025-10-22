@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../components/widgets.dart';
 import '../../components/responsive_scaffold.dart';
+import '../../components/product_detail_modal.dart';
 import '../../providers/userProvider.dart';
 import '../../providers/productsProvider.dart';
 import '../../entities/productModel.dart';
@@ -251,9 +252,9 @@ class _ProductsState extends State<Products> {
                                             : ResponsiveUtils.isTablet(context)
                                             ? 2
                                             : 3,
-                                    childAspectRatio: 1.7,
-                                    mainAxisSpacing: 20,
-                                    crossAxisSpacing: 20,
+                                    childAspectRatio: 1.9,
+                                    mainAxisSpacing: 30,
+                                    crossAxisSpacing: 30,
                                   ),
                                   itemCount: filteredProducts.length,
                                   itemBuilder: (BuildContext context, int index) {
@@ -280,7 +281,7 @@ class _ProductsState extends State<Products> {
         child: Container(
         decoration: BoxDecoration(
           border: Border.all(width: 1, color: Colors.grey),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(5),
         ),
         child: Padding(
           padding: EdgeInsets.all(8),
@@ -412,152 +413,9 @@ class _ProductsState extends State<Products> {
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: ResponsiveUtils.isMobile(context) ? 
-                MediaQuery.of(context).size.width * 0.95 : 
-                MediaQuery.of(context).size.width * 0.8,
-            height: MediaQuery.of(context).size.height * 0.85,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Colors.grey, width: 1),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: Icon(Icons.close, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (product.category.isNotEmpty)
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.blue[600]!, width: 1),
-                            ),
-                            child: Text(
-                              product.category.toString()[0].toUpperCase() +
-                                  product.category.toString().substring(1),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        SizedBox(height: 16),
-                        Row(
-                          children: [
-                            if (product.rating != null)
-                              Row(
-                                children: [
-                                  Icon(Icons.star, size: 20, color: Colors.amber),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    product.rating!.toString(),
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  SizedBox(width: 16),
-                                ],
-                              ),
-                            if (product.priceMin != null && product.priceMax != null)
-                              Text(
-                                '\$${product.priceMin!.toStringAsFixed(0)} - \$${product.priceMax!.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        if (product.description != null && product.description!.isNotEmpty)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Description',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                product.description!,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[300],
-                                  height: 1.5,
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                            ],
-                          ),
-                        if (product.country != null || product.city != null)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Location',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                '${product.city ?? ''} ${product.country ?? ''}'.trim(),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[300],
-                                ),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return ProductDetailModal(
+          product: product,
+          isExternalProduct: false,
         );
       },
     );
@@ -590,7 +448,7 @@ class _HoverableProductCardState extends State<_HoverableProductCard> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 150),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(5),
             color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
           ),
           child: widget.child,

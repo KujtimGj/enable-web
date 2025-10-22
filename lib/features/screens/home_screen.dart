@@ -874,7 +874,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: Color(0xff3a3132),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(5),
                                   border: Border.all(color: Colors.grey[700]!),
                                 ),
                                 child: MenuAnchor(
@@ -1096,7 +1096,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.zero,
             decoration: BoxDecoration(
               border: Border.all(width: 0.5, color: Color(0xff292525)),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(5),
             ),
             child: Row(
               children: [
@@ -1106,7 +1106,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                   ),
                 ),
@@ -1124,7 +1124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 15.0,
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                         ),
                         SizedBox(height: 8),
@@ -1133,7 +1133,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 15.0,
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                         ),
                       ],
@@ -1156,7 +1156,7 @@ class _HomeScreenState extends State<HomeScreen> {
         height: double.infinity,
         decoration: BoxDecoration(
           color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(5),
         ),
         child: Icon(Icons.image, color: Colors.white, size: 20),
       );
@@ -1167,7 +1167,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final stableIndex = hash.abs() % images.length;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(5),
       child: Image.network(
         images[stableIndex],
         width: double.infinity,
@@ -1179,7 +1179,7 @@ class _HomeScreenState extends State<HomeScreen> {
             height: double.infinity,
             decoration: BoxDecoration(
               color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(5),
             ),
             child: Icon(Icons.image, color: Colors.white, size: 20),
           );
@@ -1196,7 +1196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         height: double.infinity,
         decoration: BoxDecoration(
           color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(5),
         ),
         child: Icon(Icons.image, color: Colors.white, size: 20),
       );
@@ -1209,7 +1209,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(5),
         child: Image.network(
           images[stableIndex].signedUrl,
           width: double.infinity,
@@ -1221,7 +1221,7 @@ class _HomeScreenState extends State<HomeScreen> {
               height: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(5),
               ),
               child: Icon(Icons.image, color: Colors.white, size: 20),
             );
@@ -1438,7 +1438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Color(0xff292525): Colors.grey,
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: Row(
                   children: [
@@ -1452,7 +1452,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               height: double.infinity,
                               decoration: BoxDecoration(
                                 color: Colors.grey[800],
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(5),
                               ),
                               child: Icon(
                                 Icons.image,
@@ -1578,7 +1578,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: isSelected ? 2 : 0.5,
                       color: isSelected ? Color(0xff292525): Colors.grey,
                     ),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   child: Row(
                     children: [
@@ -1591,7 +1591,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 height: double.infinity,
                                 decoration: BoxDecoration(
                                   color: Colors.grey[800],
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(5),
                                 ),
                                 child: Icon(
                                   Icons.image,
@@ -1764,7 +1764,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Color(0xff292525): Colors.grey,
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1943,7 +1943,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Color(0xff292525) : Color(0xff292525),
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: Row(
                   children: [
@@ -1957,7 +1957,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               height: double.infinity,
                           decoration: BoxDecoration(
                                 color: Colors.grey[800],
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(5),
                           ),
                           child: Icon(
                             Icons.flight_takeoff,
@@ -2111,7 +2111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Color(0xff292525) : Color(0xff292525),
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2124,7 +2124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 40,
                           decoration: BoxDecoration(
                             color: Color(0xff574435),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                           child: Icon(
                             Icons.business,
@@ -2256,7 +2256,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Color(0xff292525): Color(0xff292525),
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2269,7 +2269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 40,
                           decoration: BoxDecoration(
                             color: Color(0xff574435),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                           child: Icon(
                             Icons.support_agent,

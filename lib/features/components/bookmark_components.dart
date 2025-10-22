@@ -343,8 +343,8 @@ class MultiSelectBookmarkButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 24,
-        height: 24,
+        width: 15,
+        height: 15,
         decoration: BoxDecoration(
           color: isSelected ? Color(0xff292525) : Colors.transparent,
           border: Border.all(
