@@ -329,19 +329,16 @@ class _VICsState extends State<VICs> {
   }
 
   Widget _buildVICCard(VICModel vic, int index) {
-    return GestureDetector(
+    return _HoverableVICCard(
       onTap: () {
         _showVICDetails(context, vic);
       },
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            border: Border.all(width: 1, color: Colors.grey[500]!),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(width: 1, color: Colors.grey[500]!),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Padding(
             padding: EdgeInsets.all(12),
             child: Row(
               children: [
@@ -423,7 +420,6 @@ class _VICsState extends State<VICs> {
               ],
             ),
           ),
-        ),
       ),
     );
   }
@@ -479,5 +475,41 @@ class _VICsState extends State<VICs> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+}
+
+class _HoverableVICCard extends StatefulWidget {
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _HoverableVICCard({
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  State<_HoverableVICCard> createState() => _HoverableVICCardState();
+}
+
+class _HoverableVICCardState extends State<_HoverableVICCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
+          ),
+          child: widget.child,
+        ),
+      ),
+    );
   }
 }

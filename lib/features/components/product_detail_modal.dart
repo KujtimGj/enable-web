@@ -38,7 +38,7 @@ class ProductDetailModal extends StatelessWidget {
         final rawData = product['rawData'];
         if (rawData != null) {
           return rawData['summary']?.toString() ??
-              rawData['description']?.toString() ??
+              rawData['description']?.toString() ?? 
               product['description']?.toString() ??
               'No description available';
         }
@@ -91,6 +91,11 @@ class ProductDetailModal extends StatelessWidget {
     }
   }
 
+  String _capitalizeFirstLetter(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -99,8 +104,9 @@ class ProductDetailModal extends StatelessWidget {
         width: MediaQuery.of(context).size.width * 0.8,
         height: MediaQuery.of(context).size.height * 0.8,
         decoration: BoxDecoration(
-          color: Color(0xff292525),
+          color: Color(0xff181616),
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Color(0xff292525), width: 1),
         ),
         child: Column(
           children: [
@@ -177,12 +183,11 @@ class ProductDetailModal extends StatelessWidget {
                                 Container(
                                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: Color(0xff3A3A3A),
-                                    border: Border.all(color: Colors.grey[600]!),
+                                    border: Border.all(color: Color(0xff292525)),
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: Text(
-                                    _getProductTags()[key]?.toString() ?? '',
+                                    _capitalizeFirstLetter(_getProductTags()[key]?.toString() ?? ''),
                                     style: TextStyle(color: Colors.white, fontSize: 12),
                                   ),
                                 ),
@@ -195,7 +200,7 @@ class ProductDetailModal extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: Padding(
-                      padding: const EdgeInsets.all(20.0),
+                      padding: const EdgeInsets.all(10.0),
                       child: Column(
                         children: [
                           Expanded(
@@ -203,7 +208,6 @@ class ProductDetailModal extends StatelessWidget {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
-                                color: Colors.grey[800],
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
@@ -292,9 +296,9 @@ class ProductDetailModal extends StatelessWidget {
       padding: EdgeInsets.all(8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: imageWidgets.length <= 2 ? 1 : 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 1.0,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.5,
       ),
       itemCount: imageWidgets.length,
       itemBuilder: (context, index) => imageWidgets[index],
@@ -305,7 +309,6 @@ class ProductDetailModal extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(4),
-        color: Colors.grey[700],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(4),

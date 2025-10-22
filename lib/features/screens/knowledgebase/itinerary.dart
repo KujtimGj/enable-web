@@ -334,9 +334,9 @@ class _ItineraryState extends State<Itinerary> {
                                     : ResponsiveUtils.isTablet(context)
                                     ? 2
                                     : 3,
-                                childAspectRatio: 1.7,
-                                mainAxisSpacing: 20,
-                                crossAxisSpacing: 20,
+                                childAspectRatio: 1.9,
+                                mainAxisSpacing: 30,
+                                crossAxisSpacing: 30,
                               ),
                               itemCount: visible.length + ((agencyProvider.hasMore && !agencyProvider.hasActiveExperienceFilters) ? 1 : 0),
                               itemBuilder: (BuildContext context, int index) {
@@ -440,7 +440,7 @@ class _ItineraryState extends State<Itinerary> {
       child: Container(
         decoration: BoxDecoration(
           border: Border.all(width: 1, color: Colors.grey),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(5),
         ),
         child: Padding(
             padding: EdgeInsets.all(12),
