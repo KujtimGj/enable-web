@@ -172,10 +172,17 @@ class _BookmarkButtonState extends State<BookmarkButton> {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                        size: iconSize,
-                        color: iconColor,
+                      Container(
+                        width: iconSize,
+                        height: iconSize,
+                        decoration: BoxDecoration(
+                          color: _isBookmarked ? Colors.red : Colors.transparent,
+                          border: Border.all(
+                            color: _isBookmarked ? Colors.red : Colors.grey,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                       ),
                       if (widget.showText) ...[
                         SizedBox(width: 4),
@@ -258,7 +265,7 @@ class _BookmarkDialogState extends State<BookmarkDialog> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.blue),
+                borderSide: BorderSide(color: Color(0xff292525)),
               ),
             ),
             maxLines: 100,
@@ -339,9 +346,9 @@ class MultiSelectBookmarkButton extends StatelessWidget {
         width: 24,
         height: 24,
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : Colors.transparent,
+          color: isSelected ? Color(0xff292525) : Colors.transparent,
           border: Border.all(
-            color: isSelected ? Colors.blue : Colors.white70,
+            color: isSelected ? Color(0xff292525) : Colors.white70,
             width: 2,
           ),
           borderRadius: BorderRadius.circular(4),
@@ -419,10 +426,10 @@ class MultiSelectToolbar extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
+        color: Color(0xff292525).withOpacity(0.1),
         border: Border(
-          top: BorderSide(color: Colors.blue.withOpacity(0.3)),
-          bottom: BorderSide(color: Colors.blue.withOpacity(0.3)),
+          top: BorderSide(color: Color(0xff292525).withOpacity(0.3)),
+          bottom: BorderSide(color: Color(0xff292525).withOpacity(0.3)),
         ),
       ),
       child: Row(
@@ -431,7 +438,7 @@ class MultiSelectToolbar extends StatelessWidget {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.blue,
+              color: Color(0xff292525),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -516,7 +523,7 @@ class MultiSelectToolbar extends StatelessWidget {
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.blue,
+                    color: Color(0xff292525),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -582,7 +589,7 @@ class _BulkBookmarkDialogState extends State<BulkBookmarkDialog> {
       backgroundColor: Color(0xFF1E1E1E),
       title: Row(
         children: [
-          Icon(Icons.bookmark_add, color: Colors.blue, size: 24),
+          Icon(Icons.bookmark_add, color: Color(0xff292525), size: 24),
           SizedBox(width: 8),
           Text(
             'Bookmark ${widget.selectedItems.length} Items',
@@ -599,9 +606,9 @@ class _BulkBookmarkDialogState extends State<BulkBookmarkDialog> {
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Color(0xff292525).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                border: Border.all(color: Color(0xff292525).withOpacity(0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,7 +616,7 @@ class _BulkBookmarkDialogState extends State<BulkBookmarkDialog> {
                   Text(
                     'Selected Items:',
                     style: TextStyle(
-                      color: Colors.blue,
+                      color: Color(0xff292525),
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -678,7 +685,7 @@ class _BulkBookmarkDialogState extends State<BulkBookmarkDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.blue),
+                  borderSide: BorderSide(color: Color(0xff292525)),
                 ),
               ),
             ),
@@ -723,7 +730,7 @@ class _BulkBookmarkDialogState extends State<BulkBookmarkDialog> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.blue,
+              color: Color(0xff292525),
               borderRadius: BorderRadius.circular(10),
             ),
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -817,7 +824,7 @@ class BookmarkListTile extends StatelessWidget {
       child: ListTile(
         leading: Icon(
           _getItemTypeIcon(),
-          color: Colors.blue,
+          color: Color(0xff292525),
         ),
         title: Text(
           _getItemTypeDisplayName(),
@@ -839,7 +846,7 @@ class BookmarkListTile extends StatelessWidget {
             if (vicName != null)
               Text(
                 'VIC: $vicName',
-                style: TextStyle(color: Colors.blue, fontSize: 12),
+                style: TextStyle(color: Color(0xff292525), fontSize: 12),
               ),
             Text(
               'Added ${_formatDate(createdAt)}',

@@ -33,6 +33,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _chatController = TextEditingController();
   String _selectedSearchType = 'My Knowledge';
+  bool _isChatContainerExpanded = true;
 
   void _handleFollowUpSubmitted(String followUpQuery) async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
@@ -48,6 +49,18 @@ class _HomeScreenState extends State<HomeScreen> {
       followUpQuery: followUpQuery,
       searchMode: searchMode,
       context: context,
+    );
+  }
+
+  Widget _buildCollapseIcon() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isChatContainerExpanded = !_isChatContainerExpanded;
+        });
+      },
+      child:SvgPicture.asset("assets/icons/collapse.svg",     width: 24,
+        height: 24,)
     );
   }
 
@@ -451,25 +464,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: Column(
                       children: [
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                Text(
-                                  "Hi ${user?.name ?? 'User'}",
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                // User type indicator
-                                Text(
-                                  "How can I help you?",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                
-                                // Removed duplicate structured summary display - now only shown in messages below
-                                Consumer<ChatProvider>(
+                        _isChatContainerExpanded 
+                          ? Expanded(
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      "Hi ${user?.name ?? 'User'}",
+                                      style: TextStyle(fontSize: 18),
+                                    ),
+                                    // User type indicator
+                                    Text(
+                                      "How can I help you?",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    Consumer<ChatProvider>(
                                   builder: (context, provider, _) {
                                     final messages = provider.messages;
                                     final error = provider.error;
@@ -544,7 +556,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                     // Show conversations when available and no active chat session
                                     if (messages.isEmpty && structuredSummary == null) {
-                                      // Show loading state
                                       if (provider.isLoadingConversations) {
                                         return ListView.builder(
                                           shrinkWrap: true,
@@ -762,18 +773,30 @@ class _HomeScreenState extends State<HomeScreen> {
                                     }
 
                                     if (messages.isNotEmpty) {
-                                      return ListView.builder(
-                                        shrinkWrap: true,
-                                        physics: NeverScrollableScrollPhysics(),
-                                        itemCount: messages.length,
-                                        itemBuilder: (context, index) {
-                                          final msg = messages[index];
+                                      return Column(
+                                        children: [
+                                          // Collapse icon above first message
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            children: [
+                                              _buildCollapseIcon(),
+                                            ],
+                                          ),
+                                          SizedBox(height: 8),
+                                          ListView.builder(
+                                            shrinkWrap: true,
+                                            physics: NeverScrollableScrollPhysics(),
+                                            itemCount: messages.length,
+                                            itemBuilder: (context, index) {
+                                              final msg = messages[index];
 
-                                          return EnhancedMessageBubble(
-                                            message: msg,
-                                            onFollowUpSubmitted: _handleFollowUpSubmitted,
-                                          );
-                                        },
+                                              return EnhancedMessageBubble(
+                                                message: msg,
+                                                onFollowUpSubmitted: _handleFollowUpSubmitted,
+                                              );
+                                            },
+                                          ),
+                                        ],
                                       );
                                     }
 
@@ -783,7 +806,26 @@ class _HomeScreenState extends State<HomeScreen> {
                               ],
                             ),
                           ),
-                        ),
+                        )
+                          : Container(
+                              height: 60,
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "Chat collapsed",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    _buildCollapseIcon(),
+                                  ],
+                                ),
+                              ),
+                            ),
                         // Input field and dropdown at the bottom
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 5.0),
@@ -1009,10 +1051,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     bookmarkProvider,
                                   ),
                               onBulkDelete:
-                                  () => _handleBulkDelete(
-                                    context,
-                                    bookmarkProvider,
-                                  ),
+                                  () => {},
                               hasBookmarks: _hasSelectedBookmarks(
                                 bookmarkProvider,
                               ),
@@ -1404,7 +1443,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredExternal ? Color(0xFF211E1E) : Colors.transparent,
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Colors.blue : Colors.grey,
+                    color: isSelected ? Color(0xff292525): Colors.grey,
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1544,7 +1583,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: isHoveredProduct ? Color(0xFF211E1E) : Color(0xFF181616),
                     border: Border.all(
                       width: isSelected ? 2 : 0.5,
-                      color: isSelected ? Colors.blue : Colors.grey,
+                      color: isSelected ? Color(0xff292525): Colors.grey,
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -1730,7 +1769,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredVic ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Colors.blue : Colors.grey,
+                    color: isSelected ? Color(0xff292525): Colors.grey,
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1909,7 +1948,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredExperience ? Color(0xFF211E1E) : Colors.transparent,
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Colors.blue : Color(0xff292525),
+                    color: isSelected ? Color(0xff292525) : Color(0xff292525),
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -2077,7 +2116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredDmc ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Colors.blue : Color(0xff292525),
+                    color: isSelected ? Color(0xff292525) : Color(0xff292525),
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -2222,7 +2261,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredSp ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Colors.blue : Color(0xff292525),
+                    color: isSelected ? Color(0xff292525): Color(0xff292525),
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -2706,60 +2745,60 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleBulkDelete(BuildContext context, BookmarkProvider bookmarkProvider,) {
-    final selectedItems = bookmarkProvider.getSelectedItemsData();
-    if (selectedItems.isEmpty) return;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Color(0xFF1E1E1E),
-          title: Text(
-            'Remove Bookmarks',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Text(
-            'Are you sure you want to remove bookmarks for ${selectedItems.length} items?',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                final success = await bookmarkProvider.bulkDeleteBookmarks();
-
-                if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${selectedItems.length} bookmarks removed successfully',
-                      ),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Failed to remove bookmarks: ${bookmarkProvider.error}',
-                      ),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              child: Text('Remove', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // void _handleBulkDelete(BuildContext context, BookmarkProvider bookmarkProvider,) {
+  //   final selectedItems = bookmarkProvider.getSelectedItemsData();
+  //   if (selectedItems.isEmpty) return;
+  //
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         backgroundColor: Color(0xFF1E1E1E),
+  //         title: Text(
+  //           'Remove Bookmarks',
+  //           style: TextStyle(color: Colors.white),
+  //         ),
+  //         content: Text(
+  //           'Are you sure you want to remove bookmarks for ${selectedItems.length} items?',
+  //           style: TextStyle(color: Colors.white70),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.of(context).pop(),
+  //             child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+  //           ),
+  //           TextButton(
+  //             onPressed: () async {
+  //               Navigator.of(context).pop();
+  //               final success = await bookmarkProvider.bulkDeleteBookmarks();
+  //
+  //               if (success) {
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   SnackBar(
+  //                     content: Text(
+  //                       '${selectedItems.length} bookmarks removed successfully',
+  //                     ),
+  //                     backgroundColor: Colors.orange,
+  //                   ),
+  //                 );
+  //               } else {
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   SnackBar(
+  //                     content: Text(
+  //                       'Failed to remove bookmarks: ${bookmarkProvider.error}',
+  //                     ),
+  //                     backgroundColor: Colors.red,
+  //                   ),
+  //                 );
+  //               }
+  //             },
+  //             child: Text('Remove', style: TextStyle(color: Colors.red)),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   bool _hasSelectedBookmarks(BookmarkProvider bookmarkProvider) {
     final selectedItems = bookmarkProvider.getSelectedItemsData();
@@ -2768,4 +2807,29 @@ class _HomeScreenState extends State<HomeScreen> {
           bookmarkProvider.isItemBookmarked(item['itemType']!, item['itemId']!),
     );
   }
+}
+
+class CollapseIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    // Draw the outer rectangle
+    final rect = Rect.fromLTWH(2, 2, size.width - 4, size.height - 4);
+    canvas.drawRect(rect, paint);
+
+    // Draw the vertical dividing line
+    final centerX = size.width / 2;
+    canvas.drawLine(
+      Offset(centerX, 2),
+      Offset(centerX, size.height - 2),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
