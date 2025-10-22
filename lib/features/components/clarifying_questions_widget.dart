@@ -42,7 +42,6 @@ class EnhancedMessageBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            // Main message bubble - keeping original design
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -71,8 +70,6 @@ class EnhancedMessageBubble extends StatelessWidget {
                 },
               ),
             ),
-
-            // No suggestion buttons - agent responses are selectable text only
           ],
         ),
       ),
