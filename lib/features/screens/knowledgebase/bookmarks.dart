@@ -230,9 +230,9 @@ class _BookmarksState extends State<Bookmarks> {
       padding: EdgeInsets.symmetric(horizontal: 16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        childAspectRatio: 2,
-        mainAxisSpacing: 20,
-        crossAxisSpacing: 20,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 30,
+        crossAxisSpacing: 30,
       ),
       itemCount: _filteredBookmarks.length,
       itemBuilder: (context, index) {
@@ -280,201 +280,162 @@ class _BookmarksState extends State<Bookmarks> {
 
     // Extract images from the item
     List<dynamic> images = _getItemImages(item);
-    bool isHovered = false;
 
-    return StatefulBuilder(
-      builder: (context, setState) {
-
-        return MouseRegion(
-          onEnter: (_) => setState(() => isHovered = true),
-          onExit: (_) => setState(() => isHovered = false),
-          child: Stack(
-            children: [
-              InkWell(
-                onTap: () => _showBookmarkDetails(bookmark),
-                child: Container(
-                  padding: EdgeInsets.zero,
-                  decoration: BoxDecoration(
-                    color: Color(0xFF181616),
-                    border: Border.all(color: Colors.grey[400]!, width: 1),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow:
-                        isHovered
-                            ? [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.6),
-                                blurRadius: 15,
-                                offset: Offset(0, 8),
-                                spreadRadius: 2,
-                              ),
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
-                                spreadRadius: 1,
-                              ),
-                            ]
-                            : <BoxShadow>[],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child:
-                            images.isNotEmpty
-                                ? Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          Expanded(
-                                            child: _buildImageItem(images, 0),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Expanded(
-                                            child: _buildImageItem(images, 2),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(width: 4),
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          Expanded(
-                                            child: _buildImageItem(images, 1),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Expanded(
-                                            child: _buildImageItem(images, 3),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                )
-                                : Container(
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[800],
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    Icons.image,
-                                    color: Colors.white,
-                                    size: 40,
-                                  ),
-                                ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
+    return _HoverableBookmarkCard(
+      onTap: () => _showBookmarkDetails(bookmark),
+      child: Container(
+        padding: EdgeInsets.zero,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[400]!, width: 1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: images.isNotEmpty
+                  ? Row(
+                      children: [
+                        Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      _getItemProperty(item, 'name').isNotEmpty
-                                          ? _getItemProperty(item, 'name')
-                                          : 'Unknown Item',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        color: Colors.white,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  // Bookmark indicator
-                                  Container(
-                                    padding: EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Icon(
-                                      Icons.bookmark,
-                                      color: Colors.amber,
-                                      size: 16,
-                                    ),
-                                  ),
-                                ],
+                              Expanded(
+                                child: _buildImageItem(images, 0),
                               ),
                               SizedBox(height: 4),
-                              if (_getItemProperty(item, 'category').isNotEmpty)
-                                Text(
-                                  _capitalizeFirst(_getItemProperty(item, 'category')),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                              if (_getItemProperty(
-                                    item,
-                                    'country',
-                                  ).isNotEmpty &&
-                                  _getItemProperty(
-                                    item,
-                                    'city',
-                                  ).isNotEmpty) ...[
-                                SizedBox(height: 4),
-                                Text(
-                                  '${_capitalizeFirst(_getItemProperty(item, 'city'))}, ${_capitalizeFirst(_getItemProperty(item, 'country'))}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                              ],
-                              Spacer(),
-                              // Notes section
-                              if (_getBookmarkProperty(
-                                bookmark,
-                                'notes',
-                              ).isNotEmpty)
-                                Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[800],
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    _getBookmarkProperty(bookmark, 'notes'),
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 10,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
+                              Expanded(
+                                child: _buildImageItem(images, 2),
+                              ),
                             ],
                           ),
                         ),
+                        SizedBox(width: 4),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: _buildImageItem(images, 1),
+                              ),
+                              SizedBox(height: 4),
+                              Expanded(
+                                child: _buildImageItem(images, 3),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : Container(
+                      width: double.infinity,
+                      height: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.image,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+            ),
+            Expanded(
+              flex: 1,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _getItemProperty(item, 'name').isNotEmpty
+                                ? _getItemProperty(item, 'name')
+                                : 'Unknown Item',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Bookmark indicator
+                        Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: Color(0xFF292525),
+                            border: Border.all(
+                              color: Color(0xFF292525),
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    if (_getItemProperty(item, 'category').isNotEmpty)
+                      Text(
+                        _capitalizeFirst(_getItemProperty(item, 'category')),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                    if (_getItemProperty(item, 'country').isNotEmpty &&
+                        _getItemProperty(item, 'city').isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        '${_capitalizeFirst(_getItemProperty(item, 'city'))}, ${_capitalizeFirst(_getItemProperty(item, 'country'))}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[500],
+                        ),
                       ),
                     ],
-                  ),
+                    Spacer(),
+                    // Notes section
+                    if (_getBookmarkProperty(bookmark, 'notes').isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          _getBookmarkProperty(bookmark, 'notes'),
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              // Bookmark actions overlay
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildImageItem(List<dynamic> images, int index) {
     if (index >= images.length) {
-      return Container(
+      return Container( 
         decoration: BoxDecoration(
           color: Colors.grey[800],
           borderRadius: BorderRadius.circular(4),
@@ -881,5 +842,41 @@ class _BookmarksState extends State<Bookmarks> {
         return [];
       }
     }
+  }
+}
+
+class _HoverableBookmarkCard extends StatefulWidget {
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _HoverableBookmarkCard({
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  State<_HoverableBookmarkCard> createState() => _HoverableBookmarkCardState();
+}
+
+class _HoverableBookmarkCardState extends State<_HoverableBookmarkCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
+          ),
+          child: widget.child,
+        ),
+      ),
+    );
   }
 }

@@ -1253,12 +1253,41 @@ class _HomeScreenState extends State<HomeScreen> {
       return SizedBox.shrink();
     }
 
-    return BookmarkButton(
-      itemType: isExternalProduct ? 'externalProduct' : 'product',
-      itemId: productId,
-      color: Colors.white70,
-      activeColor: Colors.amber,
-      size: 20,
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final isBookmarked = bookmarkProvider.isItemBookmarked(
+          isExternalProduct ? 'externalProduct' : 'product',
+          productId!,
+        );
+        
+        return GestureDetector(
+          onTap: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: isExternalProduct ? 'externalProduct' : 'product',
+              itemId: productId!,
+            );
+          },
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
+              border: Border.all(
+                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: isBookmarked
+                ? Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  )
+                : null,
+          ),
+        );
+      },
     );
   }
 
@@ -2393,12 +2422,38 @@ class _HomeScreenState extends State<HomeScreen> {
       return SizedBox.shrink();
     }
 
-    return BookmarkButton(
-      itemType: 'vic',
-      itemId: vicId,
-      color: Colors.white70,
-      activeColor: Colors.amber,
-      size: 20,
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final isBookmarked = bookmarkProvider.isItemBookmarked('vic', vicId!);
+        
+        return GestureDetector(
+          onTap: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'vic',
+              itemId: vicId!,
+            );
+          },
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
+              border: Border.all(
+                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: isBookmarked
+                ? Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  )
+                : null,
+          ),
+        );
+      },
     );
   }
 
@@ -2555,11 +2610,23 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
           child: Container(
-            height: 30,
-            width: 30,
+            width: 16,
+            height: 16,
             decoration: BoxDecoration(
-              border: Border.all(color: Color(0xff292525),width: 1)
+              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
+              border: Border.all(
+                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(4),
             ),
+            child: isBookmarked
+                ? Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  )
+                : null,
           ),
         );
       },
@@ -2609,17 +2676,31 @@ class _HomeScreenState extends State<HomeScreen> {
         final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
         final isBookmarked = bookmarkProvider.isItemBookmarked('dmc', dmcId);
         
-        return IconButton(
-          onPressed: () {
+        return GestureDetector(
+          onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: 'dmc',
               itemId: dmcId,
             );
           },
-          icon: Icon(
-            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-            color: isBookmarked ? Colors.amber : Colors.grey[400],
-            size: 20,
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
+              border: Border.all(
+                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: isBookmarked
+                ? Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  )
+                : null,
           ),
         );
       },
@@ -2671,17 +2752,31 @@ class _HomeScreenState extends State<HomeScreen> {
         final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
         final isBookmarked = bookmarkProvider.isItemBookmarked('serviceProvider', serviceProviderId);
         
-        return IconButton(
-          onPressed: () {
+        return GestureDetector(
+          onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: 'serviceProvider',
               itemId: serviceProviderId,
             );
           },
-          icon: Icon(
-            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-            color: isBookmarked ? Colors.amber : Colors.grey[400],
-            size: 20,
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
+              border: Border.all(
+                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: isBookmarked
+                ? Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  )
+                : null,
           ),
         );
       },
