@@ -231,7 +231,7 @@ class _ItineraryState extends State<Itinerary> {
                           // Pagination info bar
                           if (agencyProvider.totalCount > 0) ...[
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -439,11 +439,11 @@ class _ItineraryState extends State<Itinerary> {
       },
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(width: 1, color: Colors.grey),
-          borderRadius: BorderRadius.circular(5),
+          border: Border.all(width: 1, color: Color(0xff292525)),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Padding(
-            padding: EdgeInsets.all(12),
+            padding: EdgeInsets.all(8),
             child: Row(
               children: [
                 Expanded(
@@ -457,7 +457,7 @@ class _ItineraryState extends State<Itinerary> {
                               child: Container(
                                 margin: EdgeInsets.only(right: 2.5, bottom: 2.5),
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
+                                  borderRadius: BorderRadius.only(topLeft: Radius.circular(4)),
                                   color: _getStatusColor(experience.status),
                                   image: (experience.images != null && 
                                           experience.images!.isNotEmpty && 
@@ -479,7 +479,7 @@ class _ItineraryState extends State<Itinerary> {
                               child: Container(
                                 margin: EdgeInsets.only(left: 2.5, bottom: 2.5),
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
+                                  borderRadius: BorderRadius.only(topRight: Radius.circular(4)),
                                   color: _getStatusColor(experience.status),
                                   image: (experience.images != null && 
                                           experience.images!.length > 1 && 
@@ -507,7 +507,7 @@ class _ItineraryState extends State<Itinerary> {
                               child: Container(
                                 margin: EdgeInsets.only(right: 2.5, top: 2.5),
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
+                                  borderRadius: BorderRadius.only(bottomLeft: Radius.circular(4)),
                                   color: _getStatusColor(experience.status),
                                   image: (experience.images != null && 
                                           experience.images!.length > 2 && 
@@ -529,7 +529,7 @@ class _ItineraryState extends State<Itinerary> {
                               child: Container(
                                 margin: EdgeInsets.only(left: 2.5, top: 2.5),
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
+                                  borderRadius: BorderRadius.only(bottomRight: Radius.circular(4)),
                                   color: _getStatusColor(experience.status),
                                   image: (experience.images != null && 
                                           experience.images!.length > 3 && 
@@ -555,10 +555,10 @@ class _ItineraryState extends State<Itinerary> {
                 ),
                 SizedBox(width: 12),
                 Expanded(
-                  flex: 2,
+                  flex: 1,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Row(
                         children: [
@@ -590,7 +590,7 @@ class _ItineraryState extends State<Itinerary> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 8),
                       if (experience.country != null) ...[
                         Text(
                           experience.country!,
@@ -599,7 +599,7 @@ class _ItineraryState extends State<Itinerary> {
                             color: Colors.grey[600],
                           ),
                         ),
-                        SizedBox(height: 4),
+                        SizedBox(height: 8),
                       ],
                       if (experience.startDate != null && experience.endDate != null) ...[
                         Text(
@@ -609,7 +609,7 @@ class _ItineraryState extends State<Itinerary> {
                             color: Colors.grey[600],
                           ),
                         ),
-                        SizedBox(height: 4),
+                        SizedBox(height: 8),
                       ],
                       if (hasItinerary) ...[
                         Text(
@@ -631,7 +631,7 @@ class _ItineraryState extends State<Itinerary> {
                         ),
                       ],
                       if (experience.party != null) ...[
-                        SizedBox(height: 4),
+                        SizedBox(height: 8),
                         Row(
                           children: [
                             Icon(Icons.people, size: 14, color: Colors.grey[600]),
@@ -744,7 +744,7 @@ class _ItineraryState extends State<Itinerary> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(20),

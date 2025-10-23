@@ -434,6 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: false,
         actions: [
           Consumer<ChatProvider>(
             builder: (context, chatProvider, child) {
@@ -657,13 +658,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 final conversation =
                                                     provider.conversations[index];
                                                 final conversationName =
-                                                    conversation['messages'][0]['content'] ??
-                                                    'Conversation ${index + 1}';
+                                                    (conversation['messages'] != null && 
+                                                     conversation['messages'].isNotEmpty) 
+                                                    ? conversation['messages'][0]['content'] 
+                                                    : 'Conversation ${index + 1}';
                                                 return Container(
                                                   width: getWidth(context),
                                                   padding: EdgeInsets.symmetric(
                                                     vertical: 15,
-                                                    horizontal: 10,
+                                                    horizontal: 10, 
                                                   ),
                                                   margin: EdgeInsets.symmetric(
                                                     vertical: 10,
