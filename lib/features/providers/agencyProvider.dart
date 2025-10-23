@@ -257,7 +257,6 @@ class AgencyProvider extends ChangeNotifier {
               logoUrl: '',
               externalKnowledgeBase: false,
             );
-            print('AgencyProvider: Created agency from user agencyId: ${user.agencyId}');
           }
         }
         

@@ -13,7 +13,6 @@ class VICController {
     try {
       // Note: This endpoint would need to be added to the backend
       final endpoint = '/vic/agency/$agencyId';
-      print('VICController: Making request to endpoint: $endpoint');
       final response = await _apiClient.get(endpoint);
 
       if (response.statusCode == 200) {
@@ -170,15 +169,11 @@ class VICController {
         'agencyId': agencyId,
       };
 
-      print('VICController: Making search request to endpoint: $endpoint');
       final response = await _apiClient.post(endpoint, data: body);
 
-      print('VICController: Search response status: ${response.statusCode}');
-      print('VICController: Search response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final data = response.data;
-        print('VICController: Search response data type: ${data.runtimeType}');
         
         // Convert response data to Map safely
         Map<String, dynamic> responseMap;

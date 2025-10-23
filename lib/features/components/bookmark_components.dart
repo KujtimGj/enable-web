@@ -399,15 +399,15 @@ class MultiSelectToolbar extends StatelessWidget {
               'Select items to bookmark',
               style: TextStyle(
                 color: Colors.white70,
-                fontSize: 14,
+                fontSize: 12,
               ),
             ),
             GestureDetector(
               onTap: onToggleMultiSelect,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[400]!),
+                  border: Border.all(color: Color(0xff292525)),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(

@@ -293,51 +293,94 @@ class _BookmarksState extends State<Bookmarks> {
           children: [
             Expanded(
               flex: 1,
-              child: images.isNotEmpty
-                  ? Row(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Row(
                       children: [
                         Expanded(
-                          child: Column(
-                            children: [
-                              Expanded(
-                                child: _buildImageItem(images, 0),
-                              ),
-                              SizedBox(height: 4),
-                              Expanded(
-                                child: _buildImageItem(images, 2),
-                              ),
-                            ],
+                          child: Container(
+                            margin: EdgeInsets.only(right: 2.5, bottom: 2.5),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.only(topLeft: Radius.circular(4)),
+                              color: Color(0xff292525),
+                              image: images.isNotEmpty && images[0] != null && (images[0]['signedUrl'] ?? images[0]['imageUrl']) != null
+                                  ? DecorationImage(
+                                      image: NetworkImage(images[0]['signedUrl'] ?? images[0]['imageUrl']),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: (images.isEmpty || images[0] == null || (images[0]['signedUrl'] ?? images[0]['imageUrl']) == null)
+                                ? Icon(Icons.image_outlined, color: Colors.grey[600], size: 24)
+                                : null,
                           ),
                         ),
-                        SizedBox(width: 4),
                         Expanded(
-                          child: Column(
-                            children: [
-                              Expanded(
-                                child: _buildImageItem(images, 1),
-                              ),
-                              SizedBox(height: 4),
-                              Expanded(
-                                child: _buildImageItem(images, 3),
-                              ),
-                            ],
+                          child: Container(
+                            margin: EdgeInsets.only(left: 2.5, bottom: 2.5),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.only(topRight: Radius.circular(4)),
+                              color: Color(0xff292525),
+                              image: images.length > 1 && images[1] != null && (images[1]['signedUrl'] ?? images[1]['imageUrl']) != null
+                                  ? DecorationImage(
+                                      image: NetworkImage(images[1]['signedUrl'] ?? images[1]['imageUrl']),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: (images.length <= 1 || images[1] == null || (images[1]['signedUrl'] ?? images[1]['imageUrl']) == null)
+                                ? Icon(Icons.image_outlined, color: Colors.grey[600], size: 24)
+                                : null,
                           ),
                         ),
                       ],
-                    )
-                  : Container(
-                      width: double.infinity,
-                      height: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Color(0xff292525),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.image,
-                        color: Colors.white,
-                        size: 40,
-                      ),
                     ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            margin: EdgeInsets.only(right: 2.5, top: 2.5),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(4)),
+                              color: Color(0xff292525),
+                              image: images.length > 2 && images[2] != null && (images[2]['signedUrl'] ?? images[2]['imageUrl']) != null
+                                  ? DecorationImage(
+                                      image: NetworkImage(images[2]['signedUrl'] ?? images[2]['imageUrl']),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: (images.length <= 2 || images[2] == null || (images[2]['signedUrl'] ?? images[2]['imageUrl']) == null)
+                                ? Icon(Icons.image_outlined, color: Colors.grey[600], size: 24)
+                                : null,
+                          ),
+                        ),
+                        Expanded(
+                          child: Container(
+                            margin: EdgeInsets.only(left: 2.5, top: 2.5),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.only(bottomRight: Radius.circular(4)),
+                              color: Color(0xff292525),
+                              image: images.length > 3 && images[3] != null && (images[3]['signedUrl'] ?? images[3]['imageUrl']) != null
+                                  ? DecorationImage(
+                                      image: NetworkImage(images[3]['signedUrl'] ?? images[3]['imageUrl']),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: (images.length <= 3 || images[3] == null || (images[3]['signedUrl'] ?? images[3]['imageUrl']) == null)
+                                ? Icon(Icons.image_outlined, color: Colors.grey[600], size: 24)
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               flex: 1,
@@ -433,38 +476,6 @@ class _BookmarksState extends State<Bookmarks> {
     );
   }
 
-  Widget _buildImageItem(List<dynamic> images, int index) {
-    if (index >= images.length) {
-      return Container( 
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Icon(Icons.image, color: Colors.grey[600], size: 20),
-      );
-    }
-
-    final image = images[index];
-    final imageUrl = image['signedUrl'] ?? image['imageUrl'];
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        image:
-            imageUrl != null
-                ? DecorationImage(
-                  image: NetworkImage(imageUrl),
-                  fit: BoxFit.cover,
-                )
-                : null,
-        color: imageUrl == null ? Colors.grey[800] : null,
-      ),
-      child:
-          imageUrl == null
-              ? Icon(Icons.image, color: Colors.grey[600], size: 20)
-              : null,
-    );
-  }
 
   Widget _buildBookmarkCard(
     dynamic bookmark,

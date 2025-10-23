@@ -203,14 +203,12 @@ class _VICMentionFieldState extends State<VICMentionField> {
     final text = widget.controller.text;
     final cursorPosition = widget.controller.selection.baseOffset;
 
-    print('VICMentionField: Text changed to: "$text", cursor at: $cursorPosition');
 
     // Check for @ mentions
     final mentionMatch = _findMentionAtCursor(text, cursorPosition);
     
     if (mentionMatch != null) {
       final query = mentionMatch['query'] as String;
-      print('VICMentionField: Found mention with query: "$query"');
       // Only show overlay when at least 1 character is typed after '@'
       if (query.trim().isEmpty) {
         setState(() {
@@ -231,7 +229,6 @@ class _VICMentionFieldState extends State<VICMentionField> {
       // Ensure overlay rebuilds as the filter updates
       _overlayEntry?.markNeedsBuild();
     } else {
-      print('VICMentionField: No mention found, hiding dropdown');
       setState(() {
         _showVicDropdown = false;
         _selectedVicIndex = 0;
@@ -243,30 +240,23 @@ class _VICMentionFieldState extends State<VICMentionField> {
   Map<String, dynamic>? _findMentionAtCursor(String text, int cursorPosition) {
     if (text.isEmpty || cursorPosition <= 0) return null;
     
-    print('VICMentionField: Looking for mention in text: "$text" at position: $cursorPosition');
-    
-    // Look backwards from cursor to find @ symbol
     int start = -1;
     for (int i = cursorPosition - 1; i >= 0; i--) {
       if (text[i] == '@') {
         start = i;
-        print('VICMentionField: Found @ at position: $start');
         break;
       } else if (text[i] == ' ' || text[i] == '\n' || text[i] == '\t') {
         // Stop if we hit whitespace (not a mention)
-        print('VICMentionField: Hit whitespace at position: $i, stopping search');
         break;
       }
     }
     
     if (start == -1) {
-      print('VICMentionField: No @ symbol found');
       return null;
     }
     
     // Extract the query after @
     final query = text.substring(start + 1, cursorPosition);
-    print('VICMentionField: Extracted query: "$query" from position $start to $cursorPosition');
     
     return {
       'start': start,

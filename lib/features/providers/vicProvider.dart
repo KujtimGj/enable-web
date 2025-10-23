@@ -41,7 +41,6 @@ class VICProvider extends ChangeNotifier {
 
   // Fetch VICs by agency ID
   Future<void> fetchVICsByAgencyId(String agencyId) async {
-    print('VICProvider: Fetching VICs for agency ID: $agencyId');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();

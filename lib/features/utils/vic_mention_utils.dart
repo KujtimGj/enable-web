@@ -47,7 +47,6 @@ class VICMentionUtils {
     if (extractedPreferences.isNotEmpty) {
       final preferencesText = extractedPreferences.join(', ');
       enhancedQuery = '$query\n\nVIC Preferences: $preferencesText';
-      print('VICMentionUtils: Enhanced query with preferences: $enhancedQuery');
     } else {
       print('VICMentionUtils: No preferences found, using original query');
     }
