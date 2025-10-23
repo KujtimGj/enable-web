@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -46,14 +45,9 @@ class _VICsState extends State<VICs> {
     // Fetch VICs when the page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final vicProvider = Provider.of<VICProvider>(context, listen: false);
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final agencyProvider = Provider.of<AgencyProvider>(context, listen: false);
       
       final agencyId = _getAgencyId(context);
       
-      print('VICs Screen: Final agency ID: $agencyId');
-      print('VICs Screen: User: ${userProvider.user?.toJson()}');
-      print('VICs Screen: Agency: ${agencyProvider.agency?.toJson()}');
       
       if (agencyId != null) {
         vicProvider.fetchVICsByAgencyId(agencyId);
@@ -170,7 +164,7 @@ class _VICsState extends State<VICs> {
                       final vics = vicProvider.filteredVICs;
                       if(vics.isNotEmpty){
                         return Container(
-                          padding: EdgeInsets.all(10),
+                          padding: EdgeInsets.all(20),
                           child: RefreshIndicator(
                             onRefresh: () async {
                               final vicProvider = Provider.of<VICProvider>(context, listen: false);
@@ -189,9 +183,9 @@ class _VICsState extends State<VICs> {
                                     : ResponsiveUtils.isTablet(context)
                                     ? 2
                                     : 3,
-                                childAspectRatio: 2,
-                                mainAxisSpacing: 20,
-                                crossAxisSpacing: 20,
+                                childAspectRatio: 3.64,
+                                mainAxisSpacing: 40,
+                                crossAxisSpacing: 40,
                               ),
                               itemCount: vics.length,
                               itemBuilder: (BuildContext context, int index) {
@@ -214,7 +208,7 @@ class _VICsState extends State<VICs> {
                                 color: Colors.grey
                               ),
                               SizedBox(height: 16),
-                              Text(
+                              Text( 
                                 isSearching ? 'No VICs found' : 'No VICs found',
                                 style: TextStyle(
                                   fontSize: 18,
@@ -248,36 +242,33 @@ class _VICsState extends State<VICs> {
                       }
 
 
-                      return Container(
-                        padding: EdgeInsets.all(10),
-                        child: RefreshIndicator(
-                          onRefresh: () async {
-                            final vicProvider = Provider.of<VICProvider>(context, listen: false);
-                            final agencyId = _getAgencyId(context);
-                            if (agencyId != null) {
-                              await vicProvider.fetchVICsByAgencyId(agencyId);
-                            }
-                          },
-                          child: GridView.builder(
-                            shrinkWrap: false,
-                            physics: AlwaysScrollableScrollPhysics(),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount:
-                              ResponsiveUtils.isMobile(context)
-                                  ? 1
-                                  : ResponsiveUtils.isTablet(context)
-                                  ? 2
-                                  : 3,
-                              childAspectRatio: 2,
-                              mainAxisSpacing: 20,
-                              crossAxisSpacing: 20,
-                            ),
-                            itemCount: vics.length,
-                            itemBuilder: (BuildContext context, int index) {
-                              final vic = vics[index];
-                              return _buildVICCard(vic, index);
-                            },
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          final vicProvider = Provider.of<VICProvider>(context, listen: false);
+                          final agencyId = _getAgencyId(context);
+                          if (agencyId != null) {
+                            await vicProvider.fetchVICsByAgencyId(agencyId);
+                          }
+                        },
+                        child: GridView.builder(
+                          shrinkWrap: false,
+                          physics: AlwaysScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount:
+                            ResponsiveUtils.isMobile(context)
+                                ? 1
+                                : ResponsiveUtils.isTablet(context)
+                                ? 2
+                                : 3,
+                             childAspectRatio: 3.64,
+                            mainAxisSpacing: 20,
+                            crossAxisSpacing: 20,
                           ),
+                          itemCount: vics.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final vic = vics[index];
+                            return _buildVICCard(vic, index);
+                          },
                         ),
                       );
                     },
@@ -335,88 +326,66 @@ class _VICsState extends State<VICs> {
       },
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(width: 1, color: Colors.grey[500]!),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Padding(
             padding: EdgeInsets.all(8),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        width: 30,
-                        decoration: BoxDecoration(
-                          color: Color(0xff292525),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Center(
-                          child: SvgPicture.asset(
-                            'assets/icons/chat.svg',
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        vic.fullName ?? 'VIC ${index + 1}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 4),
-                      if (vic.nationality != null) ...[
-                        Text(
-                          vic.nationality!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                      ],
-                      if (vic.email != null) ...[
-                        Text(
-                          vic.email!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 4),
-                      ],
-                      if (vic.summary != null && vic.summary!.isNotEmpty) ...[
-                        Text(
-                          vic.summary!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ] else ...[
-                        Text(
-                          'No description available',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ],
+                Text(
+                  vic.fullName ?? 'VIC ${index + 1}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                SizedBox(height: 4),
+                if (vic.nationality != null) ...[
+                  Text(
+                    vic.nationality!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                ],
+                if (vic.email != null) ...[
+                  Text(
+                    vic.email!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                ],
+                if (vic.summary != null && vic.summary!.isNotEmpty) ...[
+                  Text(
+                    vic.summary!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ] else ...[
+                  Text(
+                    'No description available',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -504,8 +473,10 @@ class _HoverableVICCardState extends State<_HoverableVICCard> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 150),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(4),
             color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
+            border: Border.all(color: _isHovered ? Color(0xFF665B5B) : Color(0xff292525)),
+            boxShadow: [], // Explicitly no box shadow
           ),
           child: widget.child,
         ),

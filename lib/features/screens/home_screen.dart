@@ -1526,7 +1526,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: Duration(milliseconds: 150),
                 padding: EdgeInsets.zero,
                 decoration: BoxDecoration(
-                  color: isHoveredExternal ? Color(0xFF211E1E) : Colors.transparent,
+                  color: isHoveredExternal ? Color(0xff292525) : Colors.transparent,
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
                     color: isSelected ? Color(0xff292525): Colors.grey,
@@ -1666,10 +1666,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   duration: Duration(milliseconds: 200),
                   padding: EdgeInsets.zero,
                   decoration: BoxDecoration(
-                    color: isHoveredProduct ? Color(0xFF211E1E) : Color(0xFF181616),
+                    color: isHoveredProduct ? Color(0xff292525) : Color(0xFF181616),
                     border: Border.all(
                       width: isSelected ? 1 : 0.5,
-                      color: isSelected ? Color(0xff292525): Colors.grey,
+                      color: isSelected ? Colors.grey : Color(0xff292525),
                     ),
                     borderRadius: BorderRadius.circular(5),
                   ),

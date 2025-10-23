@@ -280,7 +280,6 @@ class _ProductsState extends State<Products> {
       onTap: () => _showProductModal(context, product),
         child: Container(
         decoration: BoxDecoration(
-          border: Border.all(width: 1, color: Colors.grey),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Padding(
@@ -448,8 +447,10 @@ class _HoverableProductCardState extends State<_HoverableProductCard> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 150),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(4),
             color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
+            border: Border.all(color: _isHovered ? Color(0xFF665B5B) : Color(0xff292525)),
+            boxShadow: [], // Explicitly no box shadow
           ),
           child: widget.child,
         ),
