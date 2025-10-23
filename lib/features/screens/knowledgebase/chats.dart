@@ -88,7 +88,9 @@ class _ChatsListState extends State<ChatsList> {
           children: [
             SizedBox(height: 15),
             Text(
-              "${chatProvider.conversations.length} Conversations in Enable",
+              chatProvider.isLoadingConversations 
+                  ? "Loading conversations..." 
+                  : "${chatProvider.conversations.length} Conversations in Enable",
               textAlign: TextAlign.start,
             ),
             ResponsiveContainer(
@@ -109,12 +111,13 @@ class _ChatsListState extends State<ChatsList> {
       return ListView.builder(
         shrinkWrap: true,
         physics: NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.symmetric(vertical: 5),
         itemCount: 5, // Show 5 loading placeholders
         itemBuilder: (context, index) {
           return Container(
             width: getWidth(context),
             padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-            margin: EdgeInsets.symmetric(vertical: 10),
+            margin: EdgeInsets.symmetric(vertical: 5),
             decoration: BoxDecoration(
               color: Color(0xff1A1818),
               border: Border.all(color: Color(0xff292525)),
@@ -231,96 +234,96 @@ class _ChatsListState extends State<ChatsList> {
     return ListView.builder(
       shrinkWrap: true,
       physics: NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.symmetric(vertical: 5),
       itemCount: chatProvider.conversations.length,
       itemBuilder: (context, index) {
         final conversation = chatProvider.conversations[index];
         final conversationName = conversation['name'] ?? 'Conversation ${index + 1}';
-        final lastMessage = conversation['messages']?.isNotEmpty == true 
-            ? conversation['messages'].last['content'] ?? 'No messages'
+        final first = conversation['messages']?.isNotEmpty == true
+            ? conversation['messages'].first['content'] ?? 'No messages'
             : 'No messages';
-        final lastMessageTime = conversation['lastMessageAt'] != null 
-            ? DateTime.parse(conversation['lastMessageAt']).toString().substring(0, 10)
-            : '';
 
-        return GestureDetector(
+        return _HoverableChatCard(
           onTap: () {
             // Navigate to chat detail screen with conversation name
             final encodedName = Uri.encodeComponent(conversationName);
             context.go('/knowledgebase/chats/${conversation['_id']}?name=$encodedName');
           },
           child: Container(
-            width: getWidth(context),
-            padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-            margin: EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: Color(0xff1A1818),
-              border: Border.all(color: Color(0xff292525)),
-              borderRadius: BorderRadius.circular(5),
-            ),
+            width: 507,
+            height: 88,
+            padding: EdgeInsets.all(8),
+            margin: EdgeInsets.symmetric(vertical: 5),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      width: 30,
-                      decoration: BoxDecoration(
-                        color: Color(0xff1A1818),
-                        borderRadius: BorderRadius.circular(5),
-                        border: Border.all(width: 1, color: Color(0xff292525)),
-                      ),
-                      child: Center(
-                        child: SvgPicture.asset(
-                          'assets/icons/chat.svg',
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            conversationName,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          if (lastMessageTime.isNotEmpty) ...[
-                            SizedBox(height: 2),
-                            Text(
-                              lastMessageTime,
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (lastMessage != 'No messages') ...[
-                  SizedBox(height: 8),
-                  Text(
-                    lastMessage.length > 100 
-                        ? '${lastMessage.substring(0, 100)}...'
-                        : lastMessage,
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 12,
+                Container(
+                  height: 30,
+                  width: 30,
+                  decoration: BoxDecoration(
+                    color: Color(0xff292525),
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(width: 1, color: Color(0xff292525)),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      'assets/icons/chat.svg',
                     ),
                   ),
-                ],
+                ),
+                SizedBox(height: 10),
+                Text(
+                  first,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _HoverableChatCard extends StatefulWidget {
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _HoverableChatCard({
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  State<_HoverableChatCard> createState() => _HoverableChatCardState();
+}
+
+class _HoverableChatCardState extends State<_HoverableChatCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(5),
+            color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
+            border: Border.all(color: _isHovered ? Color(0xFF665B5B) : Color(0xff292525)),
+          ),
+          child: widget.child,
+        ),
+      ),
     );
   }
 }

@@ -421,7 +421,18 @@ class _VICMentionFieldState extends State<VICMentionField> {
                   ),
                   hintText: widget.hintText,
                   hintStyle: TextStyle(color: Colors.white),
-                  border: InputBorder.none,
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE8DDC4), width: 1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE8DDC4), width: 1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE8DDC4), width: 1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                 ),
               ),

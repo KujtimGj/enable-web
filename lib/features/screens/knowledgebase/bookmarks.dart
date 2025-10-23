@@ -138,7 +138,7 @@ class _BookmarksState extends State<Bookmarks> {
           }
 
           // Update filtered bookmarks when provider data changes
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) { 
             _applyFilters();
           });
 
@@ -286,7 +286,6 @@ class _BookmarksState extends State<Bookmarks> {
       child: Container(
         padding: EdgeInsets.all(8),
         decoration: BoxDecoration(
-          border: Border.all(color: Color(0xff292525), width: 1),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(

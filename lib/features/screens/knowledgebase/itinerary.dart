@@ -439,7 +439,6 @@ class _ItineraryState extends State<Itinerary> {
       },
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(width: 1, color: Color(0xff292525)),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Padding(
@@ -1400,8 +1399,10 @@ class _HoverableItineraryCardState extends State<_HoverableItineraryCard> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 150),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(4),
             color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
+            border: Border.all(color: _isHovered ? Color(0xFF665B5B) : Color(0xff292525)),
+            boxShadow: [], // Explicitly no box shadow
           ),
           child: widget.child,
         ),
