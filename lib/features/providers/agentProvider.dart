@@ -101,8 +101,6 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     print("🧠 Sending intelligent query to backend");
-    print("User ID: $userId");
-    print("Agency ID: $agencyId");
     print("Query: $query");
 
     final result = await _intelligentAgentController.sendIntelligentQuery(
@@ -161,6 +159,9 @@ class ChatProvider extends ChangeNotifier {
             final searchResults = responseData['searchResults'];
             _externalProducts = searchResults['externalProducts'] ?? [];
             
+            print('🖼️ IMAGE DEBUG: ChatProvider received search results');
+            print('🖼️ IMAGE DEBUG: External products count: ${_externalProducts.length}');
+            
             // Include products and experiences if available
             final products = searchResults['products'] ?? [];
             final experiences = searchResults['experiences'] ?? [];
@@ -176,6 +177,8 @@ class ChatProvider extends ChangeNotifier {
             
             // Combine all results for display (excluding clients, experiences, dmcs, serviceProviders since they're handled separately)
             _externalProducts = [..._externalProducts, ...products];
+            
+            print('🖼️ IMAGE DEBUG: Final external products count after combining: ${_externalProducts.length}');
           } else {
             _externalProducts = [];
             _vics = [];
@@ -213,8 +216,6 @@ class ChatProvider extends ChangeNotifier {
           _pendingClarification = null;
           _isWaitingForClarification = false;
         }
-        
-        print("External products: $_externalProducts");
         print("Response type: ${_intelligentAgentController.getResponseType(data)}");
       },
     );
@@ -571,7 +572,6 @@ class ChatProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    print('ChatProvider: Starting to fetch conversations for agency: $agencyId');
     
     final result = await _conversationController.getConversationsByAgencyId(agencyId);
     
@@ -584,7 +584,6 @@ class ChatProvider extends ChangeNotifier {
       (conversations) {
         if (limit != null) {
           _conversations = conversations.take(limit).toList();
-          print('ChatProvider: Fetched ${_conversations.length} conversations (limited to $limit)');
         } else {
           _conversations = conversations; // Show all conversations
           print('ChatProvider: Fetched ${_conversations.length} conversations (all)');
@@ -595,7 +594,6 @@ class ChatProvider extends ChangeNotifier {
 
     _isLoadingConversations = false;
     notifyListeners();
-    print('ChatProvider: Finished fetching conversations. Total: ${_conversations.length}');
   }
 
   // Fetch last 3 conversations by userId (optimized for home screen)
@@ -604,7 +602,6 @@ class ChatProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    print('ChatProvider: Starting to fetch last 3 conversations for user: $userId');
     
     final result = await _conversationController.getLastConversationsByUserId(userId);
     
@@ -617,13 +614,11 @@ class ChatProvider extends ChangeNotifier {
       (conversations) {
         _conversations = conversations;
         _error = null;
-        print('ChatProvider: Fetched ${_conversations.length} latest conversations');
       },
     );
 
     _isLoadingConversations = false;
     notifyListeners();
-    print('ChatProvider: Finished fetching last conversations. Total: ${_conversations.length}');
   }
 
   // Clear conversations

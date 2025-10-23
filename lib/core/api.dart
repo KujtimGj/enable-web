@@ -1,7 +1,7 @@
 class ApiEndpoints {
 
   static const String baseUrl = 'https://enable-be-production.up.railway.app/api/v1';
-  // static const String baseUrl = 'http://localhost:5000/api/v1';
+  // static const String baseUrl = 'http://127.0.0.1:3000/api/v1';
 
   // Auth endpoints
   static const String loginUrl = '/auth/login';

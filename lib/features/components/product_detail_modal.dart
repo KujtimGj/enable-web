@@ -78,7 +78,33 @@ class ProductDetailModal extends StatelessWidget {
 
     try {
       if (isExternalProduct) {
-        return List<dynamic>.from(product['rawData']?['imageUrls'] ?? []);
+        // For external products, get images from photos array (Google Maps format)
+        List<dynamic> images = [];
+        
+        // Check for photos array first (Google Maps format)
+        if (product['photos'] != null && product['photos'].isNotEmpty) {
+          for (var photo in product['photos']) {
+            if (photo is Map && photo['url'] != null) {
+              images.add(photo['url'].toString());
+            }
+          }
+        }
+        
+        // Check for images array (legacy format)
+        if (product['images'] != null && product['images'].isNotEmpty) {
+          for (var img in product['images']) {
+            if (img is Map && img['imageUrl'] != null) {
+              images.add(img['imageUrl'].toString());
+            }
+          }
+        }
+        
+        // Fallback to rawData imageUrls
+        if (images.isEmpty && product['rawData']?['imageUrls'] != null) {
+          images = List<dynamic>.from(product['rawData']['imageUrls'] ?? []);
+        }
+        
+        return images;
       } else {
         if (product is Map) {
           return List<dynamic>.from(product['images'] ?? []);
@@ -94,6 +120,74 @@ class ProductDetailModal extends StatelessWidget {
   String _capitalizeFirstLetter(String text) {
     if (text.isEmpty) return text;
     return text[0].toUpperCase() + text.substring(1);
+  }
+
+  // External product specific helper methods
+  double? _getRating() {
+    if (product == null || !isExternalProduct) return null;
+    try {
+      return product['rating']?.toDouble();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int? _getTotalReviews() {
+    if (product == null || !isExternalProduct) return null;
+    try {
+      return product['userRatingsTotal']?.toInt();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getAddress() {
+    if (product == null || !isExternalProduct) return null;
+    try {
+      return product['address']?.toString();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  bool? _getIsOpen() {
+    if (product == null || !isExternalProduct) return null;
+    try {
+      return product['openingHours']?['openNow'] ?? false;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int? _getPriceLevel() {
+    if (product == null || !isExternalProduct) return null;
+    try {
+      return product['priceLevel']?.toInt();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _getPriceLevelText(int? priceLevel) {
+    if (priceLevel == null) return '';
+    switch (priceLevel) {
+      case 0: return 'Free';
+      case 1: return '\$ (Inexpensive)';
+      case 2: return '\$\$ (Moderate)';
+      case 3: return '\$\$\$ (Expensive)';
+      case 4: return '\$\$\$\$ (Very Expensive)';
+      default: return '';
+    }
+  }
+
+  List<String> _getCategories() {
+    if (product == null || !isExternalProduct) return [];
+    try {
+      List<dynamic> types = product['types'] ?? [];
+      return types.map((type) => type.toString()).toList();
+    } catch (e) {
+      return [];
+    }
   }
 
   @override
@@ -142,57 +236,191 @@ class ProductDetailModal extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 16),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Color(0xff3A3A3A),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                          
+                          // External product specific information
+                          if (isExternalProduct) ...[
+                            // Rating and reviews
+                            if (_getRating() != null) ...[
+                              Row(
+                                children: [
+                                  Icon(Icons.star, color: Colors.amber, size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    '${_getRating()!.toStringAsFixed(1)}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (_getTotalReviews() != null) ...[
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '(${_getTotalReviews()} reviews)',
+                                      style: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              SizedBox(height: 12),
+                            ],
+                            
+                            // Business status and opening hours
+                            Row(
                               children: [
-                                Icon(Icons.folder, color: Colors.white, size: 16),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Folder name',
-                                  style: TextStyle(color: Colors.white, fontSize: 14),
-                                ),
+                                if (_getIsOpen() != null) ...[
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _getIsOpen()! ? Colors.green[700] : Colors.red[700],
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      _getIsOpen()! ? 'Open Now' : 'Closed',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                ],
+                                if (_getPriceLevel() != null) ...[
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Color(0xff3A3A3A),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      _getPriceLevelText(_getPriceLevel()),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
-                          ),
-                          SizedBox(height: 20),
+                            SizedBox(height: 16),
+                            
+                            // Address
+                            if (_getAddress() != null) ...[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.location_on, color: Colors.grey[400], size: 16),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _getAddress()!,
+                                      style: TextStyle(
+                                        color: Colors.grey[300],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                            
+                            // Categories
+                            if (_getCategories().isNotEmpty) ...[
+                              Text(
+                                'Categories',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (String category in _getCategories().take(6))
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Color(0xff3A3A3A),
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      child: Text(
+                                        _capitalizeFirstLetter(category.replaceAll('_', ' ')),
+                                        style: TextStyle(color: Colors.white, fontSize: 12),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: 20),
+                            ],
+                          ] else ...[
+                            // Database product folder name
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Color(0xff3A3A3A),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.folder, color: Colors.white, size: 16),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Folder name',
+                                    style: TextStyle(color: Colors.white, fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                          ],
+                          
+                          // Description
                           Text(
                             _getProductDescription(),
                             style: TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
                           ),
                           SizedBox(height: 20),
-                          Text(
-                            'Tags',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          
+                          // Tags (for database products)
+                          if (!isExternalProduct) ...[
+                            Text(
+                              'Tags',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (String key in _getProductTags().keys)
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Color(0xff292525)),
-                                    borderRadius: BorderRadius.circular(5),
+                            SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (String key in _getProductTags().keys)
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Color(0xff292525)),
+                                      borderRadius: BorderRadius.circular(5),
+                                    ),
+                                    child: Text(
+                                      _capitalizeFirstLetter(_getProductTags()[key]?.toString() ?? ''),
+                                      style: TextStyle(color: Colors.white, fontSize: 12),
+                                    ),
                                   ),
-                                  child: Text(
-                                    _capitalizeFirstLetter(_getProductTags()[key]?.toString() ?? ''),
-                                    style: TextStyle(color: Colors.white, fontSize: 12),
-                                  ),
-                                ),
-                            ],
-                          ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -261,16 +489,30 @@ class ProductDetailModal extends StatelessWidget {
     int displayCount;
     int placeholderCount = 0;
 
-    if (imageCount >= 6) {
-      displayCount = 6;
-    } else if (imageCount >= 4) {
-      displayCount = imageCount;
-    } else if (imageCount > 0) {
-      displayCount = 1;
-      placeholderCount = 3;
+    if (isExternalProduct) {
+      // For external products, show up to 4 images
+      if (imageCount >= 4) {
+        displayCount = 4;
+      } else if (imageCount > 0) {
+        displayCount = imageCount;
+        placeholderCount = 4 - imageCount;
+      } else {
+        displayCount = 0;
+        placeholderCount = 4;
+      }
     } else {
-      displayCount = 0;
-      placeholderCount = 4;
+      // For database products, keep original logic
+      if (imageCount >= 6) {
+        displayCount = 6;
+      } else if (imageCount >= 4) {
+        displayCount = imageCount;
+      } else if (imageCount > 0) {
+        displayCount = 1;
+        placeholderCount = 3;
+      } else {
+        displayCount = 0;
+        placeholderCount = 4;
+      }
     }
 
     List<Widget> imageWidgets = [];

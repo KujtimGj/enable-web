@@ -426,9 +426,9 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(
             fontSize: ResponsiveUtils.responsiveFontSize(
               context,
-              mobile: 20,
-              tablet: 24,
-              desktop: 26,
+              mobile: 16,
+              tablet: 18,
+              desktop: 20,
             ),
           ),
         ),
@@ -684,8 +684,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         CrossAxisAlignment.start,
                                                     children: [
                                                       Container(
-                                                        padding: EdgeInsets.all(10),
-                                                        width: 30,
+                                                        padding: EdgeInsets.all(7),
+                                                        width: 25,
                                                         decoration: BoxDecoration(
                                                           color: Color(0xff292525),
                                                           borderRadius:
@@ -747,8 +747,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Container(
-                                                  padding: EdgeInsets.all(10),
-                                                  width: 30,
+                                                  padding: EdgeInsets.all(7),
+                                                  width: 25,
                                                   decoration: BoxDecoration(
                                                     color: Color(0xff292525),
                                                     borderRadius:
@@ -883,7 +883,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 width: 160,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
-                                  vertical: 5,
+                                  vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Color(0xff3a3132),
@@ -967,6 +967,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         final dmcs = chatProvider.dmcs;
                         final serviceProviders = chatProvider.serviceProviders;
                         final dbProducts = productProvider.products;
+
+                        // Debug logging for external products
+                        if (externalProducts.isNotEmpty) {
+                          for (int i = 0; i < externalProducts.length && i < 3; i++) {
+                            final product = externalProducts[i];
+                          }
+                        } else {
+                        }
 
                         // Prepare items for multi-select
                         final allItems = <Map<String, String>>[];
@@ -1096,7 +1104,7 @@ class _HomeScreenState extends State<HomeScreen> {
       shrinkWrap: true,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.9,
+        childAspectRatio: 1.96,
         mainAxisSpacing: 20,
         crossAxisSpacing: 20,
       ),
@@ -1163,7 +1171,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Widget _buildRandomImageItem(List<dynamic> images, String productId) {
+    print('🖼️ IMAGE DEBUG: _buildRandomImageItem called with ${images.length} images for product: $productId');
+    
     if (images.isEmpty) {
+      print('🖼️ IMAGE DEBUG: No images available for product: $productId');
       return Container(
         width: double.infinity,
         height: double.infinity,
@@ -1178,15 +1189,41 @@ class _HomeScreenState extends State<HomeScreen> {
     // Use productId hash to generate a stable "random" index
     final hash = productId.hashCode;
     final stableIndex = hash.abs() % images.length;
+    final imageUrl = images[stableIndex];
+    
+    print('🖼️ IMAGE DEBUG: Using image at index $stableIndex: $imageUrl');
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),
       child: Image.network(
-        images[stableIndex],
+        imageUrl,
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) {
+            print('🖼️ IMAGE DEBUG: Image loaded successfully: $imageUrl');
+            return child;
+          }
+          print('🖼️ IMAGE DEBUG: Loading image: $imageUrl - Progress: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+          );
+        },
         errorBuilder: (context, error, stackTrace) {
+          print('🖼️ IMAGE DEBUG: Image load error for $imageUrl: $error');
           return Container(
             width: double.infinity,
             height: double.infinity,
@@ -1404,19 +1441,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildExternalProductsGrid(List<dynamic> externalProducts, BookmarkProvider bookmarkProvider,) {
-    // Limit external products for better performance
-    final limitedExternalProducts = externalProducts.take(10).toList();
-    
     return GridView.builder(
-      itemCount: limitedExternalProducts.length,
+      itemCount: externalProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.9,
+        childAspectRatio: 1.96,
         mainAxisSpacing: 30,
         crossAxisSpacing: 30,
       ),
       itemBuilder: (context, index) {
-        final product = limitedExternalProducts[index];
+        final product = externalProducts[index];
         final productId =
             product['_id']?.toString() ?? product['id']?.toString();
         final isSelected = bookmarkProvider.isItemSelected(
@@ -1424,25 +1458,40 @@ class _HomeScreenState extends State<HomeScreen> {
           productId ?? '',
         );
 
-        // Check if this is a database product (has images field) or external product (has rawData.imageUrls)
+        // Handle images for external products (Google Maps format)
         List<String> images = [];
-        if (product['images'] != null && product['images'].isNotEmpty) {
-          // Database product - use signed URLs from images field
-          for (var img in product['images']) {
-            if (img is Map && img['signedUrl'] != null) {
-              images.add(img['signedUrl'].toString());
-            } else if (img.signedUrl != null) {
-              images.add(img.signedUrl.toString());
+        
+        // Check for Google Maps photos format first
+        if (product['photos'] != null && product['photos'].isNotEmpty) {
+          print('🖼️ IMAGE DEBUG: Found ${product['photos'].length} Google Maps photos for ${product['name']}');
+          // Google Maps external product - use photos array
+          for (var photo in product['photos']) {
+            if (photo is Map && photo['url'] != null) {
+              // Use the proxy URL from backend to bypass CORS
+              final imageUrl = photo['url'].toString();
+              images.add(imageUrl);
+              print('🖼️ IMAGE DEBUG: Added Google Maps photo URL: $imageUrl');
+            } else {
+              print('🖼️ IMAGE DEBUG: Invalid photo object: $photo');
             }
           }
         } else {
-          // External product - use imageUrls from rawData
-          images =
-              (product['rawData']?['imageUrls'] ?? [])
-                  .map((url) => url.toString())
-                  .toList()
-                  .cast<String>();
+          print('🖼️ IMAGE DEBUG: No Google Maps photos found for ${product['name']}');
         }
+        
+        // Check for legacy images format (only imageUrl, no signedUrl)
+        if (product['images'] != null && product['images'].isNotEmpty) {
+          print('🖼️ IMAGE DEBUG: Found ${product['images'].length} legacy images for ${product['name']}');
+          // Database product or legacy external product - use imageUrl only
+          for (var img in product['images']) {
+            if (img is Map && img['imageUrl'] != null) {
+              images.add(img['imageUrl'].toString());
+              print('🖼️ IMAGE DEBUG: Added legacy imageUrl: ${img['imageUrl']}');
+            }
+          }
+        }
+        
+        print('🖼️ IMAGE DEBUG: Final images count for ${product['name']}: ${images.length}');
 
         bool isHoveredExternal = false;
         return Stack(
@@ -1467,7 +1516,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showProductDetailModal(
                     context, 
                     product,
-                    product['images'] == null || product['images'].isEmpty,
+                    // Consider it external if it has Google Maps photos or no images at all
+                    (product['photos'] != null && product['photos'].isNotEmpty) ||
+                    (product['images'] == null || product['images'].isEmpty),
                   );
                 }
               },
@@ -1580,7 +1631,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.9,
+        childAspectRatio: 1.96,
         mainAxisSpacing: 30,
         crossAxisSpacing: 30,
       ),
@@ -1617,7 +1668,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                     color: isHoveredProduct ? Color(0xFF211E1E) : Color(0xFF181616),
                     border: Border.all(
-                      width: isSelected ? 2 : 0.5,
+                      width: isSelected ? 1 : 0.5,
                       color: isSelected ? Color(0xff292525): Colors.grey,
                     ),
                     borderRadius: BorderRadius.circular(5),
@@ -1655,8 +1706,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.all(10),
-                                    width: 30,
+                                    padding: EdgeInsets.all(7),
+                                    width: 25,
                                     decoration: BoxDecoration(
                                       color: Color(0xff292525),
                                       borderRadius: BorderRadius.circular(5),
@@ -1699,7 +1750,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   '\$${_getProductPriceMin(product)!.toStringAsFixed(2)} - \$${_getProductPriceMax(product)!.toStringAsFixed(2)}',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 8,
                                     color: Colors.green[600],
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1708,7 +1759,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   'From \$${_getProductPriceMin(product)!.toStringAsFixed(2)}',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 8,
                                     color: Colors.green[600],
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1770,7 +1821,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedVics.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.9,
+        childAspectRatio: 1.96,
         mainAxisSpacing: 30,
         crossAxisSpacing:30,
       ),
@@ -1926,7 +1977,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedExperiences.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.9,
+        childAspectRatio: 1.96,
         mainAxisSpacing: 30,
         crossAxisSpacing: 30,
       ),
@@ -1982,7 +2033,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: isHoveredExperience ? Color(0xFF211E1E) : Colors.transparent,
                   border: Border.all(
-                    width: isSelected ? 2 : 0.5,
+                    width: isSelected ? 1 : 0.5,
                     color: isSelected ? Color(0xff292525) : Color(0xff292525),
                   ),
                   borderRadius: BorderRadius.circular(5),
@@ -2049,7 +2100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                                 _getExperienceDates(experience),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                                   color: Colors.grey[500],
                         ),
                                 maxLines: 1,
@@ -2059,7 +2110,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               _getExperienceStatus(experience),
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: Colors.blue[400],
                                 fontWeight: FontWeight.w500,
                               ),
@@ -2069,13 +2120,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             if (_getExperienceItineraryCount(experience) > 0)
                               Row(
                                 children: [
-                                  Icon(Icons.timeline, size: 12, color: Colors.orange[400]),
+                                  Icon(Icons.timeline, size: 12, color: Color(0Xff292525)),
                                   SizedBox(width: 4),
                                   Text(
                                     '${_getExperienceItineraryCount(experience)} items',
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color: Colors.orange[400],
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -2117,7 +2167,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedDMCs.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.9,
+        childAspectRatio: 1.96,
         mainAxisSpacing: 30,
         crossAxisSpacing: 30,
       ),
@@ -2262,7 +2312,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: limitedServiceProviders.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.9,
+        childAspectRatio: 1.96,
         mainAxisSpacing: 30,
         crossAxisSpacing: 30,
       ),
