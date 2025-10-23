@@ -227,7 +227,7 @@ class _BookmarksState extends State<Bookmarks> {
 
   Widget _buildBookmarksGrid(BookmarkProvider bookmarkProvider) {
     return GridView.builder(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16,vertical: 10),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         childAspectRatio: 1.9,
@@ -284,10 +284,10 @@ class _BookmarksState extends State<Bookmarks> {
     return _HoverableBookmarkCard(
       onTap: () => _showBookmarkDetails(bookmark),
       child: Container(
-        padding: EdgeInsets.zero,
+        padding: EdgeInsets.all(8),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[400]!, width: 1),
-          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Color(0xff292525), width: 1),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
           children: [
@@ -329,7 +329,7 @@ class _BookmarksState extends State<Bookmarks> {
                       width: double.infinity,
                       height: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.grey[800],
+                        color: Color(0xff292525),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(

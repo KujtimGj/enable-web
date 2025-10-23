@@ -336,10 +336,10 @@ class _VICsState extends State<VICs> {
       child: Container(
         decoration: BoxDecoration(
           border: Border.all(width: 1, color: Colors.grey[500]!),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Padding(
-            padding: EdgeInsets.all(12),
+            padding: EdgeInsets.all(8),
             child: Row(
               children: [
                 Expanded(

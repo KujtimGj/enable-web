@@ -75,7 +75,7 @@ class _ProductsState extends State<Products> {
               hintText: 'Search products...',
               hintStyle: TextStyle(fontSize: 14),
               suffixIcon: Icon(Icons.search, size: 20),
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.grey[700]!),
@@ -281,7 +281,7 @@ class _ProductsState extends State<Products> {
         child: Container(
         decoration: BoxDecoration(
           border: Border.all(width: 1, color: Colors.grey),
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Padding(
           padding: EdgeInsets.all(8),
@@ -291,10 +291,10 @@ class _ProductsState extends State<Products> {
               Expanded(flex: 1, child: _buildProductImage(product)),
               SizedBox(width: 8),
               Expanded(
-                flex: 2,
+                flex: 1,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start, 
                   children: [
                     SizedBox(height: 10),
                     Text(
@@ -377,7 +377,7 @@ class _ProductsState extends State<Products> {
     final stableIndex = hash.abs() % product.images!.length;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(5),
+      borderRadius: BorderRadius.circular(4),
       child: Image.network(
         product.images![stableIndex].signedUrl!,
         width: double.infinity,
@@ -395,7 +395,7 @@ class _ProductsState extends State<Products> {
       height: double.infinity,
       width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(4),
         color: Color(0xff1e1e1e),
       ),
       child: Center(
