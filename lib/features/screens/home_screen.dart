@@ -663,22 +663,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     ? conversation['messages'][0]['content'] 
                                                     : 'Conversation ${index + 1}';
                                                 return Container(
-                                                  width: getWidth(context),
-                                                  padding: EdgeInsets.symmetric(
-                                                    vertical: 15,
-                                                    horizontal: 10, 
-                                                  ),
                                                   margin: EdgeInsets.symmetric(
                                                     vertical: 10,
                                                   ),
-                                                  decoration: BoxDecoration(
-                                                    border: Border.all(
-                                                      color: Color(0xff292525),
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(5),
-                                                    color: Color(0xff1A1818),
-                                                  ),
+                                                  child: _HoverableConversationCard(
+                                                    child: Container(
+                                                      width: getWidth(context),
+                                                      padding: EdgeInsets.symmetric(
+                                                        vertical: 15,
+                                                        horizontal: 10, 
+                                                      ),
                                                   child: Column(
                                                     crossAxisAlignment:
                                                         CrossAxisAlignment.start,
@@ -712,6 +706,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       ),
                                                     ],
                                                   ),
+                                                ),
+                                                  ),
                                                 );
                                               },
                                             ),
@@ -726,22 +722,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                         itemCount: 3,
                                         itemBuilder: (context, index) {
                                           return Container(
-                                            width: getWidth(context),
-                                            padding: EdgeInsets.symmetric(
-                                              vertical: 15,
-                                              horizontal: 10,
-                                            ),
                                             margin: EdgeInsets.symmetric(
                                               vertical: 10,
                                             ),
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                color: Color(0xff292525),
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(5),
-                                              color: Color(0xff1A1818),
-                                            ),
+                                            child: _HoverableConversationCard(
+                                              child: Container(
+                                                width: getWidth(context),
+                                                padding: EdgeInsets.symmetric(
+                                                  vertical: 15,
+                                                  horizontal: 10,
+                                                ),
                                             child: Column(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
@@ -772,6 +762,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   ),
                                                 ),
                                               ],
+                                            ),
+                                              ),
                                             ),
                                           );
                                         },
@@ -1099,7 +1091,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget shimmerGrid() {
+  Widget shimmerGrid() { 
     return GridView.builder(
       shrinkWrap: true,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -2983,4 +2975,37 @@ class CollapseIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class _HoverableConversationCard extends StatefulWidget {
+  final Widget child;
+
+  const _HoverableConversationCard({
+    required this.child,
+  });
+
+  @override
+  State<_HoverableConversationCard> createState() => _HoverableConversationCardState();
+}
+
+class _HoverableConversationCardState extends State<_HoverableConversationCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          border: Border.all(color: _isHovered ? Color(0xFF665B5B) : Color(0xff292525)),
+          borderRadius: BorderRadius.circular(5),
+          color: _isHovered ? Color(0xFF211E1E) : Color(0xff1A1818),
+          boxShadow: [], // Explicitly no box shadow
+        ),
+        child: widget.child,
+      ),
+    );
+  }
 }
