@@ -243,17 +243,18 @@ class _ChatsListState extends State<ChatsList> {
             ? conversation['messages'].first['content'] ?? 'No messages'
             : 'No messages';
 
-        return _HoverableChatCard(
-          onTap: () {
-            // Navigate to chat detail screen with conversation name
-            final encodedName = Uri.encodeComponent(conversationName);
-            context.go('/knowledgebase/chats/${conversation['_id']}?name=$encodedName');
-          },
-          child: Container(
-            width: 507,
-            height: 88,
-            padding: EdgeInsets.all(8),
-            margin: EdgeInsets.symmetric(vertical: 5),
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: 5),
+          child: _HoverableChatCard(
+            onTap: () {
+              // Navigate to chat detail screen with conversation name
+              final encodedName = Uri.encodeComponent(conversationName);
+              context.go('/knowledgebase/chats/${conversation['_id']}?name=$encodedName');
+            },
+            child: Container(
+              width: 507,
+              height: 88,
+              padding: EdgeInsets.all(8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -283,6 +284,7 @@ class _ChatsListState extends State<ChatsList> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
+            ),
             ),
           ),
         );
