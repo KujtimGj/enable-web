@@ -100,4 +100,34 @@ class ExternalProductController {
       return Left(ServerFailure(message: 'Failed to delete external product: $e'));
     }
   }
+
+  // Save external product from Google Places
+  Future<Either<Failure, ExternalProductModel>> saveExternalProductFromPlaces({
+    required Map<String, dynamic> place,
+    required String userId,
+    required String agencyId,
+  }) async {
+    try {
+      final endpoint = '/external-product/save';
+      final response = await _apiClient.post(
+        endpoint,
+        data: {
+          'place': place,
+          'userId': userId,
+          'agencyId': agencyId,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final externalProduct = ExternalProductModel.fromJson(response.data['externalProduct']);
+        return Right(externalProduct);
+      } else {
+        return Left(ServerFailure(
+          message: response.data['message'] ?? 'Failed to save external product',
+        ));
+      }
+    } catch (e) {
+      return Left(ServerFailure(message: 'Failed to save external product: $e'));
+    }
+  }
 }

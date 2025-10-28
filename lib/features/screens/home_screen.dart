@@ -12,6 +12,7 @@ import 'package:enable_web/features/components/vic_detail_modal.dart';
 import 'package:enable_web/features/components/experience_detail_modal.dart';
 import 'package:enable_web/features/components/dmc_detail_modal.dart';
 import 'package:enable_web/features/components/service_provider_detail_modal.dart';
+import 'package:enable_web/features/providers/externalProductProvider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
@@ -960,14 +961,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         final serviceProviders = chatProvider.serviceProviders;
                         final dbProducts = productProvider.products;
 
-                        // Debug logging for external products
-                        if (externalProducts.isNotEmpty) {
-                          for (int i = 0; i < externalProducts.length && i < 3; i++) {
-                            final product = externalProducts[i];
-                          }
-                        } else {
-                        }
-
                         // Prepare items for multi-select
                         final allItems = <Map<String, String>>[];
                         for (final product in externalProducts) {
@@ -1163,10 +1156,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Widget _buildRandomImageItem(List<dynamic> images, String productId) {
-    print('🖼️ IMAGE DEBUG: _buildRandomImageItem called with ${images.length} images for product: $productId');
-    
+
     if (images.isEmpty) {
-      print('🖼️ IMAGE DEBUG: No images available for product: $productId');
       return Container(
         width: double.infinity,
         height: double.infinity,
@@ -1183,7 +1174,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final stableIndex = hash.abs() % images.length;
     final imageUrl = images[stableIndex];
     
-    print('🖼️ IMAGE DEBUG: Using image at index $stableIndex: $imageUrl');
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),
@@ -1194,10 +1184,8 @@ class _HomeScreenState extends State<HomeScreen> {
         fit: BoxFit.cover,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) {
-            print('🖼️ IMAGE DEBUG: Image loaded successfully: $imageUrl');
             return child;
           }
-          print('🖼️ IMAGE DEBUG: Loading image: $imageUrl - Progress: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
           return Container(
             width: double.infinity,
             height: double.infinity,
@@ -1310,6 +1298,86 @@ class _HomeScreenState extends State<HomeScreen> {
               itemId: productId!,
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildSaveButton(dynamic product) {
+    return Consumer3<UserProvider, ExternalProductProvider, BookmarkProvider>(
+      builder: (context, userProvider, externalProductProvider, bookmarkProvider, child) {
+        return GestureDetector(
+          onTap: () async {
+            try {
+              final user = userProvider.user;
+              if (user == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Please log in to save products'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+
+              // Show loading indicator
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Text('Saving product...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+
+              final success = await externalProductProvider.saveExternalProductFromPlaces(
+                place: product,
+                userId: user.id,
+                agencyId: user.agencyId,
+              );
+
+              // Dismiss loading snackbar
+              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Product saved successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      externalProductProvider.errorMessage ?? 'Failed to save product',
+                    ),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            } catch (e) {
+              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error: ${e.toString()}'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+          child: SvgPicture.asset("assets/icons/download-default.svg",colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn)),
         );
       },
     );
@@ -1437,14 +1505,12 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Check for Google Maps photos format first
         if (product['photos'] != null && product['photos'].isNotEmpty) {
-          print('🖼️ IMAGE DEBUG: Found ${product['photos'].length} Google Maps photos for ${product['name']}');
           // Google Maps external product - use photos array
           for (var photo in product['photos']) {
             if (photo is Map && photo['url'] != null) {
               // Use the proxy URL from backend to bypass CORS
               final imageUrl = photo['url'].toString();
               images.add(imageUrl);
-              print('🖼️ IMAGE DEBUG: Added Google Maps photo URL: $imageUrl');
             } else {
               print('🖼️ IMAGE DEBUG: Invalid photo object: $photo');
             }
@@ -1455,7 +1521,6 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Check for legacy images format (only imageUrl, no signedUrl)
         if (product['images'] != null && product['images'].isNotEmpty) {
-          print('🖼️ IMAGE DEBUG: Found ${product['images'].length} legacy images for ${product['name']}');
           // Database product or legacy external product - use imageUrl only
           for (var img in product['images']) {
             if (img is Map && img['imageUrl'] != null) {
@@ -1546,11 +1611,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                  ),
+                                  ), 
                                 ),
-                                // Bookmark button for external products
+                                // Save and Bookmark buttons for external products
                                 if (!bookmarkProvider.isMultiSelectMode)
-                                  _buildCardBookmarkButton(product, true),
+                                  Row(
+                                    children: [
+                                      _buildSaveButton(product),
+                                      SizedBox(width: 8),
+                                      _buildCardBookmarkButton(product, true),
+                                    ],
+                                  ),
                               ],
                             ),
                             SizedBox(height: 4),
@@ -2641,7 +2712,6 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-  
 
   // DMC helper methods
   String _getDMCBusinessName(dynamic dmc) {

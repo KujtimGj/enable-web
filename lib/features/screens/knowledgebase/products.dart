@@ -52,7 +52,7 @@ class _ProductsState extends State<Products> {
 
     return ResponsiveScaffold(
       appBar: AppBar(
-        toolbarHeight: 65,
+        toolbarHeight: 60,
         automaticallyImplyLeading: false,
         leadingWidth: 120,
         leading: GestureDetector(
@@ -61,9 +61,7 @@ class _ProductsState extends State<Products> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.arrow_back, size: 20),
-              SizedBox(width: 4),
-              Text("Products", style: TextStyle(fontSize: 14)),
+                SvgPicture.asset("assets/icons/home.svg")
             ],
           ),
         ),

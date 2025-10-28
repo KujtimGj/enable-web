@@ -1,4 +1,3 @@
-
 class ServiceProviderModel {
   final String? id;
   final String? agencyId;

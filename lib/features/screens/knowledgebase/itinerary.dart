@@ -101,18 +101,15 @@ class _ItineraryState extends State<Itinerary> {
   Widget build(BuildContext context) {
     return ResponsiveScaffold(
       appBar: AppBar(
-        toolbarHeight: 65,
+        toolbarHeight: 60,
         automaticallyImplyLeading: false,
-        leadingWidth: 120,
         leading: GestureDetector(
           onTap: () => context.go('/home'),
           child: Row(
             mainAxisSize: MainAxisSize.min, 
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.arrow_back, size: 20),
-              SizedBox(width: 4),
-              Text("Experiences", style: TextStyle(fontSize: 14)),
+              SvgPicture.asset("assets/icons/home.svg")
             ],
           ),
         ),
@@ -445,16 +442,18 @@ class _ItineraryState extends State<Itinerary> {
         ),
         child: Padding(
             padding: EdgeInsets.all(8),
-            child: Row(
+            child: Stack(
               children: [
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Expanded(
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Expanded(
                               child: Container(
                                 margin: EdgeInsets.only(right: 2.5, bottom: 2.5),
                                 decoration: BoxDecoration(
@@ -580,22 +579,6 @@ class _ItineraryState extends State<Itinerary> {
                         ],
                       ),
                       SizedBox(height: 4),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(experience.status),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          experience.status?.toUpperCase() ?? 'DRAFT',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 4),
                       if (experience.country != null) ...[
                         Text(
                           experience.country!,
@@ -656,7 +639,28 @@ class _ItineraryState extends State<Itinerary> {
                 ),
               ],
             ),
+            Positioned(
+              bottom: 8,
+              right: 8,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(experience.status),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  experience.status?.toUpperCase() ?? 'DRAFT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
           ),
+        ),
       ),
     );
   }
