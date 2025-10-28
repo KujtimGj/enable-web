@@ -181,4 +181,39 @@ class ExternalProductProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+
+  // Save external product from Google Places
+  Future<bool> saveExternalProductFromPlaces({
+    required Map<String, dynamic> place,
+    required String userId,
+    required String agencyId,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _externalProductController.saveExternalProductFromPlaces(
+        place: place,
+        userId: userId,
+        agencyId: agencyId,
+      );
+      return result.fold(
+        (failure) {
+          _errorMessage = (failure as ServerFailure).message;
+          return false;
+        },
+        (externalProduct) {
+          _externalProducts.add(externalProduct);
+          return true;
+        },
+      );
+    } catch (e) {
+      _errorMessage = 'Unexpected error: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

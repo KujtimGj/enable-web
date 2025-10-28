@@ -8,6 +8,8 @@ import 'package:enable_web/features/providers/vicProvider.dart';
 import 'package:enable_web/features/providers/productProvider.dart';
 import 'package:enable_web/features/providers/productsProvider.dart';
 import 'package:enable_web/features/providers/bookmark_provider.dart';
+import 'package:enable_web/features/providers/externalProductProvider.dart';
+import 'package:enable_web/features/providers/serviceProviderProvider.dart';
 import 'package:enable_web/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -36,6 +38,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => BookmarkProvider()),
+        ChangeNotifierProvider(create: (_) => ExternalProductProvider()),
+        ChangeNotifierProvider(create: (_) => ServiceProviderProvider()),
       ],
       child: Consumer2<UserProvider, AgencyProvider>(
         builder: (context, userProvider, agencyProvider, child) {

@@ -5,6 +5,7 @@ import 'package:enable_web/features/providers/agentProvider.dart';
 import 'package:enable_web/features/providers/userProvider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -92,7 +93,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       builder: (context, chatProvider, child) {
         return ResponsiveScaffold(
           appBar: AppBar(
-            toolbarHeight: 65,
+            toolbarHeight: 60,
             automaticallyImplyLeading: false,
             leadingWidth: 200,
             centerTitle: true,
@@ -110,9 +111,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.arrow_back, size: 20),
-                  SizedBox(width: 4),
-                  Text("Back to chats", style: TextStyle(fontSize: 14)),
+                  SvgPicture.asset("assets/icons/home.svg")
                 ],
               ),
             ),

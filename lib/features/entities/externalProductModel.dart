@@ -6,6 +6,8 @@ class ExternalProductModel {
   final String? description;
   final String? category;
   final String? supplier;
+  final String? city;
+  final String? country;
   final Map<String, dynamic>? pricing;
   final Map<String, dynamic>? location;
   final Map<String, dynamic>? details;
@@ -20,6 +22,8 @@ class ExternalProductModel {
     this.description,
     this.category,
     this.supplier,
+    this.city,
+    this.country,
     this.pricing,
     this.location,
     this.details,
@@ -35,6 +39,8 @@ class ExternalProductModel {
     String? description,
     String? category,
     String? supplier,
+    String? city,
+    String? country,
     Map<String, dynamic>? pricing,
     Map<String, dynamic>? location,
     Map<String, dynamic>? details,
@@ -49,6 +55,8 @@ class ExternalProductModel {
       description: description ?? this.description,
       category: category ?? this.category,
       supplier: supplier ?? this.supplier,
+      city: city ?? this.city,
+      country: country ?? this.country,
       pricing: pricing ?? this.pricing,
       location: location ?? this.location,
       details: details ?? this.details,
@@ -66,6 +74,8 @@ class ExternalProductModel {
       'description': description,
       'category': category,
       'supplier': supplier,
+      'city': city,
+      'country': country,
       'pricing': pricing,
       'location': location,
       'details': details,
@@ -83,6 +93,8 @@ class ExternalProductModel {
       description: json['description'],
       category: json['category'],
       supplier: json['supplier'],
+      city: json['city'],
+      country: json['country'],
       pricing: json['pricing'],
       location: json['location'],
       details: json['details'],

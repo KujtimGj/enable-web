@@ -44,61 +44,72 @@ class _ChatsListState extends State<ChatsList> {
       builder: (context, chatProvider, child) {
         return ResponsiveScaffold(
       appBar: AppBar(
-        toolbarHeight: 65,
+        toolbarHeight: 60,
         automaticallyImplyLeading: false,
-        leadingWidth: 200,
         centerTitle: true,
-        title:  ResponsiveContainer(
-          maxWidth: getWidth(context)*0.3,
-          child: TextFormField(
-            decoration: InputDecoration(
-              prefixIcon: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: SvgPicture.asset(
-                  'assets/icons/star-05.svg',
-                ),
-              ),
-              hintText: 'Search for conversations',
-              hintStyle: TextStyle(color: Colors.white),
-              border: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 1,
-                ),
-              ),
-            ),
-          ),
-        ),
         leading: GestureDetector(
           onTap: () => context.go('/home'),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.arrow_back, size: 20),
-              SizedBox(width: 4),
-              Text("Conversation history", style: TextStyle(fontSize: 14)),
+              SvgPicture.asset("assets/icons/home.svg")
             ],
           ),
         ),
         actions: [customButton((){context.go("/");})],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            SizedBox(height: 15),
-            Text(
-              chatProvider.isLoadingConversations 
-                  ? "Loading conversations..." 
-                  : "${chatProvider.conversations.length} Conversations in Enable",
-              textAlign: TextAlign.start,
+      body: Row(
+        children: [
+          bottomLeftBar(),
+          Expanded(
+            flex: 1,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  SizedBox(height: 15),
+                  ResponsiveContainer(
+                    maxWidth: getWidth(context)*0.3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          chatProvider.isLoadingConversations 
+                              ? "Loading conversations..." 
+                              : "${chatProvider.conversations.length} Conversations in Enable",
+                          textAlign: TextAlign.start,
+                        ),
+                        SizedBox(height: 15),
+                        TextFormField(
+                          decoration: InputDecoration(
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: SvgPicture.asset(
+                                'assets/icons/star-05.svg',
+                              ),
+                            ),
+                            hintText: 'Search for conversations',
+                            hintStyle: TextStyle(color: Colors.white),
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.white,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ResponsiveContainer(
+                    maxWidth: getWidth(context)*0.3,
+                    child: _buildConversationsList(chatProvider),
+                  )
+                ],
+              ),
             ),
-            ResponsiveContainer(
-              maxWidth: getWidth(context)*0.3,
-              child: _buildConversationsList(chatProvider),
-            )
-          ],
-        ),
+          ),
+        ],
       ),
     );
       },
@@ -115,7 +126,7 @@ class _ChatsListState extends State<ChatsList> {
         itemCount: 5, // Show 5 loading placeholders
         itemBuilder: (context, index) {
           return Container(
-            width: getWidth(context),
+            width: getWidth(context)*0.3,
             padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
             margin: EdgeInsets.symmetric(vertical: 5),
             decoration: BoxDecoration(
@@ -252,7 +263,7 @@ class _ChatsListState extends State<ChatsList> {
               context.go('/knowledgebase/chats/${conversation['_id']}?name=$encodedName');
             },
             child: Container(
-              width: 507,
+              width: getWidth(context)*0.3,
               height: 88,
               padding: EdgeInsets.all(8),
             child: Column(

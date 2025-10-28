@@ -93,18 +93,15 @@ class _VICsState extends State<VICs> {
   Widget build(BuildContext context) {
     return ResponsiveScaffold(
       appBar: AppBar(
-        toolbarHeight: 65,
+        toolbarHeight: 60,
         automaticallyImplyLeading: false,
-        leadingWidth: 120,
         leading: GestureDetector(
           onTap: () => context.go('/home'),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.arrow_back, size: 20),
-              SizedBox(width: 4),
-              Text("VICs", style: TextStyle(fontSize: 14)),
+             SvgPicture.asset("assets/icons/home.svg")
             ],
           ),
         ),

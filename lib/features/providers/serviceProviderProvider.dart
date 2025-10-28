@@ -10,12 +10,96 @@ class ServiceProviderProvider extends ChangeNotifier {
   ServiceProviderModel? _selectedServiceProvider;
   bool _isLoading = false;
   String? _errorMessage;
+  String _searchQuery = '';
+  List<ServiceProviderModel> _filtered = [];
+
+  // Filters
+  String? _selectedCountry;
 
   // Getters
-  List<ServiceProviderModel> get serviceProviders => _serviceProviders;
+  List<ServiceProviderModel> get serviceProviders => _searchQuery.isEmpty ? _serviceProviders : _filtered;
+  List<ServiceProviderModel> get visibleServiceProviders => _getFilteredServiceProviders();
   ServiceProviderModel? get selectedServiceProvider => _selectedServiceProvider;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String get searchQuery => _searchQuery;
+
+  // Exposed filter state
+  String? get selectedCountry => _selectedCountry;
+
+  bool get hasActiveFilters => _selectedCountry != null;
+
+  // Derived options from current dataset
+  List<String> get countries {
+    final set = <String>{};
+    for (final sp in _serviceProviders) {
+      final c = (sp.country ?? '').trim();
+      if (c.isNotEmpty) set.add(_normalizeCase(c));
+    }
+    final list = set.toList();
+    list.sort();
+    return list;
+  }
+
+  List<ServiceProviderModel> _getFilteredServiceProviders() {
+    final base = serviceProviders;
+    if (!hasActiveFilters) return base;
+
+    return base.where((sp) {
+      if (_selectedCountry != null &&
+          _normalizeCase(sp.country ?? '') != _selectedCountry) return false;
+      return true;
+    }).toList();
+  }
+
+  void setCountry(String? value) {
+    _selectedCountry = value?.trim().isEmpty == true ? null : value;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _selectedCountry = null;
+    notifyListeners();
+  }
+
+  String _normalizeCase(String value) {
+    if (value.isEmpty) return value;
+    final lower = value.toLowerCase();
+    return lower[0].toUpperCase() + lower.substring(1);
+  }
+
+  // Local search
+  void localSearch(String query) {
+    _searchQuery = query.trim();
+    if (_searchQuery.isEmpty) {
+      _filtered = [];
+      notifyListeners();
+      return;
+    }
+
+    final q = _searchQuery.toLowerCase();
+
+    _filtered = _serviceProviders.where((sp) {
+      if ((sp.name ?? '').toLowerCase().contains(q)) return true;
+      if ((sp.type ?? '').toLowerCase().contains(q)) return true;
+      if ((sp.contactPerson ?? '').toLowerCase().contains(q)) return true;
+      if ((sp.email ?? '').toLowerCase().contains(q)) return true;
+      if ((sp.phone ?? '').toLowerCase().contains(q)) return true;
+      if ((sp.address ?? '').toLowerCase().contains(q)) return true;
+      if ((sp.city ?? '').toLowerCase().contains(q)) return true;
+      if ((sp.country ?? '').toLowerCase().contains(q)) return true;
+      if ((sp.website ?? '').toLowerCase().contains(q)) return true;
+      return false;
+    }).toList();
+
+    notifyListeners();
+  }
+
+  void clearSearch() {
+    _searchQuery = '';
+    _filtered = [];
+    notifyListeners();
+  }
 
   // Clear error message
   void clearError() {
@@ -170,7 +254,7 @@ class ServiceProviderProvider extends ChangeNotifier {
   }
 
   // Refresh service providers
-  Future<void> refreshServiceProviders(String agencyId) async {
+  Future<void> refresh(String agencyId) async {
     await fetchServiceProvidersByAgencyId(agencyId);
   }
 
@@ -179,6 +263,8 @@ class ServiceProviderProvider extends ChangeNotifier {
     _serviceProviders.clear();
     _selectedServiceProvider = null;
     _errorMessage = null;
+    _searchQuery = '';
+    _filtered = [];
     notifyListeners();
   }
 }
