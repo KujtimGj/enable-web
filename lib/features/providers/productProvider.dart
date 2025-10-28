@@ -244,7 +244,6 @@ class ProductProvider extends ChangeNotifier {
       );
     } catch (e, stackTrace) {
       print('ProductProvider: Exception in searchProducts: $e');
-      print('ProductProvider: Stack trace: $stackTrace');
       _errorMessage = 'Exception occurred during search: $e';
       _filteredProducts = [];
     }

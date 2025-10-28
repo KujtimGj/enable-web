@@ -1302,32 +1302,14 @@ class _HomeScreenState extends State<HomeScreen> {
           productId!,
         );
         
-        return GestureDetector(
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
           onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: isExternalProduct ? 'externalProduct' : 'product',
               itemId: productId!,
             );
           },
-          child: Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
-              border: Border.all(
-                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: isBookmarked
-                ? Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 12,
-                  )
-                : null,
-          ),
         );
       },
     );
@@ -1478,13 +1460,10 @@ class _HomeScreenState extends State<HomeScreen> {
           for (var img in product['images']) {
             if (img is Map && img['imageUrl'] != null) {
               images.add(img['imageUrl'].toString());
-              print('🖼️ IMAGE DEBUG: Added legacy imageUrl: ${img['imageUrl']}');
             }
           }
         }
         
-        print('🖼️ IMAGE DEBUG: Final images count for ${product['name']}: ${images.length}');
-
         bool isHoveredExternal = false;
         return Stack(
           children: [
@@ -1518,10 +1497,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: Duration(milliseconds: 150),
                 padding: EdgeInsets.zero,
                 decoration: BoxDecoration(
-                  color: isHoveredExternal ? Color(0xff292525) : Colors.transparent,
+                  color: isHoveredExternal ? Color(0xFF211E1E) : Colors.transparent,
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Color(0xff292525): Colors.grey,
+                    color: isHoveredExternal ? Color(0xFF665B5B) : (isSelected ? Color(0xff292525): Colors.grey),
                   ),
                   borderRadius: BorderRadius.circular(5),
                 ),
@@ -1658,10 +1637,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   duration: Duration(milliseconds: 200),
                   padding: EdgeInsets.zero,
                   decoration: BoxDecoration(
-                    color: isHoveredProduct ? Color(0xff292525) : Color(0xFF181616),
+                    color: isHoveredProduct ? Color(0xFF211E1E) : Color(0xFF181616),
                     border: Border.all(
                       width: isSelected ? 1 : 0.5,
-                      color: isSelected ? Colors.grey : Color(0xff292525),
+                      color: isHoveredProduct ? Color(0xFF665B5B) : (isSelected ? Colors.grey : Color(0xff292525)),
                     ),
                     borderRadius: BorderRadius.circular(5),
                   ),
@@ -1847,7 +1826,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredVic ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Color(0xff292525): Colors.grey,
+                    color: isHoveredVic ? Color(0xFF665B5B) : (isSelected ? Color(0xff292525): Colors.grey),
                   ),
                   borderRadius: BorderRadius.circular(5),
                 ),
@@ -2026,7 +2005,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredExperience ? Color(0xFF211E1E) : Colors.transparent,
                   border: Border.all(
                     width: isSelected ? 1 : 0.5,
-                    color: isSelected ? Color(0xff292525) : Color(0xff292525),
+                    color: isHoveredExperience ? Color(0xFF665B5B) : (isSelected ? Color(0xff292525) : Color(0xff292525)),
                   ),
                   borderRadius: BorderRadius.circular(5),
                 ),
@@ -2193,7 +2172,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredDmc ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Color(0xff292525) : Color(0xff292525),
+                    color: isHoveredDmc ? Color(0xFF665B5B) : (isSelected ? Color(0xff292525) : Color(0xff292525)),
                   ),
                   borderRadius: BorderRadius.circular(5),
                 ),
@@ -2338,7 +2317,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isHoveredSp ? Color(0xFF211E1E) : Color(0xFF181616),
                   border: Border.all(
                     width: isSelected ? 2 : 0.5,
-                    color: isSelected ? Color(0xff292525): Color(0xff292525),
+                    color: isHoveredSp ? Color(0xFF665B5B) : (isSelected ? Color(0xff292525): Color(0xff292525)),
                   ),
                   borderRadius: BorderRadius.circular(5),
                 ),
@@ -2481,32 +2460,14 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, bookmarkProvider, child) {
         final isBookmarked = bookmarkProvider.isItemBookmarked('vic', vicId!);
         
-        return GestureDetector(
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
           onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: 'vic',
               itemId: vicId!,
             );
           },
-          child: Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
-              border: Border.all(
-                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: isBookmarked
-                ? Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 12,
-                  )
-                : null,
-          ),
         );
       },
     );
@@ -2657,32 +2618,14 @@ class _HomeScreenState extends State<HomeScreen> {
         final experienceId = experience['_id']?.toString() ?? experience['id']?.toString() ?? '';
         final isBookmarked = bookmarkProvider.isItemBookmarked('experience', experienceId);
         
-        return GestureDetector(
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
           onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: 'experience',
               itemId: experienceId,
             );
           },
-          child: Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
-              border: Border.all(
-                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: isBookmarked
-                ? Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 12,
-                  )
-                : null,
-          ),
         );
       },
     );
@@ -2731,32 +2674,14 @@ class _HomeScreenState extends State<HomeScreen> {
         final dmcId = dmc['_id']?.toString() ?? dmc['id']?.toString() ?? '';
         final isBookmarked = bookmarkProvider.isItemBookmarked('dmc', dmcId);
         
-        return GestureDetector(
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
           onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: 'dmc',
               itemId: dmcId,
             );
           },
-          child: Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
-              border: Border.all(
-                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: isBookmarked
-                ? Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 12,
-                  )
-                : null,
-          ),
         );
       },
     );
@@ -2807,32 +2732,14 @@ class _HomeScreenState extends State<HomeScreen> {
         final serviceProviderId = serviceProvider['_id']?.toString() ?? serviceProvider['id']?.toString() ?? '';
         final isBookmarked = bookmarkProvider.isItemBookmarked('serviceProvider', serviceProviderId);
         
-        return GestureDetector(
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
           onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: 'serviceProvider',
               itemId: serviceProviderId,
             );
           },
-          child: Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: isBookmarked ? Color(0xFF292525) : Colors.transparent,
-              border: Border.all(
-                color: isBookmarked ? Color(0xFF292525) : Colors.white70,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: isBookmarked
-                ? Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 12,
-                  )
-                : null,
-          ),
         );
       },
     );
@@ -3005,6 +2912,47 @@ class _HoverableConversationCardState extends State<_HoverableConversationCard> 
           boxShadow: [], // Explicitly no box shadow
         ),
         child: widget.child,
+      ),
+    );
+  }
+}
+
+class _BookmarkButton extends StatefulWidget {
+  final bool isBookmarked;
+  final VoidCallback onTap;
+
+  const _BookmarkButton({
+    required this.isBookmarked,
+    required this.onTap,
+  });
+
+  @override
+  State<_BookmarkButton> createState() => _BookmarkButtonState();
+}
+
+class _BookmarkButtonState extends State<_BookmarkButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          child: SvgPicture.asset(
+            widget.isBookmarked
+                ? 'assets/icons/bookmark-selected.svg'
+                : _isHovered
+                    ? 'assets/icons/bookmark-hover.svg'
+                    : 'assets/icons/bookmark-default.svg',
+            width: 40,
+            height: 40,
+          ),
+        ),
       ),
     );
   }
