@@ -214,7 +214,7 @@ Widget bottomLeftBar() {
               },
               child: Tooltip(
                 message: 'Chats',
-                child: SvgPicture.asset('assets/icons/mssg.svg'),
+                child: SvgPicture.asset('assets/icons/mssg.svg', height: 20,width:20,),
               ),
             ),
             SizedBox(height: 10),
@@ -224,7 +224,7 @@ Widget bottomLeftBar() {
               },
               child: Tooltip(
                 message: 'Products',
-                child: SvgPicture.asset('assets/icons/cube-02.svg'),
+                child: SvgPicture.asset('assets/icons/cube-02.svg', height: 20,width:20,),
               ),
             ),
             SizedBox(height: 10),
@@ -234,7 +234,7 @@ Widget bottomLeftBar() {
               },
               child: Tooltip(
                 message: 'VICs',
-                child: SvgPicture.asset("assets/icons/user-02.svg"),
+                child: SvgPicture.asset("assets/icons/user-02.svg", height: 20,width:20,),
               ),
             ),
             SizedBox(height: 10),
@@ -244,9 +244,18 @@ Widget bottomLeftBar() {
               },
               child: Tooltip(
                 message: 'Itinerary',
-                child: SvgPicture.asset('assets/icons/asterisk-01.svg'),
+                child: SvgPicture.asset('assets/icons/asterisk-01.svg', height: 20,width:20,),
               ),
             ),
+            SizedBox(height: 10),
+            GestureDetector(
+                onTap: (){
+                  context.go("/service-providers");
+                },
+                child: Tooltip(
+                  message: 'Service Providers',
+                  child: SvgPicture.asset('assets/icons/serivce_providers.svg', height: 18,width:15,),
+                )),
             SizedBox(height: 10),
             GestureDetector(
                 onTap: (){
@@ -254,7 +263,7 @@ Widget bottomLeftBar() {
                   },
                 child: Tooltip(
                   message: 'Bookmarks',
-                  child: SvgPicture.asset('assets/icons/image-03.svg'),
+                  child: SvgPicture.asset('assets/icons/bookmark-default.svg', height: 50,width:50,),
                 )),
             SizedBox(height: 10),
             GestureDetector(

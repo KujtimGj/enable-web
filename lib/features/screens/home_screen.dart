@@ -1460,13 +1460,10 @@ class _HomeScreenState extends State<HomeScreen> {
           for (var img in product['images']) {
             if (img is Map && img['imageUrl'] != null) {
               images.add(img['imageUrl'].toString());
-              print('🖼️ IMAGE DEBUG: Added legacy imageUrl: ${img['imageUrl']}');
             }
           }
         }
         
-        print('🖼️ IMAGE DEBUG: Final images count for ${product['name']}: ${images.length}');
-
         bool isHoveredExternal = false;
         return Stack(
           children: [

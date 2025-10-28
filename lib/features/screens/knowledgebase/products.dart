@@ -8,7 +8,9 @@ import '../../components/responsive_scaffold.dart';
 import '../../components/product_detail_modal.dart';
 import '../../providers/userProvider.dart';
 import '../../providers/productsProvider.dart';
+import '../../providers/bookmark_provider.dart';
 import '../../entities/productModel.dart';
+import 'package:flutter_svg/svg.dart';
 
 class Products extends StatefulWidget {
   const Products({super.key});
@@ -296,11 +298,20 @@ class _ProductsState extends State<Products> {
                   mainAxisAlignment: MainAxisAlignment.start, 
                   children: [
                     SizedBox(height: 10),
-                    Text(
-                      product.name,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        _buildCardBookmarkButton(product),
+                      ],
                     ),
                     SizedBox(height: 4),
                     if (product.category.isNotEmpty)
@@ -415,6 +426,26 @@ class _ProductsState extends State<Products> {
         return ProductDetailModal(
           product: product,
           isExternalProduct: false,
+        );
+      },
+    );
+  }
+
+  Widget _buildCardBookmarkButton(ProductModel product) {
+    final productId = product.id.toString();
+
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final isBookmarked = bookmarkProvider.isItemBookmarked('product', productId);
+        
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
+          onTap: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'product',
+              itemId: productId,
+            );
+          },
         );
       },
     );
@@ -629,6 +660,47 @@ class _DropdownFilter<T> extends StatelessWidget {
             dropdownColor: Colors.black,
             style: TextStyle(color: Colors.white, fontSize: 12),
             iconSize: 18,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BookmarkButton extends StatefulWidget {
+  final bool isBookmarked;
+  final VoidCallback onTap;
+
+  const _BookmarkButton({
+    required this.isBookmarked,
+    required this.onTap,
+  });
+
+  @override
+  State<_BookmarkButton> createState() => _BookmarkButtonState();
+}
+
+class _BookmarkButtonState extends State<_BookmarkButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          child: SvgPicture.asset(
+            widget.isBookmarked
+                ? 'assets/icons/bookmark-selected.svg'
+                : _isHovered
+                    ? 'assets/icons/bookmark-hover.svg'
+                    : 'assets/icons/bookmark-default.svg',
+            width: 40,
+            height: 40,
           ),
         ),
       ),

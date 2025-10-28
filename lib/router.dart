@@ -5,6 +5,7 @@ import 'package:enable_web/features/screens/knowledgebase/chats.dart';
 import 'package:enable_web/features/screens/knowledgebase/chat_detail.dart';
 import 'package:enable_web/features/screens/knowledgebase/itinerary.dart';
 import 'package:enable_web/features/screens/knowledgebase/products.dart';
+import 'package:enable_web/features/screens/knowledgebase/service_providers.dart';
 import 'package:enable_web/features/screens/welcome/login_screen.dart';
 import 'package:enable_web/features/screens/welcome/loginAgency.dart';
 import 'package:enable_web/features/screens/home_screen.dart';
@@ -194,6 +195,8 @@ GoRouteName routeWelcome = GoRouteName(
     name: "welcome",
     path: "/welcome"
 );
+
+GoRouteName serviceProvidersRoute = GoRouteName(name: "service-providers", path: "/service-providers");
 
 GoRouter createGoRouter({String? initialLocation}) {
 
@@ -422,6 +425,16 @@ GoRouter createGoRouter({String? initialLocation}) {
       pageBuilder: (context,state){
         return MaterialPage(child: Bookmarks());
       }
+    ),
+    // ---------------------------------
+    // Bookmarks
+    // ---------------------------------
+    GoRoute(
+        path: serviceProvidersRoute.path,
+        name: serviceProvidersRoute.name,
+        pageBuilder: (context,state){
+          return MaterialPage(child: ServiceProviders());
+        }
     )
   ];
   

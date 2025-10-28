@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/svg.dart';
 
 import '../../../core/responsive_utils.dart';
 import '../../../core/dimensions.dart';
@@ -10,6 +11,7 @@ import '../../components/widgets.dart';
 import '../../providers/vicProvider.dart';
 import '../../providers/agencyProvider.dart';
 import '../../providers/userProvider.dart';
+import '../../providers/bookmark_provider.dart';
 import '../../entities/vicModel.dart';
 
 class VICs extends StatefulWidget {
@@ -316,7 +318,7 @@ class _VICsState extends State<VICs> {
           ),
         ),
       ),
-    );
+    );  
   }
 
   Widget _buildVICCard(VICModel vic, int index) {
@@ -328,59 +330,69 @@ class _VICsState extends State<VICs> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Padding(
-            padding: EdgeInsets.all(8),
+            child: Padding(
+            padding: EdgeInsets.all(6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Text(
-                  vic.fullName ?? 'VIC ${index + 1}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        vic.fullName ?? 'VIC ${index + 1}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 5),
+                    _buildCardBookmarkButton(vic),
+                  ],
                 ),
-                SizedBox(height: 4),
                 if (vic.nationality != null) ...[
+                  SizedBox(height: 2),
                   Text(
                     vic.nationality!,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Colors.grey[600],
                     ),
                   ),
-                  SizedBox(height: 4),
                 ],
                 if (vic.email != null) ...[
+                  SizedBox(height: 2),
                   Text(
                     vic.email!,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Colors.grey[600],
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 4),
                 ],
                 if (vic.summary != null && vic.summary!.isNotEmpty) ...[
+                  SizedBox(height: 2),
                   Text(
                     vic.summary!,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Colors.grey[600],
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ] else ...[
+                  SizedBox(height: 2),
                   Text(
                     'No description available',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Colors.grey[500],
                       fontStyle: FontStyle.italic,
                     ),
@@ -429,7 +441,7 @@ class _VICsState extends State<VICs> {
                   SizedBox(height: 8),
                 ],
               ],
-            ),
+            ), 
           ),
           actions: [
             TextButton(
@@ -444,6 +456,30 @@ class _VICsState extends State<VICs> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildCardBookmarkButton(VICModel vic) {
+    final vicId = vic.id?.toString();
+    
+    if (vicId == null) {
+      return SizedBox.shrink();
+    }
+
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final isBookmarked = bookmarkProvider.isItemBookmarked('vic', vicId);
+           
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
+          onTap: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'vic',
+              itemId: vicId,
+            );
+          },
+        );
+      },
+    );
   }
 }
 
@@ -479,6 +515,47 @@ class _HoverableVICCardState extends State<_HoverableVICCard> {
             boxShadow: [], // Explicitly no box shadow
           ),
           child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+class _BookmarkButton extends StatefulWidget {
+  final bool isBookmarked;
+  final VoidCallback onTap;
+
+  const _BookmarkButton({
+    required this.isBookmarked,
+    required this.onTap,
+  });
+
+  @override
+  State<_BookmarkButton> createState() => _BookmarkButtonState();
+}
+
+class _BookmarkButtonState extends State<_BookmarkButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          child: SvgPicture.asset(
+            widget.isBookmarked
+                ? 'assets/icons/bookmark-selected.svg'
+                : _isHovered
+                    ? 'assets/icons/bookmark-hover.svg'
+                    : 'assets/icons/bookmark-default.svg',
+            width: 40,
+            height: 40,
+          ),
         ),
       ),
     );

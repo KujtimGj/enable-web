@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/svg.dart';
 
 import '../../../core/dimensions.dart';
 import '../../../core/responsive_utils.dart';
@@ -9,6 +10,7 @@ import '../../components/responsive_scaffold.dart';
 import '../../components/widgets.dart';
 import '../../providers/agencyProvider.dart';
 import '../../providers/userProvider.dart';
+import '../../providers/bookmark_provider.dart';
 import '../../entities/experienceModel.dart';
 class Itinerary extends StatefulWidget {
   const Itinerary({super.key});
@@ -560,6 +562,7 @@ class _ItineraryState extends State<Itinerary> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
                             child: Text(
@@ -572,24 +575,27 @@ class _ItineraryState extends State<Itinerary> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(experience.status),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              experience.status?.toUpperCase() ?? 'DRAFT',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                          SizedBox(width: 8),
+                          _buildCardBookmarkButton(experience),
                         ],
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: 4),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(experience.status),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          experience.status?.toUpperCase() ?? 'DRAFT',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 4),
                       if (experience.country != null) ...[
                         Text(
                           experience.country!,
@@ -671,6 +677,30 @@ class _ItineraryState extends State<Itinerary> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildCardBookmarkButton(ExperienceModel experience) {
+    final experienceId = experience.id?.toString();
+    
+    if (experienceId == null) {
+      return SizedBox.shrink();
+    }
+
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final isBookmarked = bookmarkProvider.isItemBookmarked('experience', experienceId);
+        
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
+          onTap: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'experience',
+              itemId: experienceId,
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showItineraryDetails(BuildContext context, ExperienceModel experience) {
@@ -1576,6 +1606,47 @@ class _DropdownFilter<T> extends StatelessWidget {
             dropdownColor: Colors.black,
             style: TextStyle(color: Colors.white, fontSize: 12),
             iconSize: 18,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BookmarkButton extends StatefulWidget {
+  final bool isBookmarked;
+  final VoidCallback onTap;
+
+  const _BookmarkButton({
+    required this.isBookmarked,
+    required this.onTap,
+  });
+
+  @override
+  State<_BookmarkButton> createState() => _BookmarkButtonState();
+}
+
+class _BookmarkButtonState extends State<_BookmarkButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          child: SvgPicture.asset(
+            widget.isBookmarked
+                ? 'assets/icons/bookmark-selected.svg'
+                : _isHovered
+                    ? 'assets/icons/bookmark-hover.svg'
+                    : 'assets/icons/bookmark-default.svg',
+            width: 40,
+            height: 40,
           ),
         ),
       ),

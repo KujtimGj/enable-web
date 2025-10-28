@@ -2,8 +2,10 @@ import 'package:enable_web/features/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/svg.dart';
 
 import '../../components/widgets.dart';
+import '../../components/responsive_scaffold.dart';
 import '../../providers/bookmark_provider.dart';
 
 class Bookmarks extends StatefulWidget {
@@ -108,42 +110,48 @@ class _BookmarksState extends State<Bookmarks> {
           }),
         ],
       ),
-      body: Consumer<BookmarkProvider>(
-        builder: (context, bookmarkProvider, child) {
-          if (bookmarkProvider.isLoading) {
-            return Center(child: CircularProgressIndicator());
-          }
+      body: ResponsiveContainer(
+        child: Row(
+          children: [
+            bottomLeftBar(),
+            Expanded(
+              flex: 1,
+              child: Consumer<BookmarkProvider>(
+                builder: (context, bookmarkProvider, child) {
+                  if (bookmarkProvider.isLoading) {
+                    return Center(child: CircularProgressIndicator());
+                  }
 
-          if (bookmarkProvider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error, size: 64, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(
-                    'Error loading bookmarks',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  SelectableText(bookmarkProvider.error!),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _loadBookmarks,
-                    child: Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+                  if (bookmarkProvider.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error, size: 64, color: Colors.red),
+                          SizedBox(height: 16),
+                          Text(
+                            'Error loading bookmarks',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 8),
+                          SelectableText(bookmarkProvider.error!),
+                          SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadBookmarks,
+                            child: Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
-          // Update filtered bookmarks when provider data changes
-          WidgetsBinding.instance.addPostFrameCallback((_) { 
-            _applyFilters();
-          });
+                  // Update filtered bookmarks when provider data changes
+                  WidgetsBinding.instance.addPostFrameCallback((_) { 
+                    _applyFilters();
+                  });
 
-          return Column(
-            children: [
+                  return Column(
+                    children: [
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
@@ -219,8 +227,12 @@ class _BookmarksState extends State<Bookmarks> {
                         : _buildBookmarksGrid(bookmarkProvider),
               ),
             ],
-          );
-        },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -405,24 +417,8 @@ class _BookmarksState extends State<Bookmarks> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Bookmark indicator
-                        Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: Color(0xFF292525),
-                            border: Border.all(
-                              color: Color(0xFF292525),
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
+                        SizedBox(width: 8),
+                        _buildRemoveBookmarkButton(bookmark, bookmarkProvider),
                       ],
                     ),
                     SizedBox(height: 4),
@@ -853,6 +849,37 @@ class _BookmarksState extends State<Bookmarks> {
       }
     }
   }
+
+  Widget _buildRemoveBookmarkButton(dynamic bookmark, BookmarkProvider bookmarkProvider) {
+    final bookmarkId = _getBookmarkProperty(bookmark, 'id');
+    
+    return _BookmarkButton(
+      isBookmarked: true, // Always bookmarked in bookmarks screen
+      onTap: () async {
+        // Delete the bookmark
+        if (bookmarkId.isNotEmpty) {
+          final success = await bookmarkProvider.deleteBookmark(bookmarkId);
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Bookmark removed'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to remove bookmark'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      },
+    );
+  }
 }
 
 class _HoverableBookmarkCard extends StatefulWidget {
@@ -883,8 +910,51 @@ class _HoverableBookmarkCardState extends State<_HoverableBookmarkCard> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             color: _isHovered ? Color(0xFF211E1E) : Color(0xFF181616),
+            border: Border.all(color: _isHovered ? Color(0xFF665B5B) : Color(0xff292525)),
+            boxShadow: [], // Explicitly no box shadow
           ),
           child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+class _BookmarkButton extends StatefulWidget {
+  final bool isBookmarked;
+  final VoidCallback onTap;
+
+  const _BookmarkButton({
+    required this.isBookmarked,
+    required this.onTap,
+  });
+
+  @override
+  State<_BookmarkButton> createState() => _BookmarkButtonState();
+}
+
+class _BookmarkButtonState extends State<_BookmarkButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          child: SvgPicture.asset(
+            widget.isBookmarked
+                ? 'assets/icons/bookmark-selected.svg'
+                : _isHovered
+                    ? 'assets/icons/bookmark-hover.svg'
+                    : 'assets/icons/bookmark-default.svg',
+            width: 40,
+            height: 40,
+          ),
         ),
       ),
     );
