@@ -67,7 +67,7 @@ class _ChatsListState extends State<ChatsList> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  SizedBox(height: 15),
+                  SizedBox(height: 10),
                   ResponsiveContainer(
                     maxWidth: getWidth(context)*0.3,
                     child: Column(
@@ -79,7 +79,7 @@ class _ChatsListState extends State<ChatsList> {
                               : "${chatProvider.conversations.length} Conversations in Enable",
                           textAlign: TextAlign.start,
                         ),
-                        SizedBox(height: 15),
+                        SizedBox(height: 10),
                         TextFormField(
                           decoration: InputDecoration(
                             prefixIcon: Padding(
@@ -279,7 +279,9 @@ class _ChatsListState extends State<ChatsList> {
                   ),
                   child: Center(
                     child: SvgPicture.asset(
-                      'assets/icons/chat.svg',
+                      'assets/icons/navicons/chat-hover.svg',
+                      height: 15,
+                      width: 15,
                     ),
                   ),
                 ),
