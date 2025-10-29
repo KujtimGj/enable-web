@@ -8,8 +8,10 @@ import '../../components/responsive_scaffold.dart';
 import '../../components/product_detail_modal.dart';
 import '../../providers/userProvider.dart';
 import '../../providers/productsProvider.dart';
+import '../../providers/externalProductProvider.dart';
 import '../../providers/bookmark_provider.dart';
 import '../../entities/productModel.dart';
+import '../../entities/externalProductModel.dart';
 import 'package:flutter_svg/svg.dart';
 
 class Products extends StatefulWidget {
@@ -19,9 +21,12 @@ class Products extends StatefulWidget {
   State<Products> createState() => _ProductsState();
 }
 
+enum ProductType { products, externalProducts }
+
 class _ProductsState extends State<Products> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounceTimer;
+  ProductType _selectedProductType = ProductType.products;
 
   @override
   void initState() {
@@ -54,16 +59,12 @@ class _ProductsState extends State<Products> {
       appBar: AppBar(
         toolbarHeight: 60,
         automaticallyImplyLeading: false,
-        leadingWidth: 120,
-        leading: GestureDetector(
-          onTap: () => context.go('/home'),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-                SvgPicture.asset("assets/icons/home.svg")
-            ],
-          ),
+        leading: Builder(
+          builder: (context) {
+            return _HoverableHomeIcon(
+              onTap: () => context.go('/home'),
+            );
+          },
         ),
         centerTitle: true,
         title: Container(
@@ -207,61 +208,78 @@ class _ProductsState extends State<Products> {
                     final filteredProducts = provider.visibleProducts;
                     
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Product type selector dropdown
+                        Container(
+                          width:200,
+                          height: 36,
+                          decoration:BoxDecoration(
+                            color: Color(0xff3a3132),
+                            borderRadius: BorderRadius.circular(4)
+                          ),
+                          margin: EdgeInsets.only(bottom: 10),
+                          padding: EdgeInsets.all(5),
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              canvasColor:Color(0xff3a3132),
+                              hoverColor:Color(0xff3a3132),
+                              focusColor:Color(0xff3a3132),
+                              splashColor: Color(0xff3a3132),
+                              highlightColor: Color(0xff3a3132),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<ProductType>(
+                                isDense: true,
+                                isExpanded: true,
+                                value: _selectedProductType,
+                                items: [
+                                  DropdownMenuItem<ProductType>(
+                                    value: ProductType.products,
+                                    child: Text('Products', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                  ),
+                                  DropdownMenuItem<ProductType>(
+                                    value: ProductType.externalProducts,
+                                    child: Text('External Products', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                  ),
+                                ],
+                                onChanged: (ProductType? value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _selectedProductType = value;
+                                    });
+                                    final userProvider = Provider.of<UserProvider>(context, listen: false);
+                                    final agencyId = userProvider.user?.agencyId;
+                                    if (agencyId != null) {
+                                      if (value == ProductType.externalProducts) {
+                                        final externalProductProvider = Provider.of<ExternalProductProvider>(context, listen: false);
+                                        externalProductProvider.fetchExternalProductsByAgencyId(agencyId);
+                                      } else {
+                                        final productsProvider = Provider.of<ProductsProvider>(context, listen: false);
+                                        if (productsProvider.products.isEmpty) {
+                                          productsProvider.fetchProducts(agencyId);
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                dropdownColor: Color(0xff3a3132),
+                                style: TextStyle(color: Colors.white, fontSize: 12),
+                                iconSize: 18,
+                              ),
+                            ),
+                          ),
+                        ),
 
                         // Horizontal filter bar
-                        _ProductsFilterBar(),
+                        _ProductsFilterBar(productType: _selectedProductType),
                         SizedBox(height: 10),
 
                         // Grid view
                         Expanded(
-                          child: filteredProducts.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.search_off,
-                                        size: 64,
-                                        color: Colors.grey,
-                                      ),
-                                      SizedBox(height: 16),
-                                      Text(
-                                        'No products found',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        'Try adjusting your search query',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(color: Colors.grey[600]),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : GridView.builder(
-                                  shrinkWrap: false,
-                                  physics: AlwaysScrollableScrollPhysics(),
-                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount:
-                                        ResponsiveUtils.isMobile(context)
-                                            ? 1
-                                            : ResponsiveUtils.isTablet(context)
-                                            ? 2
-                                            : 3,
-                                    childAspectRatio: 1.9,
-                                    mainAxisSpacing: 30,
-                                    crossAxisSpacing: 30,
-                                  ),
-                                  itemCount: filteredProducts.length,
-                                  itemBuilder: (BuildContext context, int index) {
-                                    final product = filteredProducts[index];
-                                    return _buildProductCard(product);
-                                  },
-                                ),
+                          child: _selectedProductType == ProductType.products
+                              ? _buildProductsGrid(filteredProducts)
+                              : _buildExternalProductsGrid(),
                         ),
                       ],
                     );
@@ -272,6 +290,172 @@ class _ProductsState extends State<Products> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProductsGrid(List<ProductModel> products) {
+    if (products.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No products found',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Try adjusting your search query',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GridView.builder(
+      shrinkWrap: false,
+      physics: AlwaysScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount:
+            ResponsiveUtils.isMobile(context)
+                ? 1
+                : ResponsiveUtils.isTablet(context)
+                ? 2
+                : 3,
+        childAspectRatio: 1.9,
+        mainAxisSpacing: 30,
+        crossAxisSpacing: 30,
+      ),
+      itemCount: products.length,
+      itemBuilder: (BuildContext context, int index) {
+        final product = products[index];
+        return _buildProductCard(product);
+      },
+    );
+  }
+
+  Widget _buildExternalProductsGrid() {
+    return Consumer<ExternalProductProvider>(
+      builder: (context, externalProvider, child) {
+        // Loading state
+        if (externalProvider.isLoading && externalProvider.externalProducts.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Loading external products...'),
+              ],
+            ),
+          );
+        }
+
+        // Error state
+        if (externalProvider.errorMessage != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Error loading external products',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                SelectableText(
+                  externalProvider.errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    final userProvider = Provider.of<UserProvider>(context, listen: false);
+                    final agencyId = userProvider.user?.agencyId;
+                    if (agencyId != null) {
+                      externalProvider.fetchExternalProductsByAgencyId(agencyId);
+                    }
+                  },
+                  child: Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Empty state
+        if (externalProvider.externalProducts.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'No external products found',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'External products will appear here once they are added to your agency.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final externalProducts = externalProvider.externalProducts;
+
+        return GridView.builder(
+          shrinkWrap: false,
+          physics: AlwaysScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount:
+                ResponsiveUtils.isMobile(context)
+                    ? 1
+                    : ResponsiveUtils.isTablet(context)
+                    ? 2
+                    : 3,
+            childAspectRatio: 1.9,
+            mainAxisSpacing: 30,
+            crossAxisSpacing: 30,
+          ),
+          itemCount: externalProducts.length,
+          itemBuilder: (BuildContext context, int index) {
+            final externalProduct = externalProducts[index];
+            return _buildExternalProductCard(externalProduct);
+          },
+        );
+      },
     );
   }
 
@@ -367,6 +551,83 @@ class _ProductsState extends State<Products> {
     );
   }
 
+  Widget _buildExternalProductCard(ExternalProductModel externalProduct) {
+    return _HoverableProductCard(
+      onTap: () => _showExternalProductModal(context, externalProduct),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(flex: 1, child: _buildExternalProductImage(externalProduct)),
+              SizedBox(width: 8),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start, 
+                  children: [
+                    SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            externalProduct.name ?? 'Unnamed Product',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        _buildExternalProductBookmarkButton(externalProduct),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    if (externalProduct.category != null && externalProduct.category!.isNotEmpty)
+                      Text(
+                        externalProduct.category![0].toUpperCase() +
+                            externalProduct.category!.substring(1),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    SizedBox(height: 4),
+                    if (externalProduct.description != null &&
+                        externalProduct.description!.isNotEmpty)
+                      Text(
+                        externalProduct.description!,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    SizedBox(height: 8),
+                    if (externalProduct.city != null || externalProduct.country != null)
+                      Text(
+                        '${externalProduct.city ?? ''}${externalProduct.city != null && externalProduct.country != null ? ', ' : ''}${externalProduct.country ?? ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[400],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildProductImage(ProductModel product) {
     return Container(
       child: product.images != null && product.images!.isNotEmpty
@@ -429,6 +690,94 @@ class _ProductsState extends State<Products> {
     );
   }
 
+  void _showExternalProductModal(BuildContext context, ExternalProductModel externalProduct) {
+    // Convert ExternalProductModel to Map for the modal
+    // Include extras/details at top level so modal can access photos/images directly
+    final productMap = externalProduct.toJson();
+    if (externalProduct.extras != null) {
+      // Add extras fields to top level for easier access by modal
+      for (var entry in externalProduct.extras!.entries) {
+        if (!productMap.containsKey(entry.key)) {
+          productMap[entry.key] = entry.value;
+        }
+      }
+    }
+    if (externalProduct.details != null) {
+      for (var entry in externalProduct.details!.entries) {
+        if (!productMap.containsKey(entry.key)) {
+          productMap[entry.key] = entry.value;
+        }
+      }
+    }
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return ProductDetailModal(
+          product: productMap,
+          isExternalProduct: true,
+        );
+      },
+    );
+  }
+
+  Widget _buildExternalProductImage(ExternalProductModel externalProduct) {
+    // Try to get images from extras which now contains photos/images from backend
+    if (externalProduct.extras != null) {
+      // Check for photos array first (Google Maps format)
+      if (externalProduct.extras!['photos'] != null && externalProduct.extras!['photos'] is List) {
+        final photos = externalProduct.extras!['photos'] as List;
+        if (photos.isNotEmpty) {
+          // Get first photo URL
+          for (var photo in photos) {
+            if (photo is Map && photo['url'] != null) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.network(
+                  photo['url'].toString(),
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _buildNoImagesPlaceholder();
+                  },
+                ),
+              );
+            }
+          }
+        }
+      }
+      
+      // Check for images array (legacy format)
+      if (externalProduct.extras!['images'] != null && externalProduct.extras!['images'] is List) {
+        final images = externalProduct.extras!['images'] as List;
+        if (images.isNotEmpty) {
+          for (var img in images) {
+            if (img is Map) {
+              final imageUrl = img['imageUrl'] ?? img['signedUrl'];
+              if (imageUrl != null) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Image.network(
+                    imageUrl.toString(),
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _buildNoImagesPlaceholder();
+                    },
+                  ),
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return _buildNoImagesPlaceholder();
+  }
+
   Widget _buildCardBookmarkButton(ProductModel product) {
     final productId = product.id.toString();
 
@@ -441,6 +790,26 @@ class _ProductsState extends State<Products> {
           onTap: () {
             bookmarkProvider.toggleBookmark(
               itemType: 'product',
+              itemId: productId,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildExternalProductBookmarkButton(ExternalProductModel externalProduct) {
+    final productId = externalProduct.id?.toString() ?? '';
+
+    return Consumer<BookmarkProvider>(
+      builder: (context, bookmarkProvider, child) {
+        final isBookmarked = bookmarkProvider.isItemBookmarked('externalProduct', productId);
+        
+        return _BookmarkButton(
+          isBookmarked: isBookmarked,
+          onTap: () {
+            bookmarkProvider.toggleBookmark(
+              itemType: 'externalProduct',
               itemId: productId,
             );
           },
@@ -489,6 +858,10 @@ class _HoverableProductCardState extends State<_HoverableProductCard> {
 }
 
 class _ProductsFilterBar extends StatefulWidget {
+  final ProductType productType;
+
+  const _ProductsFilterBar({required this.productType});
+
   @override
   State<_ProductsFilterBar> createState() => _ProductsFilterBarState();
 }
@@ -498,6 +871,11 @@ class _ProductsFilterBarState extends State<_ProductsFilterBar> {
 
   @override
   Widget build(BuildContext context) {
+    // Only show filters for regular products
+    if (widget.productType == ProductType.externalProducts) {
+      return SizedBox.shrink();
+    }
+
     return Consumer<ProductsProvider>(
       builder: (context, provider, _) {
         final cats = provider.categories;
@@ -700,6 +1078,42 @@ class _BookmarkButtonState extends State<_BookmarkButton> {
             width: 40,
             height: 40,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverableHomeIcon extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _HoverableHomeIcon({
+    required this.onTap,
+  });
+
+  @override
+  State<_HoverableHomeIcon> createState() => _HoverableHomeIconState();
+}
+
+class _HoverableHomeIconState extends State<_HoverableHomeIcon> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              _isHovered ? "assets/icons/home-hover.svg" : "assets/icons/home.svg"
+            )
+          ],
         ),
       ),
     );

@@ -38,7 +38,6 @@ class EnhancedMessageBubble extends StatelessWidget {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
-        margin: EdgeInsets.symmetric(vertical: 6),
         child: Column(
           crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
@@ -87,6 +86,19 @@ class EnhancedMessageBubble extends StatelessWidget {
       return '\n\n**${match.group(1)}:**\n';
     });
     
+    // Ensure city headers (bold text on their own line) have proper spacing
+    // Match lines that are just **cityname** and ensure they have newline after
+    text = text.replaceAllMapped(RegExp(r'\*\*([^*]+)\*\*(\n)'), (match) {
+      String cityName = match.group(1) ?? '';
+      String newline = match.group(2) ?? '\n';
+      // Only add extra spacing if it's a standalone city header (no punctuation, no symbols)
+      if (!cityName.contains('–') && !cityName.contains('⭐') && !cityName.contains('|') && 
+          !cityName.contains(':') && cityName.trim().split(' ').length <= 3) {
+        return '**$cityName**$newline';
+      }
+      return match.group(0) ?? '';
+    });
+    
     // Ensure bullet points start on new lines
     text = text.replaceAllMapped(RegExp(r'([^\n])\s*•\s*'), (match) {
       return '${match.group(1)}\n• ';
@@ -96,13 +108,22 @@ class EnhancedMessageBubble extends StatelessWidget {
       return '${match.group(1)}\n- ';
     });
     
-    // Clean up multiple newlines
-    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    // IMPORTANT: Preserve single newlines - don't collapse them
+    // Only collapse 4+ consecutive newlines to max 3
+    text = text.replaceAll(RegExp(r'\n{4,}'), '\n\n\n');
     
-    // Remove excessive spaces (but keep newlines)
-    text = text.replaceAll(RegExp(r'[ \t]+'), ' ');
+    // Remove excessive spaces within lines (but keep newlines)
+    // Use a pattern that only replaces spaces within a line, not across newlines
+    List<String> lines = text.split('\n');
+    lines = lines.map((line) => line.replaceAll(RegExp(r'[ \t]+'), ' ')).toList();
+    text = lines.join('\n');
     
-    return text.trim();
+    // Don't trim the entire text as it may remove important leading/trailing newlines
+    // Instead, just trim each end if there are excessive newlines
+    text = text.replaceAll(RegExp(r'^\n{2,}'), '\n');
+    text = text.replaceAll(RegExp(r'\n{2,}$'), '\n');
+    
+    return text;
   }
 
   List<TextSpan> _parseMarkdownText(String text) {
@@ -110,53 +131,100 @@ class EnhancedMessageBubble extends StatelessWidget {
     text = _cleanAgentResponse(text);
     
     List<TextSpan> spans = [];
+    // Split by newline and preserve empty lines to maintain structure
     List<String> lines = text.split('\n');
     
-    for (String line in lines) {
+    // Track previous line type to add appropriate spacing
+    String? previousLineType;
+    
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      
+      // Handle empty lines - these are important for spacing
       if (line.trim().isEmpty) {
-        spans.add(TextSpan(text: '\n'));
+        // Only add spacing if previous line wasn't also empty (avoid excessive spacing)
+        if (previousLineType != 'empty') {
+          spans.add(TextSpan(text: '\n', style: TextStyle(height: 1.2)));
+        }
+        previousLineType = 'empty';
         continue;
+      }
+      
+      // Check if this is a bold header (city name like **Prishtina**)
+      // A bold header is a line that contains only bold text (no other content)
+      bool isBoldHeader = false;
+      if (_hasInlineFormatting(line)) {
+        // If the line only has bold text and nothing else (or just whitespace), it's a header
+        isBoldHeader = line.trim().startsWith('**') && 
+                       line.trim().endsWith('**') && 
+                       !line.contains('–') && 
+                       !line.contains('⭐') &&
+                       !line.contains('|');
       }
       
       // Handle lines with inline formatting (bold, italic, code, etc.)
       if (_hasInlineFormatting(line)) {
+        // If it's a bold header (city name), add spacing before
+        if (isBoldHeader && previousLineType != null && previousLineType != 'empty') {
+          spans.add(TextSpan(text: '\n', style: TextStyle(height: 1.2)));
+        }
+        
         spans.addAll(_parseInlineFormatting(line));
+        
+        // Always add newline after each formatted line to ensure proper line breaks
         spans.add(TextSpan(text: '\n'));
+        
+        previousLineType = isBoldHeader ? 'header' : 'formatted';
         continue;
       }
       
       // Handle markdown headers (# text)
       if (line.trim().startsWith('# ')) {
+        if (previousLineType != null && previousLineType != 'empty') {
+          spans.add(TextSpan(text: '\n', style: TextStyle(height: 1.2)));
+        }
         spans.add(TextSpan(
           text: line.trim().substring(2) + '\n',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
             color: Colors.white,
+            height: 1.4,
           ),
         ));
+        previousLineType = 'header';
       }
       // Handle subheaders (## text)
       else if (line.trim().startsWith('## ')) {
+        if (previousLineType != null && previousLineType != 'empty') {
+          spans.add(TextSpan(text: '\n', style: TextStyle(height: 1.2)));
+        }
         spans.add(TextSpan(
           text: line.trim().substring(3) + '\n',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 15,
             color: Colors.grey[100],
+            height: 1.4,
           ),
         ));
+        previousLineType = 'header';
       }
       // Handle section headers (text ending with :)
       else if (line.trim().endsWith(':') && line.trim().split(' ').length <= 3) {
+        if (previousLineType != null && previousLineType != 'empty') {
+          spans.add(TextSpan(text: '\n', style: TextStyle(height: 1.2)));
+        }
         spans.add(TextSpan(
           text: line.trim() + '\n',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 15,
             color: Colors.white,
+            height: 1.4,
           ),
         ));
+        previousLineType = 'header';
       }
       // Handle bullet points with • character
       else if (line.trim().startsWith('• ')) {
@@ -167,6 +235,7 @@ class EnhancedMessageBubble extends StatelessWidget {
             height: 1.5,
           ),
         ));
+        previousLineType = 'bullet';
       }
       // Handle markdown bullet points (- text)
       else if (line.trim().startsWith('- ')) {
@@ -177,6 +246,7 @@ class EnhancedMessageBubble extends StatelessWidget {
             height: 1.5,
           ),
         ));
+        previousLineType = 'bullet';
       }
       // Handle numbered lists (1. text)
       else if (RegExp(r'^\d+\.\s').hasMatch(line.trim())) {
@@ -187,9 +257,11 @@ class EnhancedMessageBubble extends StatelessWidget {
             height: 1.5,
           ),
         ));
+        previousLineType = 'numbered';
       }
-      // Regular text
+      // Regular text - ensure each line is on its own line
       else {
+        // Always add the line content followed by a newline to ensure proper line breaks
         spans.add(TextSpan(
           text: line + '\n',
           style: TextStyle(
@@ -197,6 +269,7 @@ class EnhancedMessageBubble extends StatelessWidget {
             color: Colors.white,
           ),
         ));
+        previousLineType = 'text';
       }
     }
     

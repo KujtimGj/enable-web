@@ -358,12 +358,61 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _getProductCountry(dynamic product) {
+  String _getProductCountry(dynamic product, [bool isExternal = false]) {
     if (product == null) return '';
 
     try {
       if (product is Map) {
-        return product['country']?.toString() ?? '';
+        // Try top-level country first
+        String country = product['country']?.toString() ?? '';
+        if (country.isNotEmpty) {
+          return country[0].toUpperCase() + country.substring(1);
+        }
+        
+        // For external products, try to extract from address_components in rawData
+        if (isExternal) {
+          final rawData = product['rawData'];
+          if (rawData != null) {
+            // Check nested rawData.googleMapsData.address_components
+            final googleMapsData = rawData['googleMapsData'] ?? rawData['rawData']?['googleMapsData'];
+            if (googleMapsData != null) {
+              final addressComponents = googleMapsData['address_components'];
+              if (addressComponents is List) {
+                for (var component in addressComponents) {
+                  if (component is Map && component['types'] is List) {
+                    if (component['types'].contains('country')) {
+                      country = component['long_name']?.toString() ?? component['short_name']?.toString() ?? '';
+                      if (country.isNotEmpty) return country;
+                    }
+                  }
+                }
+              }
+            }
+            
+            // Try businessSummary address
+            final businessSummary = rawData['businessSummary'];
+            if (businessSummary != null && businessSummary['address'] != null) {
+              final address = businessSummary['address'].toString();
+              // Try to extract country from address (simple heuristic - last part after last comma)
+              final parts = address.split(',');
+              if (parts.length > 1) {
+                country = parts.last.trim();
+              }
+            }
+          }
+          
+          // Try businessSummary at top level
+          final topLevelBusinessSummary = product['businessSummary'];
+          if (topLevelBusinessSummary != null && topLevelBusinessSummary['address'] != null) {
+            final address = topLevelBusinessSummary['address'].toString();
+            final parts = address.split(',');
+            if (parts.length > 1) {
+              country = parts.last.trim();
+            }
+          }
+        }
+        
+        return '';
       } else {
         String country = product.country?.toString() ?? '';
         return country.isNotEmpty
@@ -375,18 +424,216 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _getProductCity(dynamic product) {
+  String _getProductCity(dynamic product, [bool isExternal = false]) {
     if (product == null) return '';
 
     try {
       if (product is Map) {
-        return product['city']?.toString() ?? '';
+        // Try top-level city first
+        String city = product['city']?.toString() ?? '';
+        if (city.isNotEmpty) {
+          return city[0].toUpperCase() + city.substring(1);
+        }
+        
+        // For external products, try to extract from address_components in rawData
+        if (isExternal) {
+          final rawData = product['rawData'];
+          if (rawData != null) {
+            // Check nested rawData.googleMapsData.address_components
+            final googleMapsData = rawData['googleMapsData'] ?? rawData['rawData']?['googleMapsData'];
+            if (googleMapsData != null) {
+              final addressComponents = googleMapsData['address_components'];
+              if (addressComponents is List) {
+                for (var component in addressComponents) {
+                  if (component is Map && component['types'] is List) {
+                    if (component['types'].contains('postal_town') || 
+                        component['types'].contains('locality') ||
+                        (component['types'].contains('administrative_area_level_1') && !component['types'].contains('country'))) {
+                      city = component['long_name']?.toString() ?? component['short_name']?.toString() ?? '';
+                      if (city.isNotEmpty) return city;
+                    }
+                  }
+                }
+              }
+            }
+            
+            // Try businessSummary address
+            final businessSummary = rawData['businessSummary'];
+            if (businessSummary != null && businessSummary['address'] != null) {
+              final address = businessSummary['address'].toString();
+              // Try to extract city from address (usually second to last part)
+              final parts = address.split(',');
+              if (parts.length > 2) {
+                city = parts[parts.length - 2].trim();
+              } else if (parts.length == 2) {
+                city = parts[0].trim();
+              }
+            }
+          }
+          
+          // Try businessSummary at top level
+          final topLevelBusinessSummary = product['businessSummary'];
+          if (topLevelBusinessSummary != null && topLevelBusinessSummary['address'] != null) {
+            final address = topLevelBusinessSummary['address'].toString();
+            final parts = address.split(',');
+            if (parts.length > 2) {
+              city = parts[parts.length - 2].trim();
+            } else if (parts.length == 2) {
+              city = parts[0].trim();
+            }
+          }
+        }
+        
+        return '';
       } else {
         String city = product.city?.toString() ?? '';
         return city.isNotEmpty ? city[0].toUpperCase() + city.substring(1) : '';
       }
     } catch (e) {
       return '';
+    }
+  }
+
+  String _buildLocationText(String city, String country) {
+    if (city.isNotEmpty && country.isNotEmpty) {
+      return '$city, $country';
+    } else if (city.isNotEmpty) {
+      return city;
+    } else if (country.isNotEmpty) {
+      return country;
+    }
+    return '';
+  }
+
+  // External product specific helper methods for cards
+  double? _getExternalProductRating(dynamic product) {
+    if (product == null) return null;
+    try {
+      if (product is Map) {
+        // Try top-level rating first
+        if (product['rating'] != null) {
+          return product['rating']?.toDouble();
+        }
+        // Try businessSummary
+        final businessSummary = product['businessSummary'];
+        if (businessSummary != null && businessSummary['rating'] != null) {
+          return businessSummary['rating']?.toDouble();
+        }
+        // Try rawData.businessSummary
+        final rawData = product['rawData'];
+        if (rawData != null && rawData['businessSummary'] != null) {
+          final rawBusinessSummary = rawData['businessSummary'];
+          if (rawBusinessSummary['rating'] != null) {
+            return rawBusinessSummary['rating']?.toDouble();
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int? _getExternalProductTotalReviews(dynamic product) {
+    if (product == null) return null;
+    try {
+      if (product is Map) {
+        // Try top-level userRatingsTotal first
+        if (product['userRatingsTotal'] != null) {
+          return product['userRatingsTotal']?.toInt();
+        }
+        // Try businessSummary
+        final businessSummary = product['businessSummary'];
+        if (businessSummary != null && businessSummary['totalReviews'] != null) {
+          return businessSummary['totalReviews']?.toInt();
+        }
+        // Try rawData.businessSummary
+        final rawData = product['rawData'];
+        if (rawData != null && rawData['businessSummary'] != null) {
+          final rawBusinessSummary = rawData['businessSummary'];
+          if (rawBusinessSummary['totalReviews'] != null) {
+            return rawBusinessSummary['totalReviews']?.toInt();
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  bool? _getExternalProductIsOpen(dynamic product) {
+    if (product == null) return null;
+    try {
+      if (product is Map) {
+        // Try top-level openingHours first
+        final openingHours = product['openingHours'];
+        if (openingHours != null && openingHours['openNow'] != null) {
+          return openingHours['openNow'] as bool?;
+        }
+        // Try businessSummary
+        final businessSummary = product['businessSummary'];
+        if (businessSummary != null && businessSummary['isOpen'] != null) {
+          return businessSummary['isOpen'] as bool?;
+        }
+        // Try rawData.businessSummary
+        final rawData = product['rawData'];
+        if (rawData != null && rawData['businessSummary'] != null) {
+          final rawBusinessSummary = rawData['businessSummary'];
+          if (rawBusinessSummary['isOpen'] != null) {
+            return rawBusinessSummary['isOpen'] as bool?;
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getExternalProductPriceLevel(dynamic product) {
+    if (product == null) return null;
+    try {
+      if (product is Map) {
+        // Try top-level priceLevel first
+        final priceLevel = product['priceLevel'];
+        if (priceLevel != null) {
+          return _getPriceLevelText(priceLevel is int ? priceLevel : priceLevel.toInt());
+        }
+        // Try businessSummary.summary.priceRange
+        final businessSummary = product['businessSummary'];
+        if (businessSummary != null && businessSummary['summary'] != null) {
+          final summary = businessSummary['summary'];
+          if (summary['priceRange'] != null && summary['priceRange'].toString() != 'Price not available') {
+            return summary['priceRange'].toString();
+          }
+        }
+        // Try rawData.businessSummary
+        final rawData = product['rawData'];
+        if (rawData != null && rawData['businessSummary'] != null) {
+          final rawBusinessSummary = rawData['businessSummary'];
+          if (rawBusinessSummary['summary'] != null) {
+            final summary = rawBusinessSummary['summary'];
+            if (summary['priceRange'] != null && summary['priceRange'].toString() != 'Price not available') {
+              return summary['priceRange'].toString();
+            }
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _getPriceLevelText(int priceLevel) {
+    switch (priceLevel) {
+      case 0: return 'Free';
+      case 1: return '\$';
+      case 2: return '\$\$';
+      case 3: return '\$\$\$';
+      case 4: return '\$\$\$\$';
+      default: return '';
     }
   }
 
@@ -556,6 +803,38 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ),
                                           ],
                                         ),
+                                      );
+                                    }
+
+                                    // Show structured summary if available (when messages are empty)
+                                    if (messages.isEmpty && structuredSummary != null) {
+                                      return Column(
+                                        children: [
+                                          // Collapse icon above summary
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            children: [
+                                              _buildCollapseIcon(),
+                                            ],
+                                          ),
+                                          SizedBox(height: 8),
+                                          // Display structured summary with proper formatting
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Container(
+                                              constraints: BoxConstraints(
+                                                maxWidth: getWidth(context) * 0.9,
+                                              ),
+                                              child: EnhancedMessageBubble(
+                                                message: {
+                                                  'role': 'agent',
+                                                  'content': structuredSummary,
+                                                },
+                                                onFollowUpSubmitted: _handleFollowUpSubmitted,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       );
                                     }
 
@@ -1068,6 +1347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 dmcs,
                                 serviceProviders,
                                 dbProducts,
+                                _selectedSearchType,
                               ),
                             ),
                           ],
@@ -1383,7 +1663,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGridContent(ChatProvider chatProvider, ProductProvider productProvider, BookmarkProvider bookmarkProvider, List<dynamic> externalProducts, List<dynamic> vics, List<dynamic> experiences, List<dynamic> dmcs, List<dynamic> serviceProviders, List<dynamic> dbProducts,) {
+  Widget _buildGridContent(ChatProvider chatProvider, ProductProvider productProvider, BookmarkProvider bookmarkProvider, List<dynamic> externalProducts, List<dynamic> vics, List<dynamic> experiences, List<dynamic> dmcs, List<dynamic> serviceProviders, List<dynamic> dbProducts, String selectedSearchType) {
     // Show loading state if any provider is loading
     if (chatProvider.isLoading || productProvider.isLoading) {
       return shimmerGrid();
@@ -1439,7 +1719,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (externalProducts.isNotEmpty) {
-      return _buildExternalProductsGrid(externalProducts, bookmarkProvider);
+      return _buildExternalProductsGrid(externalProducts, bookmarkProvider, selectedSearchType);
     }
 
     if (dbProducts.isNotEmpty) {
@@ -1482,7 +1762,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildExternalProductsGrid(List<dynamic> externalProducts, BookmarkProvider bookmarkProvider,) {
+  Widget _buildExternalProductsGrid(List<dynamic> externalProducts, BookmarkProvider bookmarkProvider, String selectedSearchType) {
     return GridView.builder(
       itemCount: externalProducts.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1519,12 +1799,17 @@ class _HomeScreenState extends State<HomeScreen> {
           print('🖼️ IMAGE DEBUG: No Google Maps photos found for ${product['name']}');
         }
         
-        // Check for legacy images format (only imageUrl, no signedUrl)
+        // Check for images (prefer signedUrl, fallback to imageUrl)
         if (product['images'] != null && product['images'].isNotEmpty) {
-          // Database product or legacy external product - use imageUrl only
+          // Database product or legacy external product - prefer signedUrl, fallback to imageUrl
           for (var img in product['images']) {
-            if (img is Map && img['imageUrl'] != null) {
-              images.add(img['imageUrl'].toString());
+            if (img is Map) {
+              if (img['signedUrl'] != null && img['signedUrl'].toString().isNotEmpty) {
+                images.add(img['signedUrl'].toString());
+              } else if (img['imageUrl'] != null && img['imageUrl'].toString().isNotEmpty) {
+                // Fallback to imageUrl if signedUrl is not available
+                images.add(img['imageUrl'].toString());
+              }
             }
           }
         }
@@ -1613,24 +1898,152 @@ class _HomeScreenState extends State<HomeScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ), 
                                 ),
-                                // Save and Bookmark buttons for external products
+                                // Save and Bookmark buttons for external products (only show save button for external searches)
                                 if (!bookmarkProvider.isMultiSelectMode)
                                   Row(
                                     children: [
-                                      _buildSaveButton(product),
-                                      SizedBox(width: 8),
+                                      // Only show save button when doing external search
+                                      if (selectedSearchType != 'My Knowledge') ...[
+                                        _buildSaveButton(product),
+                                        SizedBox(width: 8),
+                                      ],
                                       _buildCardBookmarkButton(product, true),
                                     ],
                                   ),
-                              ],
+                              ], 
+                            ),
+                            SizedBox(height: 6),
+                            // Rating and reviews
+                            Builder(
+                              builder: (context) {
+                                final rating = _getExternalProductRating(product);
+                                final totalReviews = _getExternalProductTotalReviews(product);
+                                
+                                if (rating != null) {
+                                  return Row(
+                                    children: [
+                                      Icon(Icons.star, color: Colors.amber, size: 14),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        rating.toStringAsFixed(1),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      if (totalReviews != null && totalReviews > 0) ...[
+                                        SizedBox(width: 4),
+                                        Text(
+                                          '($totalReviews)',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[500],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  );
+                                }
+                                return SizedBox.shrink();
+                              },
                             ),
                             SizedBox(height: 4),
-                            Text(
-                              _getProductCategory(product, true),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[400],
-                              ),
+                            // Location (city, country) or category as fallback
+                            Builder(
+                              builder: (context) {
+                                final city = _getProductCity(product, true);
+                                final country = _getProductCountry(product, true);
+                                final locationText = _buildLocationText(city, country);
+                                
+                                if (locationText.isNotEmpty) {
+                                  return Row(
+                                    children: [
+                                      Icon(Icons.location_on, color: Colors.grey[500], size: 12),
+                                      SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          locationText,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[400],
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                } else {
+                                  // Fallback to category if location not available
+                                  return Text(
+                                    _getProductCategory(product, true),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[400],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                }
+                              },
+                            ),
+                            SizedBox(height: 6),
+                            // Open status and price level
+                            Row(
+                              children: [
+                                Builder(
+                                  builder: (context) {
+                                    final isOpen = _getExternalProductIsOpen(product);
+                                    if (isOpen != null) {
+                                      return Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isOpen ? Colors.green[700]?.withOpacity(0.3) : Colors.red[700]?.withOpacity(0.3),
+                                          borderRadius: BorderRadius.circular(3),
+                                          border: Border.all(
+                                            color: isOpen ? Colors.green[600]! : Colors.red[600]!,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          isOpen ? 'Open' : 'Closed',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: isOpen ? Colors.green[300] : Colors.red[300],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return SizedBox.shrink();
+                                  },
+                                ),
+                                SizedBox(width: 6),
+                                Builder(
+                                  builder: (context) {
+                                    final priceLevel = _getExternalProductPriceLevel(product);
+                                    if (priceLevel != null && priceLevel.isNotEmpty) {
+                                      return Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Color(0xff3A3A3A).withOpacity(0.5),
+                                          borderRadius: BorderRadius.circular(3),
+                                        ),
+                                        child: Text(
+                                          priceLevel,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return SizedBox.shrink();
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),

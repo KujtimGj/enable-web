@@ -190,6 +190,117 @@ class ProductDetailModal extends StatelessWidget {
     }
   }
 
+  String? _getPhone() {
+    if (product == null || !isExternalProduct) return null;
+    try {
+      // Try businessSummary first
+      final businessSummary = product['businessSummary'];
+      if (businessSummary != null && businessSummary['phone'] != null && businessSummary['phone'].toString().isNotEmpty) {
+        return businessSummary['phone'].toString();
+      }
+      
+      // Try rawData.businessSummary
+      final rawData = product['rawData'];
+      if (rawData != null) {
+        final rawBusinessSummary = rawData['businessSummary'];
+        if (rawBusinessSummary != null && rawBusinessSummary['phone'] != null && rawBusinessSummary['phone'].toString().isNotEmpty) {
+          return rawBusinessSummary['phone'].toString();
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getWebsite() {
+    if (product == null || !isExternalProduct) return null;
+    try {
+      // Try businessSummary first
+      final businessSummary = product['businessSummary'];
+      if (businessSummary != null && businessSummary['website'] != null && businessSummary['website'].toString().isNotEmpty) {
+        return businessSummary['website'].toString();
+      }
+      
+      // Try rawData.businessSummary
+      final rawData = product['rawData'];
+      if (rawData != null) {
+        final rawBusinessSummary = rawData['businessSummary'];
+        if (rawBusinessSummary != null && rawBusinessSummary['website'] != null && rawBusinessSummary['website'].toString().isNotEmpty) {
+          return rawBusinessSummary['website'].toString();
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  List<String> _getHours() {
+    if (product == null || !isExternalProduct) return [];
+    try {
+      // Try businessSummary first
+      final businessSummary = product['businessSummary'];
+      if (businessSummary != null && businessSummary['hours'] != null) {
+        final hours = businessSummary['hours'];
+        if (hours is List) {
+          return hours.map((h) => h.toString()).where((h) => h.isNotEmpty).toList();
+        }
+      }
+      
+      // Try rawData.businessSummary
+      final rawData = product['rawData'];
+      if (rawData != null) {
+        final rawBusinessSummary = rawData['businessSummary'];
+        if (rawBusinessSummary != null && rawBusinessSummary['hours'] != null) {
+          final hours = rawBusinessSummary['hours'];
+          if (hours is List) {
+            return hours.map((h) => h.toString()).where((h) => h.isNotEmpty).toList();
+          }
+        }
+      }
+      
+      // Try openingHours at top level
+      final openingHours = product['openingHours'];
+      if (openingHours != null && openingHours['weekdayText'] != null) {
+        final weekdayText = openingHours['weekdayText'];
+        if (weekdayText is List) {
+          return weekdayText.map((h) => h.toString()).where((h) => h.isNotEmpty).toList();
+        }
+      }
+      
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Map<String, dynamic>? _getBusinessSummary() {
+    if (product == null || !isExternalProduct) return null;
+    try {
+      // Try businessSummary at top level
+      final businessSummary = product['businessSummary'];
+      if (businessSummary != null && businessSummary is Map) {
+        return Map<String, dynamic>.from(businessSummary);
+      }
+      
+      // Try rawData.businessSummary
+      final rawData = product['rawData'];
+      if (rawData != null && rawData['businessSummary'] != null) {
+        final rawBusinessSummary = rawData['businessSummary'];
+        if (rawBusinessSummary is Map) {
+          return Map<String, dynamic>.from(rawBusinessSummary);
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -329,6 +440,144 @@ class ProductDetailModal extends StatelessWidget {
                               ),
                               SizedBox(height: 16),
                             ],
+                            
+                            // Phone
+                            if (_getPhone() != null) ...[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.phone, color: Colors.grey[400], size: 16),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _getPhone()!,
+                                      style: TextStyle(
+                                        color: Colors.grey[300],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                            
+                            // Website
+                            if (_getWebsite() != null) ...[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.language, color: Colors.grey[400], size: 16),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        // Open website in browser
+                                        final url = _getWebsite()!;
+                                        if (url.startsWith('http://') || url.startsWith('https://')) {
+                                          // You might want to use url_launcher package here
+                                          print('Opening: $url');
+                                        } else {
+                                          print('Opening: https://$url');
+                                        }
+                                      },
+                                      child: Text(
+                                        _getWebsite()!,
+                                        style: TextStyle(
+                                          color: Colors.blue[300],
+                                          fontSize: 14,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                            
+                            // Opening Hours
+                            if (_getHours().isNotEmpty) ...[
+                              Text(
+                                'Opening Hours',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              ...(_getHours().map((hour) => Padding(
+                                padding: EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  hour,
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ))),
+                              SizedBox(height: 16),
+                            ],
+                            
+                            // Business Summary
+                            Builder(
+                              builder: (context) {
+                                final businessSummary = _getBusinessSummary();
+                                if (businessSummary != null && businessSummary['summary'] != null) {
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Summary',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      if (businessSummary['summary']['businessType'] != null)
+                                        Padding(
+                                          padding: EdgeInsets.only(bottom: 6),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.business, color: Colors.grey[400], size: 14),
+                                              SizedBox(width: 6),
+                                              Text(
+                                                'Type: ${businessSummary['summary']['businessType']}',
+                                                style: TextStyle(
+                                                  color: Colors.grey[300],
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      if (businessSummary['summary']['priceRange'] != null && businessSummary['summary']['priceRange'].toString() != 'Price not available')
+                                        Padding(
+                                          padding: EdgeInsets.only(bottom: 6),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.attach_money, color: Colors.grey[400], size: 14),
+                                              SizedBox(width: 6),
+                                              Text(
+                                                'Price: ${businessSummary['summary']['priceRange']}',
+                                                style: TextStyle(
+                                                  color: Colors.grey[300],
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      SizedBox(height: 16),
+                                    ],
+                                  );
+                                }
+                                return SizedBox.shrink();
+                              },
+                            ),
                             
                             // Categories
                             if (_getCategories().isNotEmpty) ...[

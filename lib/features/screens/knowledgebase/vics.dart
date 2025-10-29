@@ -95,15 +95,12 @@ class _VICsState extends State<VICs> {
       appBar: AppBar(
         toolbarHeight: 60,
         automaticallyImplyLeading: false,
-        leading: GestureDetector(
-          onTap: () => context.go('/home'),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-             SvgPicture.asset("assets/icons/home.svg")
-            ],
-          ),
+        leading: Builder(
+          builder: (context) {
+            return _HoverableHomeIcon(
+              onTap: () => context.go('/home'),
+            );
+          },
         ),
         centerTitle: true,
         title: _customVICSearchForm(context),
@@ -272,6 +269,21 @@ class _VICsState extends State<VICs> {
                       );
                     },
                   ),
+                  // Floating Action Button
+                  // Positioned(
+                  //   bottom: 20,
+                  //   right: 20,
+                  //   child: FloatingActionButton(
+                  //     onPressed: () {
+                  //       showDialog(
+                  //         context: context,
+                  //         builder: (context) => CreateVICModal(),
+                  //       );
+                  //     },
+                  //     backgroundColor: Color(0xff574435),
+                  //     child: Icon(Icons.add, color: Colors.white),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -402,6 +414,27 @@ class _VICsState extends State<VICs> {
     );
   }
 
+  String _formatPreferenceValue(dynamic value) {
+    if (value == null) return '';
+    
+    // Handle lists/arrays
+    if (value is List) {
+      if (value.isEmpty) return '';
+      return value.map((item) => item.toString()).join(', ');
+    }
+    
+    // Handle maps/objects
+    if (value is Map) {
+      if (value.isEmpty) return '';
+      return value.entries
+          .map((entry) => '${entry.key}: ${entry.value}')
+          .join(', ');
+    }
+    
+    // Handle simple types
+    return value.toString();
+  }
+
   void _showVICDetails(BuildContext context, VICModel vic) {
     showDialog(
       context: context,
@@ -430,7 +463,19 @@ class _VICsState extends State<VICs> {
                   SizedBox(height: 8),
                 ],
                 if (vic.preferences != null && vic.preferences!.isNotEmpty) ...[
-                  Text('Preferences: ${vic.preferences}'),
+                  Text(
+                    'Preferences:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  ...vic.preferences!.entries.map((entry) {
+                    return Padding(
+                      padding: EdgeInsets.only(left: 16, bottom: 4),
+                      child: Text(
+                        '${entry.key.replaceAll('_', ' ').split(' ').map((word) => word.isEmpty ? word : word[0].toUpperCase() + word.substring(1)).join(' ')}: ${_formatPreferenceValue(entry.value)}',
+                      ),
+                    );
+                  }),
                   SizedBox(height: 8),
                 ],
                 if (vic.createdAt != null) ...[
@@ -553,6 +598,42 @@ class _BookmarkButtonState extends State<_BookmarkButton> {
             width: 40,
             height: 40,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverableHomeIcon extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _HoverableHomeIcon({
+    required this.onTap,
+  });
+
+  @override
+  State<_HoverableHomeIcon> createState() => _HoverableHomeIconState();
+}
+
+class _HoverableHomeIconState extends State<_HoverableHomeIcon> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              _isHovered ? "assets/icons/home-hover.svg" : "assets/icons/home.svg"
+            )
+          ],
         ),
       ),
     );
