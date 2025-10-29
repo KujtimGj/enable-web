@@ -63,6 +63,45 @@ class VICDetailModal extends StatelessWidget {
     }
   }
 
+  String _formatPreferenceValue(dynamic value) {
+    if (value == null) return '';
+    
+    // Handle lists/arrays
+    if (value is List) {
+      if (value.isEmpty) return '';
+      return value.map((item) => item.toString()).join(', ');
+    }
+    
+    // Handle maps/objects
+    if (value is Map) {
+      if (value.isEmpty) return '';
+      return value.entries
+          .map((entry) => '${entry.key}: ${entry.value}')
+          .join(', ');
+    }
+    
+    // Handle simple types
+    return value.toString();
+  }
+
+  DateTime? _getVicCreatedAt() {
+    if (vic == null) return null;
+    try {
+      final createdAt = vic['createdAt'];
+      if (createdAt == null) return null;
+      if (createdAt is DateTime) return createdAt;
+      if (createdAt is String) return DateTime.parse(createdAt);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return '${date.month}/${date.day}/${date.year}';
+  }
+
   String _getVicInitials() {
     final name = _getVicName();
     if (name.isEmpty) return 'U';
@@ -212,7 +251,7 @@ class VICDetailModal extends StatelessWidget {
                                         Container(
                                           width: 120,
                                           child: Text(
-                                            key.replaceAll('_', ' ').toUpperCase(),
+                                            key.replaceAll('_', ' ').split(' ').map((word) => word.isEmpty ? word : word[0].toUpperCase() + word.substring(1).toLowerCase()).join(' '),
                                             style: TextStyle(
                                               color: Colors.grey[300],
                                               fontSize: 12,
@@ -223,7 +262,7 @@ class VICDetailModal extends StatelessWidget {
                                         SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
-                                            _getVicPreferences()[key]?.toString() ?? '',
+                                            _formatPreferenceValue(_getVicPreferences()[key]),
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 12,
@@ -237,6 +276,22 @@ class VICDetailModal extends StatelessWidget {
                             ),
                           ),
                         ),
+                      ),
+                    ],
+                    Spacer(),
+                    if (_getVicCreatedAt() != null) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Created: ${_formatDate(_getVicCreatedAt())}',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                          SizedBox(width: 20),
+                        ],
                       ),
                     ],
                   ],

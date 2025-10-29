@@ -86,6 +86,18 @@ class ExternalProductModel {
   }
 
   factory ExternalProductModel.fromJson(Map<String, dynamic> json) {
+    // Preserve photos/images and other fields that aren't in the model in extras
+    final Map<String, dynamic>? existingExtras = json['extras'] != null 
+        ? Map<String, dynamic>.from(json['extras']) 
+        : <String, dynamic>{};
+    
+    // Add photos, images, and other backend fields to extras if they exist
+    if (json['photos'] != null) existingExtras!['photos'] = json['photos'];
+    if (json['images'] != null) existingExtras!['images'] = json['images'];
+    if (json['businessSummary'] != null) existingExtras!['businessSummary'] = json['businessSummary'];
+    if (json['rating'] != null) existingExtras!['rating'] = json['rating'];
+    if (json['rawData'] != null) existingExtras!['rawData'] = json['rawData'];
+    
     return ExternalProductModel(
       id: json['_id'] ?? json['id'],
       agencyId: json['agencyId'],
@@ -98,7 +110,7 @@ class ExternalProductModel {
       pricing: json['pricing'],
       location: json['location'],
       details: json['details'],
-      extras: json['extras'],
+      extras: existingExtras!.isNotEmpty ? existingExtras : null,
       createdAt: json['createdAt'] != null 
           ? DateTime.parse(json['createdAt']) 
           : null,

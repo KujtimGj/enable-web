@@ -86,15 +86,12 @@ class _BookmarksState extends State<Bookmarks> {
       appBar: AppBar(
         toolbarHeight: 60,
         automaticallyImplyLeading: false,
-        leading: GestureDetector(
-          onTap: () => context.go('/home'),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SvgPicture.asset("assets/icons/home.svg")
-            ],
-          ),
+        leading: Builder(
+          builder: (context) {
+            return _HoverableHomeIcon(
+              onTap: () => context.go('/home'),
+            );
+          },
         ),
         centerTitle: true,
         title: customForm(context),
@@ -952,6 +949,42 @@ class _BookmarkButtonState extends State<_BookmarkButton> {
             width: 40,
             height: 40,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverableHomeIcon extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _HoverableHomeIcon({
+    required this.onTap,
+  });
+
+  @override
+  State<_HoverableHomeIcon> createState() => _HoverableHomeIconState();
+}
+
+class _HoverableHomeIconState extends State<_HoverableHomeIcon> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              _isHovered ? "assets/icons/home-hover.svg" : "assets/icons/home.svg"
+            )
+          ],
         ),
       ),
     );
