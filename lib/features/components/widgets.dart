@@ -218,6 +218,101 @@ void showAccountOverlay(BuildContext context) {
   overlayState.insert(overlayEntry);
 }
 
+class _HoverableIcon extends StatefulWidget {
+  final String defaultIcon;
+  final String hoverIcon;
+  final String tooltipMessage;
+  final VoidCallback onTap;
+  final double height;
+  final double width;
+
+  const _HoverableIcon({
+    required this.defaultIcon,
+    required this.hoverIcon,
+    required this.tooltipMessage,
+    required this.onTap,
+    required this.height,
+    required this.width,
+  });
+
+  @override
+  State<_HoverableIcon> createState() => _HoverableIconState();
+}
+
+class _HoverableIconState extends State<_HoverableIcon> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Tooltip(
+          message: widget.tooltipMessage,
+          child: SvgPicture.asset(
+            _isHovered ? widget.hoverIcon : widget.defaultIcon,
+            height: widget.height,
+            width: widget.width,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverableAccountIcon extends StatefulWidget {
+  final dynamic user;
+
+  const _HoverableAccountIcon({required this.user});
+
+  @override
+  State<_HoverableAccountIcon> createState() => _HoverableAccountIconState();
+}
+
+class _HoverableAccountIconState extends State<_HoverableAccountIcon> {
+  bool _isHovered = false; 
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: () {
+          showAccountOverlay(context);
+        },
+        child: Tooltip(
+          message: 'Account',
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: CircleAvatar(
+              maxRadius: 14,
+              minRadius: 14,
+              backgroundColor: _isHovered 
+                  ? Color(0xff6a5139) 
+                  : Color(0xff574131),
+              child: Text(
+                widget.user?.name.isNotEmpty == true
+                    ? widget.user!.name[0].toUpperCase()
+                    : 'U',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Widget bottomLeftBar() {
   return Consumer<UserProvider>(
     builder: (context, userProvider, child) {
@@ -229,90 +324,61 @@ Widget bottomLeftBar() {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            GestureDetector(
-              onTap: () {
-                context.go("/chats");
-              },
-              child: Tooltip(
-                message: 'Chats',
-                child: SvgPicture.asset('assets/icons/mssg.svg', height: 20,width:20,),
-              ),
+            _HoverableIcon(
+              defaultIcon: 'assets/icons/navicons/chat-default.svg',
+              hoverIcon: 'assets/icons/navicons/chat-hover.svg',
+              tooltipMessage: 'Chats',
+              onTap: () => context.go("/chats"),
+              height: 20,
+              width: 20,
             ),
-            SizedBox(height: 10),
-            GestureDetector(
-              onTap: () {
-                context.go('/products');
-              },
-              child: Tooltip(
-                message: 'Products',
-                child: SvgPicture.asset('assets/icons/cube-02.svg', height: 20,width:20,),
-              ),
+            SizedBox(height: 12),
+            _HoverableIcon(
+              defaultIcon: 'assets/icons/navicons/product-default.svg',
+              hoverIcon: 'assets/icons/navicons/product-hovered.svg',
+              tooltipMessage: 'Products',
+              onTap: () => context.go('/products'),
+              height: 20,
+              width: 20,
             ),
-            SizedBox(height: 10),
-            GestureDetector(
-              onTap: () {
-                context.go("/vics");
-              },
-              child: Tooltip(
-                message: 'VICs',
-                child: SvgPicture.asset("assets/icons/user-02.svg", height: 20,width:20,),
-              ),
+            SizedBox(height: 12),
+            _HoverableIcon(
+              defaultIcon: 'assets/icons/navicons/vic-default.svg',
+              hoverIcon: 'assets/icons/navicons/vic-hover.svg',
+              tooltipMessage: 'VICs',
+              onTap: () => context.go("/vics"),
+              height: 20,
+              width: 20,
             ),
-            SizedBox(height: 10),
-            GestureDetector(
-              onTap: () {
-                context.go("/itinerary");
-              },
-              child: Tooltip(
-                message: 'Itinerary',
-                child: SvgPicture.asset('assets/icons/asterisk-01.svg', height: 20,width:20,),
-              ),
+            SizedBox(height: 12),
+            _HoverableIcon(
+              defaultIcon: 'assets/icons/navicons/itinerary-default.svg',
+              hoverIcon: 'assets/icons/navicons/itinerary-hover.svg',
+              tooltipMessage: 'Itinerary',
+              onTap: () => context.go("/itinerary"),
+              height: 20,
+              width: 20,
             ),
-            SizedBox(height: 10),
-            GestureDetector(
-                onTap: (){
-                  context.go("/service-providers");
-                },
-                child: Tooltip(
-                  message: 'Service Providers',
-                  child: SvgPicture.asset('assets/icons/serivce_providers.svg', height: 16,width:15,),
-                )),
-            SizedBox(height: 5),
-            GestureDetector(
-                onTap: (){
-                  context.go("/bookmarks");
-                  },
-                child: Tooltip(
-                  message: 'Bookmarks',
-                  child: SvgPicture.asset('assets/icons/bookmark-default.svg', height: 40,width:40),
-                )),
-            SizedBox(height: 10),
-            GestureDetector(
-              onTap: () {
-                showAccountOverlay(context);
-              },
-              child: Tooltip(
-                message: 'Account',
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: CircleAvatar(
-                    maxRadius: 14,
-                    minRadius: 14,
-                    backgroundColor: Color(0xff574131),
-                    child: Text(
-                      user?.name.isNotEmpty == true
-                          ? user!.name[0].toUpperCase()
-                          : 'U',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            SizedBox(height: 12),
+            _HoverableIcon(
+              defaultIcon: 'assets/icons/navicons/service-providers-default.svg',
+              hoverIcon: 'assets/icons/navicons/service-providers-hover.svg',
+              tooltipMessage: 'Service Providers',
+              onTap: () => context.go("/service-providers"),
+              height: 16,
+              width: 15,
             ),
+            SizedBox(height: 12),
+            _HoverableIcon(
+              defaultIcon: 'assets/icons/navicons/bookmark-default.svg',
+              hoverIcon: 'assets/icons/navicons/bookmark-hover.svg',
+              tooltipMessage: 'Bookmarks',
+              onTap: () => context.go("/bookmarks"),
+              height: 16,
+              width: 15,
+            ),
+            SizedBox(height: 12),
+            _HoverableAccountIcon(user: user),
           ],
         ),
       );

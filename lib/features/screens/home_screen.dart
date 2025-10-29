@@ -648,7 +648,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   )
                                                 ],
                                               ),
-                                            ),
+                                            ), 
                                             ListView.builder(
                                               shrinkWrap: true,
                                               physics:
@@ -690,7 +690,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         ),
                                                         child: Center(
                                                           child: SvgPicture.asset(
-                                                            'assets/icons/chat.svg',
+                                                            'assets/icons/navicons/chat-hover.svg',
                                                           ),
                                                         ),
                                                       ),
@@ -749,7 +749,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   ),
                                                   child: Center(
                                                     child: SvgPicture.asset(
-                                                      'assets/icons/chat.svg',
+                                                      'assets/icons/navicons/chat-hover.svg',
                                                     ),
                                                   ),
                                                 ),
@@ -1756,7 +1756,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     child: Center(
                                       child: SvgPicture.asset(
-                                        'assets/icons/chat.svg',
+                                        'assets/icons/navicons/chat-hover.svg',
                                       ),
                                     ),
                                   ),
@@ -3011,16 +3011,16 @@ class _BookmarkButtonState extends State<_BookmarkButton> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          width: 40,
-          height: 40,
+          width: 15,
+          height: 16,
           child: SvgPicture.asset(
             widget.isBookmarked
-                ? 'assets/icons/bookmark-selected.svg'
+                ? 'assets/icons/navicons/bookmark-selected.svg'
                 : _isHovered
-                    ? 'assets/icons/bookmark-hover.svg'
-                    : 'assets/icons/bookmark-default.svg',
-            width: 40,
-            height: 40,
+                    ? 'assets/icons/navicons/bookmark-hover.svg' 
+                    : 'assets/icons/navicons/bookmark-default.svg',
+            width: 15,
+            height: 16,
           ),
         ),
       ),

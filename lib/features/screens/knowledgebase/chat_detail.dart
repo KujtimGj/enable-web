@@ -95,7 +95,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           appBar: AppBar(
             toolbarHeight: 60,
             automaticallyImplyLeading: false,
-            leadingWidth: 200,
             centerTitle: true,
             title: Text(
               widget.conversationName,
@@ -106,7 +105,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               ),
             ),
             leading: GestureDetector(
-              onTap: () => context.go('/knowledgebase/chats'),
+              onTap: () => context.go('/'),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -115,14 +114,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ],
               ),
             ),
-            actions: [customButton(() => context.go("/"))],
+            actions: [customButton(() => context.go("/home"))],
           ),
-          body: Column(
+          body: Stack(
             children: [
-              Expanded(
-                child: _buildMessagesList(chatProvider),
+              Column(
+                children: [
+                  Expanded(
+                    child: _buildMessagesList(chatProvider),
+                  ),
+                  if (chatProvider.isLoading) _buildLoadingIndicator(),
+                ],
               ),
-              if (chatProvider.isLoading) _buildLoadingIndicator(),
+              Positioned(
+                left: 0,
+                bottom: 0,
+                child: bottomLeftBar(),
+              ),
             ],
           ),
         );
